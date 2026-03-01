@@ -48,6 +48,17 @@ jobs:
         cd android
         ./gradlew assembleDebug
         
+    - name: Calculate Debug APK SHA1
+      run: |
+        echo "========================================"
+        echo "Debug APK SHA1 Checksum:"
+        echo "========================================"
+        sha1sum android/app/build/outputs/apk/debug/app-debug.apk
+        echo ""
+        echo "Debug APK MD5 Checksum:"
+        md5sum android/app/build/outputs/apk/debug/app-debug.apk
+        echo "========================================"
+        
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
       with:
@@ -93,6 +104,17 @@ jobs:
       run: |
         cd android
         ./gradlew assembleRelease
+        
+    - name: Calculate Release APK SHA1
+      run: |
+        echo "========================================"
+        echo "Release APK SHA1 Checksum:"
+        echo "========================================"
+        sha1sum android/app/build/outputs/apk/release/app-release-unsigned.apk
+        echo ""
+        echo "Release APK MD5 Checksum:"
+        md5sum android/app/build/outputs/apk/release/app-release-unsigned.apk
+        echo "========================================"
         
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
