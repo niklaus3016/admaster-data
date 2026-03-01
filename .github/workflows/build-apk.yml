@@ -145,15 +145,23 @@ jobs:
         # 提取 SHA1 指纹
         echo "Extracting SHA1 fingerprint..."
         echo "===== SHA1 指纹（小米应用商店用）====="
-        keytool_output=$(keytool -list -v -keystore android/app/release.keystore -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" 2>&1)
-        echo "Keytool output: $keytool_output"
-        sha1_value=$(echo "$keytool_output" | grep "SHA1" | awk '{print $2}')
-        if [ -z "$sha1_value" ]; then
-          echo "ERROR: Failed to extract SHA1, checking full output..."
-          echo "Full keytool output:"
+        
+        # 执行keytool命令并捕获错误
+        if ! keytool_output=$(keytool -list -v -keystore android/app/release.keystore -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" 2>&1); then
+          echo "ERROR: Keytool command failed"
+          echo "Full error output:"
           echo "$keytool_output"
+          # 不退出，继续执行
         else
-          echo "$sha1_value"
+          echo "Keytool command succeeded"
+          sha1_value=$(echo "$keytool_output" | grep "SHA1" | awk '{print $2}')
+          if [ -z "$sha1_value" ]; then
+            echo "ERROR: Failed to extract SHA1, checking full output..."
+            echo "Full keytool output:"
+            echo "$keytool_output"
+          else
+            echo "$sha1_value"
+          fi
         fi
         echo "======================================"
         
