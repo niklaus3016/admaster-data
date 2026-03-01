@@ -18,10 +18,14 @@ android {
     }
     signingConfigs {
         release {
-            if (project.hasProperty('KEYSTORE_FILE') && project.hasProperty('KEYSTORE_PASSWORD') && project.hasProperty('KEY_ALIAS')) {
-                storeFile file(project.property('KEYSTORE_FILE'))
+            storeFile file('release.keystore')
+            if (project.hasProperty('KEYSTORE_PASSWORD')) {
                 storePassword project.property('KEYSTORE_PASSWORD')
+            }
+            if (project.hasProperty('KEY_ALIAS')) {
                 keyAlias project.property('KEY_ALIAS')
+            }
+            if (project.hasProperty('KEYSTORE_PASSWORD')) {
                 keyPassword project.property('KEYSTORE_PASSWORD')
             }
         }
