@@ -1,5 +1,8 @@
 # 广告变现系统前端
 
+![Build Status](https://github.com/niklaus3016/admaster-data/workflows/Build%20Project/badge.svg)
+![Deploy Status](https://github.com/niklaus3016/admaster-data/workflows/Deploy%20to%20GitHub%20Pages/badge.svg)
+
 基于Vue3 + TypeScript + Vite开发的广告变现系统前端应用。
 
 ## 功能特性
