@@ -25,6 +25,10 @@ android {
     packagingOptions {
         pickFirst '**/kotlin-stdlib-jdk8.jar'
         pickFirst '**/kotlin-stdlib.jar'
+        pickFirst '**/kotlin-stdlib-jdk7.jar'
+        pickFirst '**/kotlin-stdlib-common.jar'
+        pickFirst '**/kotlin-stdlib-jdk8-1.6.21.jar'
+        pickFirst '**/kotlin-stdlib-1.8.22.jar'
     }
 }
 
