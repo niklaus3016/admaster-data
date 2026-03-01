@@ -100,10 +100,24 @@ jobs:
     - name: Sync to Android platform
       run: npx cap sync android
       
+    - name: Decode keystore
+      if: github.event_name != 'pull_request'
+      env:
+        KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+      run: |
+        # 将 base64 编码的 keystore 还原为文件
+        echo "$KEYSTORE_BASE64" | base64 --decode > android/app/release.keystore
+        echo "Keystore file size: $(ls -l android/app/release.keystore | awk '{print $5}') bytes"
+        
     - name: Build Release APK
+      if: github.event_name != 'pull_request'
+      env:
+        KEYSTORE_FILE: android/app/release.keystore
+        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
       run: |
         cd android
-        ./gradlew assembleRelease
+        ./gradlew assembleRelease -PKEYSTORE_FILE="$KEYSTORE_FILE" -PKEYSTORE_PASSWORD="$KEYSTORE_PASSWORD" -PKEY_ALIAS="$KEY_ALIAS"
         
     - name: Extract SHA1 from keystore
       if: github.event_name != 'pull_request'
@@ -129,18 +143,6 @@ jobs:
         fi
         
         echo "Secrets are properly set"
-        
-        # 将 base64 编码的 keystore 还原为文件
-        echo "Decoding keystore..."
-        echo "$KEYSTORE_BASE64" | base64 --decode > android/app/release.keystore
-        
-        # 检查文件是否生成
-        if [ ! -f android/app/release.keystore ]; then
-          echo "ERROR: Keystore file not generated"
-          exit 1
-        fi
-        
-        echo "Keystore file size: $(ls -l android/app/release.keystore | awk '{print $5}') bytes"
         
         # 提取 SHA1 指纹
         echo "Extracting SHA1 fingerprint..."
@@ -180,15 +182,15 @@ jobs:
         echo "========================================"
         echo "Release APK SHA1 Checksum:"
         echo "========================================"
-        sha1sum android/app/build/outputs/apk/release/app-release-unsigned.apk
+        sha1sum android/app/build/outputs/apk/release/app-release.apk
         echo ""
         echo "Release APK MD5 Checksum:"
-        md5sum android/app/build/outputs/apk/release/app-release-unsigned.apk
+        md5sum android/app/build/outputs/apk/release/app-release.apk
         echo "========================================"
         
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
         name: app-release
-        path: android/app/build/outputs/apk/release/app-release-unsigned.apk
+        path: android/app/build/outputs/apk/release/app-release.apk
         retention-days: 30
