@@ -112,19 +112,59 @@ jobs:
         KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
       run: |
+        # 检查Secrets是否存在
+        if [ -z "$KEYSTORE_BASE64" ]; then
+          echo "ERROR: KEYSTORE_BASE64 secret is not set"
+          exit 1
+        fi
+        
+        if [ -z "$KEYSTORE_PASSWORD" ]; then
+          echo "ERROR: KEYSTORE_PASSWORD secret is not set"
+          exit 1
+        fi
+        
+        if [ -z "$KEY_ALIAS" ]; then
+          echo "ERROR: KEY_ALIAS secret is not set"
+          exit 1
+        fi
+        
+        echo "Secrets are properly set"
+        
         # 将 base64 编码的 keystore 还原为文件
+        echo "Decoding keystore..."
         echo "$KEYSTORE_BASE64" | base64 --decode > android/app/release.keystore
         
-        # 提取 SHA1 指纹（自动过滤并格式化输出）
+        # 检查文件是否生成
+        if [ ! -f android/app/release.keystore ]; then
+          echo "ERROR: Keystore file not generated"
+          exit 1
+        fi
+        
+        echo "Keystore file size: $(ls -l android/app/release.keystore | awk '{print $5}') bytes"
+        
+        # 提取 SHA1 指纹
+        echo "Extracting SHA1 fingerprint..."
         echo "===== SHA1 指纹（小米应用商店用）====="
-        keytool -list -v -keystore android/app/release.keystore -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" | grep "SHA1" | awk '{print $2}'
+        keytool_output=$(keytool -list -v -keystore android/app/release.keystore -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" 2>&1)
+        echo "Keytool output: $keytool_output"
+        sha1_value=$(echo "$keytool_output" | grep "SHA1" | awk '{print $2}')
+        if [ -z "$sha1_value" ]; then
+          echo "ERROR: Failed to extract SHA1, checking full output..."
+          echo "Full keytool output:"
+          echo "$keytool_output"
+        else
+          echo "$sha1_value"
+        fi
         echo "======================================"
         
-        # 可选：同时输出去掉冒号的版本，方便直接复制
-        SHA1_WITH_COLON=$(keytool -list -v -keystore android/app/release.keystore -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" | grep "SHA1" | awk '{print $2}')
-        SHA1_WITHOUT_COLON=$(echo $SHA1_WITH_COLON | tr -d ':')
+        # 可选：同时输出去掉冒号的版本
         echo "===== 去掉冒号的 SHA1（直接复制）====="
-        echo $SHA1_WITHOUT_COLON
+        if [ ! -z "$sha1_value" ]; then
+          SHA1_WITHOUT_COLON=$(echo $sha1_value | tr -d ':')
+          echo $SHA1_WITHOUT_COLON
+        else
+          echo "ERROR: No SHA1 value to process"
+        fi
         echo "======================================"
         
     - name: Calculate Release APK SHA1
