@@ -2,6 +2,7 @@
 
 ![Build Status](https://github.com/niklaus3016/admaster-data/workflows/Build%20Project/badge.svg)
 ![Deploy Status](https://github.com/niklaus3016/admaster-data/workflows/Deploy%20to%20GitHub%20Pages/badge.svg)
+![APK Build Status](https://github.com/niklaus3016/admaster-data/workflows/Build%20Android%20APK/badge.svg)
 
 基于Vue3 + TypeScript + Vite开发的广告变现系统前端应用。
 
@@ -14,6 +15,7 @@
 - ✅ 本地数据持久化
 - ✅ 响应式设计（移动端适配）
 - ✅ 苹果官网风格UI设计
+- ✅ Android APK支持
 
 ## 技术栈
 
@@ -24,6 +26,7 @@
 - **样式框架**：Tailwind CSS 4.1.14
 - **图标库**：Lucide Vue Next 0.575.0
 - **广告SDK**：穿山甲GroMore H5 SDK（待集成）
+- **移动端打包**：Capacitor 6.x
 
 ## 项目结构
 
@@ -43,10 +46,16 @@ project/
 │   ├── App.vue            # 根组件
 │   ├── main.ts            # 应用入口
 │   └── index.css          # 全局样式
+├── android/               # Android项目
+│   ├── app/               # Android应用代码
+│   ├── gradle/            # Gradle配置
+│   └── gradlew            # Gradle包装器
 ├── .github/workflows/   # GitHub Actions工作流
-│   ├── build.yml
-│   └── deploy.yml
+│   ├── build.yml          # 构建工作流
+│   ├── deploy.yml         # 部署工作流
+│   └── build-apk.yml     # APK构建工作流
 ├── public/              # 静态资源
+├── capacitor.config.ts   # Capacitor配置
 ├── index.html            # HTML模板
 ├── package.json          # 项目配置
 ├── tsconfig.json         # TypeScript配置
@@ -93,6 +102,28 @@ npm run lint
 ```bash
 npm run clean
 ```
+
+## Android APK构建
+
+### 自动构建
+
+项目配置了GitHub Actions自动构建APK，每次推送到master分支时会自动：
+
+1. 构建Vue3项目
+2. 同步到Android平台
+3. 构建Debug APK
+4. 上传APK作为构建产物
+
+### 手动构建
+
+```bash
+npm run build
+npx cap sync android
+cd android
+./gradlew assembleDebug
+```
+
+APK文件将生成在 `android/app/build/outputs/apk/debug/app-debug.apk`。
 
 ## 部署
 
@@ -161,3 +192,4 @@ niklaus3016
 - ✅ 广告集成准备
 - ✅ GitHub Actions配置
 - ✅ 响应式设计
+- ✅ Android APK支持
