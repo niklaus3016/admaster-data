@@ -1,4 +1,4 @@
-name: Build and Deploy
+name: Build Project
 
 on:
   push:
@@ -31,10 +31,3 @@ jobs:
       with:
         name: build-artifacts
         path: dist/
-        
-    - name: Deploy to GitHub Pages
-      if: github.ref == 'refs/heads/master'
-      uses: peaceiris/actions-workflow-dispatch@v3
-      with:
-        workflow: deploy.yml
-        token: ${{ secrets.GITHUB_TOKEN }}
