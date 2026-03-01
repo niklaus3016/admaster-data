@@ -112,26 +112,19 @@ jobs:
     - name: Build Release APK
       if: github.event_name != 'pull_request'
       env:
-        KEYSTORE_FILE: android/app/release.keystore
         KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
       run: |
         cd android
-        ./gradlew assembleRelease -PKEYSTORE_FILE="$KEYSTORE_FILE" -PKEYSTORE_PASSWORD="$KEYSTORE_PASSWORD" -PKEY_ALIAS="$KEY_ALIAS"
+        ./gradlew assembleRelease -PKEYSTORE_PASSWORD="$KEYSTORE_PASSWORD" -PKEY_ALIAS="$KEY_ALIAS"
         
     - name: Extract SHA1 from keystore
       if: github.event_name != 'pull_request'
       env:
-        KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
       run: |
         # 检查Secrets是否存在
-        if [ -z "$KEYSTORE_BASE64" ]; then
-          echo "ERROR: KEYSTORE_BASE64 secret is not set"
-          exit 1
-        fi
-        
         if [ -z "$KEYSTORE_PASSWORD" ]; then
           echo "ERROR: KEYSTORE_PASSWORD secret is not set"
           exit 1
