@@ -30,8 +30,8 @@ const handleLogin = async (e: Event) => {
       // 登录成功，存储员工信息
       localStorage.setItem('empId', empId.value);
       localStorage.setItem('employeeInfo', JSON.stringify(response.data));
-      // 生成用户ID（可以根据需要修改生成逻辑）
-      const userId = `user_${empId.value}_${Date.now()}`;
+      // 使用后端返回的userId，如果没有则使用员工号生成
+      const userId = response.data.userId || `user_${empId.value}`;
       localStorage.setItem('userId', userId);
       // 跳转到首页
       router.push('/');

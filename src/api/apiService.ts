@@ -11,6 +11,7 @@ interface ApiResponse<T = any> {
 
 interface EmployeeInfo {
   _id: string;
+  userId: string;
   employeeId: string;
   name: string;
   phone: string;
@@ -24,6 +25,9 @@ interface UserInfo {
   employeeId: string;
   currentMonthGold: number;
   lastMonthGold: number;
+  todayTarget: number;
+  bonusGold: number;
+  hasClaimedBonus: boolean;
   _id: string;
   __v: number;
 }
@@ -62,6 +66,7 @@ export async function checkEmployee(employeeId: string): Promise<ApiResponse<Emp
             message: '登录成功',
             data: {
               _id: '699c87e89ad7757d16c8b9e1',
+              userId: 'test123',
               employeeId: '8202',
               name: '测试员工',
               phone: '13800138000',
@@ -77,6 +82,7 @@ export async function checkEmployee(employeeId: string): Promise<ApiResponse<Emp
             message: '登录成功',
             data: {
               _id: '699c87e89ad7757d16c8b9e2',
+              userId: 'user_1111',
               employeeId: '1111',
               name: '测试员工1111',
               phone: '13800138001',
@@ -247,6 +253,180 @@ export async function addEmployee(name: string, phone: string, area: string): Pr
     return await response.json();
   } catch (error) {
     console.error('添加员工失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+    };
+  }
+}
+
+// 登录统计相关接口
+interface LoginRecord {
+  loginDays: number;
+  todayLogin: boolean;
+  isNewLogin: boolean;
+  consecutiveDays: number;
+}
+
+interface LoginStats {
+  totalLoginDays: number;
+  firstLoginDate: string;
+  lastLoginDate: string;
+  consecutiveDays: number;
+  loginDates: string[];
+}
+
+/**
+ * 记录用户登录
+ * @param userId 用户ID
+ * @param employeeId 员工号
+ * @returns 登录记录结果
+ */
+export async function recordLogin(userId: string, employeeId: string): Promise<ApiResponse<LoginRecord>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/user/login-record`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userId, employeeId }),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('记录登录失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+    };
+  }
+}
+
+/**
+ * 获取用户登录统计
+ * @param userId 用户ID
+ * @param employeeId 员工号
+ * @returns 登录统计信息
+ */
+export async function getLoginStats(userId: string, employeeId: string): Promise<ApiResponse<LoginStats>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/user/login-stats?userId=${userId}&employeeId=${employeeId}`);
+    return await response.json();
+  } catch (error) {
+    console.error('获取登录统计失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+    };
+  }
+}
+
+// 提现相关接口
+interface WithdrawRequest {
+  userId: string;
+  employeeId: string;
+  amount: number;
+  goldAmount: number;
+  alipayAccount: string;
+  alipayName: string;
+}
+
+export interface WithdrawRecord {
+  _id: string;
+  userId: string;
+  employeeId: string;
+  amount: number;
+  goldAmount: number;
+  alipayAccount: string;
+  alipayName: string;
+  status: number; // 0:提现成功（简化逻辑，提交即成功）
+  statusText: string;
+  createTime: string;
+  remainingGold?: number; // 提现后剩余金币
+}
+
+/**
+ * 提交提现申请
+ * @param data 提现申请数据
+ * @returns 提现申请结果
+ */
+export async function submitWithdrawRequest(data: WithdrawRequest): Promise<ApiResponse<WithdrawRecord>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/withdraw/submit`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('提交提现申请失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+    };
+  }
+}
+
+/**
+ * 获取提现记录列表
+ * @param userId 用户ID
+ * @returns 提现记录列表
+ */
+export async function getWithdrawRecords(userId: string): Promise<ApiResponse<WithdrawRecord[]>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/withdraw/list?userId=${userId}`);
+    return await response.json();
+  } catch (error) {
+    console.error('获取提现记录失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+    };
+  }
+}
+
+/**
+ * 领取今日目标额外金币奖励
+ * @param userId 用户ID
+ * @param employeeId 员工号
+ * @returns 领取结果
+ */
+export async function claimDailyBonus(userId: string, employeeId: string): Promise<ApiResponse<{ gold: number; currentMonthGold: number }>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/daily-bonus/claim`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userId, employeeId }),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('领取额外金币失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+    };
+  }
+}
+
+// 提现开关状态
+interface WithdrawStatus {
+  enabled: boolean;
+  message?: string;
+}
+
+/**
+ * 获取提现开关状态
+ * @returns 提现开关状态
+ */
+export async function getWithdrawStatus(): Promise<ApiResponse<WithdrawStatus>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/withdraw/status`);
+    return await response.json();
+  } catch (error) {
+    console.error('获取提现状态失败:', error);
     return {
       success: false,
       message: '网络错误，请稍后重试',
