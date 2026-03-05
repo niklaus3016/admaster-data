@@ -496,7 +496,7 @@ const submitWithdraw = async () => {
                   </button>
                   <button 
                     @click="openWithdrawRecordsModal"
-                    class="px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all border flex items-center justify-center gap-1 bg-zinc-500/10 text-zinc-400 hover:bg-zinc-500/20 border-zinc-500/20 cursor-pointer"
+                    class="px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all border flex items-center justify-center gap-1 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border-blue-500/30 cursor-pointer"
                   >
                     <CreditCard class="w-3 h-3" />
                     记录
