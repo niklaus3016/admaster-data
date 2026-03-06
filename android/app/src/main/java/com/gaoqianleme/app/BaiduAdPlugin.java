@@ -39,6 +39,10 @@ public class BaiduAdPlugin extends Plugin {
                     @Override
                     public void onAdLoaded() {
                         Log.d(TAG, "广告加载成功");
+                        if (mRewardVideoAd != null) {
+                            Log.d(TAG, "ECPM Level: " + mRewardVideoAd.getECPMLevel());
+                            Log.d(TAG, "Is Ready: " + mRewardVideoAd.isReady());
+                        }
                         notifyListeners("onAdLoaded", new JSObject());
                     }
                     
@@ -86,15 +90,48 @@ public class BaiduAdPlugin extends Plugin {
                     @Override
                     public void onRewardVerify(boolean rewardVerify, java.util.Map<String, Object> rewardInfo) {
                         Log.d(TAG, "获得奖励: " + rewardVerify);
+                        Log.d(TAG, "奖励信息: " + rewardInfo);
+                        
                         JSObject result = new JSObject();
                         result.put("rewardVerify", rewardVerify);
                         
-                        // 获取ECPM
-                        String ecpm = "0";
-                        if (mRewardVideoAd != null) {
-                            ecpm = mRewardVideoAd.getECPMLevel();
+                        // 添加rewardInfo的所有字段到结果中
+                        if (rewardInfo != null) {
+                            for (String key : rewardInfo.keySet()) {
+                                result.put(key, rewardInfo.get(key));
+                            }
                         }
-                        result.put("ecpm", ecpm != null ? Double.parseDouble(ecpm) : 0);
+                        
+                        // 获取ECPM
+                        double ecpmValue = 0;
+                        if (mRewardVideoAd != null) {
+                            String ecpmLevel = mRewardVideoAd.getECPMLevel();
+                            Log.d(TAG, "ECPM Level: " + ecpmLevel);
+                            
+                            try {
+                                if (ecpmLevel != null && !ecpmLevel.isEmpty()) {
+                                    ecpmValue = Double.parseDouble(ecpmLevel);
+                                }
+                            } catch (NumberFormatException e) {
+                                Log.w(TAG, "ECPM Level 转换失败: " + ecpmLevel);
+                                // 如果ecpmLevel不是数字，尝试从rewardInfo中获取
+                                if (rewardInfo != null && rewardInfo.containsKey("ecpm")) {
+                                    Object ecpmObj = rewardInfo.get("ecpm");
+                                    if (ecpmObj instanceof Number) {
+                                        ecpmValue = ((Number) ecpmObj).doubleValue();
+                                    } else if (ecpmObj instanceof String) {
+                                        try {
+                                            ecpmValue = Double.parseDouble((String) ecpmObj);
+                                        } catch (NumberFormatException e2) {
+                                            Log.w(TAG, "从rewardInfo获取ecpm失败");
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        result.put("ecpm", ecpmValue);
+                        Log.d(TAG, "最终返回的ECPM: " + ecpmValue);
                         
                         notifyListeners("onRewardVerify", result);
                         
