@@ -200,10 +200,14 @@ const loadGoldRecords = async () => {
   try {
     const response = await getGoldLogs(userId.value);
     if (response.success && response.data) {
+      console.log('========== 金币记录时区调试 ==========');
+      console.log('当前时间（本地）:', new Date().toString());
+      console.log('当前时间（ISO）:', new Date().toISOString());
+      
       // 格式化北京时间
       const formatBeijingTime = (dateStr: string) => {
         const date = new Date(dateStr);
-        return date.toLocaleString('zh-CN', {
+        const beijingTime = date.toLocaleString('zh-CN', {
           timeZone: 'Asia/Shanghai',
           year: 'numeric',
           month: '2-digit',
@@ -211,17 +215,20 @@ const loadGoldRecords = async () => {
           hour: '2-digit',
           minute: '2-digit'
         });
+        console.log(`时间转换: ${dateStr} -> ${beijingTime}`);
+        return beijingTime;
       };
 
       // 获取北京时间的日期部分
       const getBeijingDate = (dateStr: string) => {
         const date = new Date(dateStr);
-        return date.toLocaleDateString('zh-CN', {
+        const beijingDate = date.toLocaleDateString('zh-CN', {
           timeZone: 'Asia/Shanghai',
           year: 'numeric',
           month: '2-digit',
           day: '2-digit'
         }).replace(/\//g, '-');
+        return beijingDate;
       };
       
       records.value = response.data.map((log: any) => {
@@ -234,12 +241,17 @@ const loadGoldRecords = async () => {
 
       // 计算今日金币收益（使用北京时间）
       const today = getBeijingDate(new Date().toISOString());
+      console.log('今日日期（北京时间）:', today);
+      
       todayCoins.value = response.data
         .filter((log: any) => {
           const logDate = getBeijingDate(log.createTime);
           return logDate === today;
         })
         .reduce((sum: number, log: any) => sum + log.gold, 0);
+      
+      console.log('今日金币统计:', todayCoins.value);
+      console.log('======================================');
     }
   } catch (err) {
     console.error('获取金币记录失败:', err);
