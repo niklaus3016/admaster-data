@@ -200,33 +200,43 @@ const loadGoldRecords = async () => {
   try {
     const response = await getGoldLogs(userId.value);
     if (response.success && response.data) {
-      // 转换后端记录格式为前端格式（使用北京时间）
-      const toBeijingTime = (date: Date) => {
-        return new Date(date.getTime() + 8 * 60 * 60 * 1000);
+      // 格式化北京时间
+      const formatBeijingTime = (dateStr: string) => {
+        const date = new Date(dateStr);
+        return date.toLocaleString('zh-CN', {
+          timeZone: 'Asia/Shanghai',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      };
+
+      // 获取北京时间的日期部分
+      const getBeijingDate = (dateStr: string) => {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('zh-CN', {
+          timeZone: 'Asia/Shanghai',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        }).replace(/\//g, '-');
       };
       
       records.value = response.data.map((log: any) => {
-        const beijingTime = toBeijingTime(new Date(log.createTime));
         return {
           id: log._id,
-          time: beijingTime.toLocaleString('zh-CN', {
-            year: 'numeric', month: '2-digit', day: '2-digit',
-            hour: '2-digit', minute: '2-digit'
-          }),
+          time: formatBeijingTime(log.createTime),
           amount: log.gold
         };
       });
 
-      // 计算今日金币收益（使用北京时间 UTC+8）
-      const getBeijingDate = (date: Date) => {
-        const beijingTime = new Date(date.getTime() + 8 * 60 * 60 * 1000);
-        return beijingTime.toISOString().split('T')[0];
-      };
-      
-      const today = getBeijingDate(new Date());
+      // 计算今日金币收益（使用北京时间）
+      const today = getBeijingDate(new Date().toISOString());
       todayCoins.value = response.data
         .filter((log: any) => {
-          const logDate = getBeijingDate(new Date(log.createTime));
+          const logDate = getBeijingDate(log.createTime);
           return logDate === today;
         })
         .reduce((sum: number, log: any) => sum + log.gold, 0);
