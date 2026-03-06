@@ -1,6 +1,6 @@
 // API服务层，封装后端接口调用
 
-const API_BASE_URL = 'https://xevbnmgazudl.sealoshzh.site'; // 后端服务地址，根据实际部署情况修改
+const API_BASE_URL = 'https://wfqmaepvjkdd.sealoshzh.site'; // 生产环境后端服务地址
 const USE_MOCK_DATA = false; // 生产模式下使用真实后端API
 
 interface ApiResponse<T = any> {
