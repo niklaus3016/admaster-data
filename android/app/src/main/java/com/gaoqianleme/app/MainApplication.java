@@ -19,7 +19,7 @@ public class MainApplication extends Application {
         
         Log.d(TAG, "Application onCreate");
         
-        String deviceId = getDeviceId();
+        String deviceId = getMyDeviceId();
         Log.d(TAG, "========================================");
         Log.d(TAG, "设备 ID: " + deviceId);
         Log.d(TAG, "请将此设备 ID 添加到百度联盟后台的测试设备列表中");
@@ -28,7 +28,7 @@ public class MainApplication extends Application {
         initBaiduAdSDK();
     }
 
-    private String getDeviceId() {
+    private String getMyDeviceId() {
         try {
             return Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
         } catch (Exception e) {
