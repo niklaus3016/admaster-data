@@ -16,7 +16,9 @@ interface AdConfig {
 const isLoaded = ref(false);
 const isAdSdkReady = ref(false);
 const isAdLoading = ref(false);
+const isAdReady = ref(false);
 const lastError = ref('');
+const preloadAd = ref(false);
 
 export function useAdManager(config: AdConfig) {
   let rewardVerifyListener: any = null;
@@ -25,6 +27,9 @@ export function useAdManager(config: AdConfig) {
   let videoDownloadFailedListener: any = null;
   let adLoadedListener: any = null;
   let timeoutId: any = null;
+  let retryTimeoutId: any = null;
+  let currentResolve: any = null;
+  let currentReject: any = null;
 
   onMounted(() => {
     initializeAdSdk();
@@ -41,6 +46,7 @@ export function useAdManager(config: AdConfig) {
     if (videoDownloadFailedListener) BaiduAd.removeListener('onVideoDownloadFailed', videoDownloadFailedListener);
     if (adLoadedListener) BaiduAd.removeListener('onAdLoaded', adLoadedListener);
     if (timeoutId) clearTimeout(timeoutId);
+    if (retryTimeoutId) clearTimeout(retryTimeoutId);
   };
 
   const isNativeApp = () => {
@@ -57,6 +63,7 @@ export function useAdManager(config: AdConfig) {
         console.log('原生 Android 环境，使用百度原生 SDK');
         isAdSdkReady.value = true;
         isLoaded.value = true;
+        preloadAd.value = true;
         return;
       }
 
@@ -64,6 +71,7 @@ export function useAdManager(config: AdConfig) {
         console.log('百度 H5 广告 SDK 已加载');
         isAdSdkReady.value = true;
         isLoaded.value = true;
+        preloadAd.value = true;
         return;
       }
 
@@ -75,6 +83,7 @@ export function useAdManager(config: AdConfig) {
         console.log('百度 H5 广告 SDK 加载成功');
         isAdSdkReady.value = true;
         isLoaded.value = true;
+        preloadAd.value = true;
         
         if (window.baidu && window.baidu.mobads) {
           window.baidu.mobads.setAppId(config.appId);
@@ -84,12 +93,14 @@ export function useAdManager(config: AdConfig) {
         console.error('百度 H5 广告 SDK 加载失败');
         isLoaded.value = true;
         isAdSdkReady.value = false;
+        preloadAd.value = true;
       };
       document.head.appendChild(script);
     } catch (error) {
       console.error('初始化广告 SDK 失败:', error);
       isLoaded.value = true;
       isAdSdkReady.value = false;
+      preloadAd.value = true;
     }
   };
 
@@ -98,6 +109,10 @@ export function useAdManager(config: AdConfig) {
       console.log('========== 开始加载激励视频广告 ==========');
       console.log('广告位 ID:', config.slotId);
       console.log('是否原生环境:', isNativeApp());
+      console.log('广告是否已准备:', isAdReady.value);
+      
+      currentResolve = resolve;
+      currentReject = reject;
       
       try {
         if (isNativeApp()) {
@@ -136,23 +151,39 @@ export function useAdManager(config: AdConfig) {
         if (timeoutId) clearTimeout(timeoutId);
         const ecpm = result.ecpm || 0;
         isAdLoading.value = false;
+        isAdReady.value = false;
         cleanupListeners();
+        
         resolve({ ecpm });
       };
       
       const onAdFailed = (error: any) => {
         const errorMsg = error?.error || error || '未知错误';
-        console.error('❌ 原生广告加载失败:', errorMsg);
+        console.warn('⚠️ 广告加载失败:', errorMsg);
         lastError.value = '广告加载失败: ' + errorMsg;
+        
         if (timeoutId) clearTimeout(timeoutId);
-        isAdLoading.value = false;
-        cleanupListeners();
-        simulateAdPlay(resolve, reject);
+        
+        console.log('3秒后自动重试加载广告...');
+        retryTimeoutId = setTimeout(() => {
+          console.log('重新加载广告...');
+          isAdReady.value = false;
+          isAdLoading.value = false;
+          cleanupListeners();
+          
+          if (currentResolve && currentReject) {
+            showNativeAd(currentResolve, currentReject);
+          }
+        }, 3000);
+        
+        return;
       };
 
       const onVideoDownloadSuccess = async () => {
         console.log('✅ 视频下载成功，准备显示广告');
         try {
+          isAdReady.value = true;
+          isAdLoading.value = false;
           await BaiduAd.showRewardVideoAd();
           console.log('✅ 广告显示命令已发送');
         } catch (error) {
@@ -160,6 +191,7 @@ export function useAdManager(config: AdConfig) {
           console.error('❌ 显示广告失败:', errorMsg);
           lastError.value = '显示广告失败: ' + errorMsg;
           if (timeoutId) clearTimeout(timeoutId);
+          isAdReady.value = false;
           isAdLoading.value = false;
           cleanupListeners();
           simulateAdPlay(resolve, reject);
@@ -167,12 +199,24 @@ export function useAdManager(config: AdConfig) {
       };
 
       const onVideoDownloadFailed = () => {
-        console.error('❌ 视频下载失败');
+        console.warn('⚠️ 视频下载失败');
         lastError.value = '视频下载失败，可能是广告填充不足';
+        
         if (timeoutId) clearTimeout(timeoutId);
-        isAdLoading.value = false;
-        cleanupListeners();
-        simulateAdPlay(resolve, reject);
+        
+        console.log('3秒后自动重试加载广告...');
+        retryTimeoutId = setTimeout(() => {
+          console.log('重新加载广告...');
+          isAdReady.value = false;
+          isAdLoading.value = false;
+          cleanupListeners();
+          
+          if (currentResolve && currentReject) {
+            showNativeAd(currentResolve, currentReject);
+          }
+        }, 3000);
+        
+        return;
       };
       
       adLoadedListener = onAdLoaded;
@@ -192,18 +236,23 @@ export function useAdManager(config: AdConfig) {
       console.log('✅ 广告加载请求已发送，等待回调...');
       
       timeoutId = setTimeout(() => {
-        console.warn('⏱️ 广告加载超时（10秒），使用模拟数据');
+        console.warn('⏱️ 广告加载超时（15秒），使用模拟数据');
         lastError.value = '广告加载超时，可能是网络问题或广告填充不足';
+        
+        if (retryTimeoutId) clearTimeout(retryTimeoutId);
+        isAdReady.value = false;
         isAdLoading.value = false;
         cleanupListeners();
         simulateAdPlay(resolve, reject);
-      }, 10000);
+      }, 15000);
       
     } catch (error) {
       const errorMsg = error?.message || error || '未知错误';
       console.error('❌ 原生广告播放失败:', errorMsg);
       lastError.value = '广告播放失败: ' + errorMsg;
       if (timeoutId) clearTimeout(timeoutId);
+      if (retryTimeoutId) clearTimeout(retryTimeoutId);
+      isAdReady.value = false;
       isAdLoading.value = false;
       cleanupListeners();
       simulateAdPlay(resolve, reject);
@@ -219,11 +268,13 @@ export function useAdManager(config: AdConfig) {
         appId: config.appId,
         onAdLoaded: () => {
           console.log('H5 广告加载成功');
+          isAdReady.value = true;
           isAdLoading.value = false;
           rewardVideoAd.show();
         },
         onAdFailed: (error: any) => {
           console.error('H5 广告加载失败:', error);
+          isAdReady.value = false;
           isAdLoading.value = false;
           simulateAdPlay(resolve, reject);
         },
@@ -236,6 +287,7 @@ export function useAdManager(config: AdConfig) {
         onAdReward: (reward: any) => {
           console.log('获得 H5 广告奖励:', reward);
           const ecpm = reward?.ecpm || reward?.amount || 0;
+          isAdReady.value = false;
           if (ecpm > 0) {
             resolve({ ecpm });
           } else {
@@ -250,6 +302,7 @@ export function useAdManager(config: AdConfig) {
       rewardVideoAd.load();
     } catch (error) {
       console.error('H5 广告初始化失败:', error);
+      isAdReady.value = false;
       isAdLoading.value = false;
       simulateAdPlay(resolve, reject);
     }
@@ -273,6 +326,7 @@ export function useAdManager(config: AdConfig) {
     isLoaded,
     isAdSdkReady,
     isAdLoading,
+    isAdReady,
     lastError,
     showRewardVideo,
     initializeAdSdk

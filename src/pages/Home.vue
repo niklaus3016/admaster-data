@@ -134,7 +134,7 @@ const adConfig = {
   slotId: '19181348',
 };
 
-const { showRewardVideo, lastError } = useAdManager(adConfig);
+const { showRewardVideo, isAdLoading } = useAdManager(adConfig);
 
 // 初始化数据
 onMounted(async () => {
@@ -248,12 +248,6 @@ const handleWatchAd = async () => {
   try {
     // 调用广告管理逻辑
     const result = await showRewardVideo();
-    
-    // 如果有错误信息，显示给用户
-    if (lastError.value) {
-      console.warn('广告加载遇到问题:', lastError.value);
-      error.value = lastError.value + '（已使用模拟数据）';
-    }
     
     // 调用后端发放金币接口
     const rewardResponse = await rewardGold(userId.value, empId.value, result.ecpm);
