@@ -1,15 +1,13 @@
-FROM node:20-alpine
+FROM nginx:alpine
 
-WORKDIR /app
+# 复制构建好的 dist 目录到 nginx 目录
+COPY dist /usr/share/nginx/html
 
-# 安装 serve
-RUN npm install -g serve
-
-# 复制已构建的 dist 目录
-COPY dist ./dist
+# 复制 nginx 配置
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # 暴露端口
-EXPOSE 3003
+EXPOSE 80
 
-# 启动命令
-CMD ["serve", "-s", "dist", "-l", "3003", "--no-clipboard"]
+# 启动 nginx
+CMD ["nginx", "-g", "daemon off;"]
