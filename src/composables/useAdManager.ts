@@ -147,7 +147,16 @@ export function useAdManager(config: AdConfig) {
       };
 
       const onRewardVerify = (result: any) => {
-        console.log('✅ 获得广告奖励:', result);
+        console.log('========== 广告奖励回调 ==========');
+        console.log('完整结果对象:', result);
+        console.log('rewardVerify:', result.rewardVerify);
+        console.log('ecpm:', result.ecpm);
+        console.log('所有属性:');
+        for (const key in result) {
+          console.log(`  ${key}:`, result[key]);
+        }
+        console.log('===================================');
+        
         if (timeoutId) clearTimeout(timeoutId);
         const ecpm = result.ecpm || 0;
         isAdLoading.value = false;
