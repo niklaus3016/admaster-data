@@ -2,6 +2,7 @@ package com.gaoqianleme.app;
 
 import android.app.Application;
 import android.content.Context;
+import android.provider.Settings;
 import android.util.Log;
 
 import com.baidu.mobads.sdk.api.BDAdConfig;
@@ -18,7 +19,22 @@ public class MainApplication extends Application {
         
         Log.d(TAG, "Application onCreate");
         
+        String deviceId = getDeviceId();
+        Log.d(TAG, "========================================");
+        Log.d(TAG, "设备 ID: " + deviceId);
+        Log.d(TAG, "请将此设备 ID 添加到百度联盟后台的测试设备列表中");
+        Log.d(TAG, "========================================");
+        
         initBaiduAdSDK();
+    }
+
+    private String getDeviceId() {
+        try {
+            return Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
+        } catch (Exception e) {
+            Log.e(TAG, "获取设备ID失败: " + e.getMessage());
+            return "unknown";
+        }
     }
 
     private void initBaiduAdSDK() {
@@ -31,12 +47,12 @@ public class MainApplication extends Application {
                     .setBDAdInitListener(new BDAdConfig.BDAdInitListener() {
                         @Override
                         public void success() {
-                            Log.d(TAG, "百度广告SDK初始化成功");
+                            Log.d(TAG, "✅ 百度广告SDK初始化成功");
                         }
 
                         @Override
                         public void fail() {
-                            Log.e(TAG, "百度广告SDK初始化失败");
+                            Log.e(TAG, "❌ 百度广告SDK初始化失败");
                         }
                     })
                     .setDebug(true)
