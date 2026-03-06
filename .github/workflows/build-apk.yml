@@ -109,15 +109,6 @@ jobs:
         echo "$KEYSTORE_BASE64" | base64 --decode > android/app/release.keystore
         echo "Keystore file size: $(ls -l android/app/release.keystore | awk '{print $5}') bytes"
         
-    - name: Build Release APK
-      if: github.event_name != 'pull_request'
-      env:
-        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-      run: |
-        cd android
-        ./gradlew assembleRelease -PKEYSTORE_PASSWORD="$KEYSTORE_PASSWORD" -PKEY_ALIAS="$KEY_ALIAS"
-        
     - name: Extract SHA1 from keystore
       if: github.event_name != 'pull_request'
       env:
@@ -138,8 +129,10 @@ jobs:
         echo "Secrets are properly set"
         
         # 提取 SHA1 指纹
-        echo "Extracting SHA1 fingerprint..."
+        echo ""
+        echo "========================================"
         echo "===== SHA1 指纹（小米应用商店用）====="
+        echo "========================================"
         
         # 执行keytool命令并捕获错误
         if ! keytool_output=$(keytool -list -v -keystore android/app/release.keystore -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" 2>&1); then
@@ -160,15 +153,28 @@ jobs:
         fi
         echo "======================================"
         
-        # 可选：同时输出去掉冒号的版本
+        # 同时输出去掉冒号的版本
+        echo ""
+        echo "========================================"
         echo "===== 去掉冒号的 SHA1（直接复制）====="
+        echo "========================================"
         if [ ! -z "$sha1_value" ]; then
           SHA1_WITHOUT_COLON=$(echo $sha1_value | tr -d ':')
-          echo $SHA1_WITHOUT_COLON
+          echo "$SHA1_WITHOUT_COLON"
         else
           echo "ERROR: No SHA1 value to process"
         fi
         echo "======================================"
+        echo ""
+        
+    - name: Build Release APK
+      if: github.event_name != 'pull_request'
+      env:
+        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      run: |
+        cd android
+        ./gradlew assembleRelease -PKEYSTORE_PASSWORD="$KEYSTORE_PASSWORD" -PKEY_ALIAS="$KEY_ALIAS"
         
     - name: Calculate Release APK SHA1
       run: |
