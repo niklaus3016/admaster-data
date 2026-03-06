@@ -21,16 +21,26 @@ export function useAdManager(config: AdConfig) {
   let rewardVerifyListener: any = null;
   let adFailedListener: any = null;
   let videoDownloadSuccessListener: any = null;
+  let videoDownloadFailedListener: any = null;
+  let adLoadedListener: any = null;
+  let timeoutId: any = null;
 
   onMounted(() => {
     initializeAdSdk();
   });
 
   onUnmounted(() => {
+    cleanupListeners();
+  });
+
+  const cleanupListeners = () => {
     if (rewardVerifyListener) BaiduAd.removeListener('onRewardVerify', rewardVerifyListener);
     if (adFailedListener) BaiduAd.removeListener('onAdFailed', adFailedListener);
     if (videoDownloadSuccessListener) BaiduAd.removeListener('onVideoDownloadSuccess', videoDownloadSuccessListener);
-  });
+    if (videoDownloadFailedListener) BaiduAd.removeListener('onVideoDownloadFailed', videoDownloadFailedListener);
+    if (adLoadedListener) BaiduAd.removeListener('onAdLoaded', adLoadedListener);
+    if (timeoutId) clearTimeout(timeoutId);
+  };
 
   const isNativeApp = () => {
     return typeof window !== 'undefined' && 
@@ -84,7 +94,9 @@ export function useAdManager(config: AdConfig) {
 
   const showRewardVideo = async (): Promise<{ ecpm: number }> => {
     return new Promise(async (resolve, reject) => {
-      console.log('开始加载激励视频广告:', config.slotId);
+      console.log('========== 开始加载激励视频广告 ==========');
+      console.log('广告位 ID:', config.slotId);
+      console.log('是否原生环境:', isNativeApp());
       
       try {
         if (isNativeApp()) {
@@ -113,44 +125,77 @@ export function useAdManager(config: AdConfig) {
       
       console.log('开始加载原生广告...');
       
+      const onAdLoaded = () => {
+        console.log('✅ 广告加载成功回调');
+      };
+
       const onRewardVerify = (result: any) => {
-        console.log('获得广告奖励:', result);
+        console.log('✅ 获得广告奖励:', result);
+        if (timeoutId) clearTimeout(timeoutId);
         const ecpm = result.ecpm || 0;
         isAdLoading.value = false;
+        cleanupListeners();
         resolve({ ecpm });
       };
       
       const onAdFailed = (error: any) => {
-        console.error('原生广告加载失败:', error);
+        console.error('❌ 原生广告加载失败:', error);
+        if (timeoutId) clearTimeout(timeoutId);
         isAdLoading.value = false;
+        cleanupListeners();
         simulateAdPlay(resolve, reject);
       };
 
       const onVideoDownloadSuccess = async () => {
-        console.log('视频下载成功，准备显示广告');
+        console.log('✅ 视频下载成功，准备显示广告');
         try {
           await BaiduAd.showRewardVideoAd();
+          console.log('✅ 广告显示命令已发送');
         } catch (error) {
-          console.error('显示广告失败:', error);
+          console.error('❌ 显示广告失败:', error);
+          if (timeoutId) clearTimeout(timeoutId);
           isAdLoading.value = false;
+          cleanupListeners();
           simulateAdPlay(resolve, reject);
         }
       };
+
+      const onVideoDownloadFailed = () => {
+        console.error('❌ 视频下载失败');
+        if (timeoutId) clearTimeout(timeoutId);
+        isAdLoading.value = false;
+        cleanupListeners();
+        simulateAdPlay(resolve, reject);
+      };
       
+      adLoadedListener = onAdLoaded;
       rewardVerifyListener = onRewardVerify;
       adFailedListener = onAdFailed;
       videoDownloadSuccessListener = onVideoDownloadSuccess;
+      videoDownloadFailedListener = onVideoDownloadFailed;
       
+      BaiduAd.addListener('onAdLoaded', onAdLoaded);
       BaiduAd.addListener('onRewardVerify', onRewardVerify);
       BaiduAd.addListener('onAdFailed', onAdFailed);
       BaiduAd.addListener('onVideoDownloadSuccess', onVideoDownloadSuccess);
+      BaiduAd.addListener('onVideoDownloadFailed', onVideoDownloadFailed);
       
+      console.log('调用 loadRewardVideoAd...');
       await BaiduAd.loadRewardVideoAd({ adId: config.slotId });
-      console.log('广告加载请求已发送，等待视频下载...');
+      console.log('✅ 广告加载请求已发送，等待回调...');
+      
+      timeoutId = setTimeout(() => {
+        console.warn('⏱️ 广告加载超时（10秒），使用模拟数据');
+        isAdLoading.value = false;
+        cleanupListeners();
+        simulateAdPlay(resolve, reject);
+      }, 10000);
       
     } catch (error) {
-      console.error('原生广告播放失败:', error);
+      console.error('❌ 原生广告播放失败:', error);
+      if (timeoutId) clearTimeout(timeoutId);
       isAdLoading.value = false;
+      cleanupListeners();
       simulateAdPlay(resolve, reject);
     }
   };
@@ -201,7 +246,7 @@ export function useAdManager(config: AdConfig) {
   };
 
   const simulateAdPlay = (resolve: (value: { ecpm: number }) => void, reject: (reason?: any) => void) => {
-    console.log('使用模拟广告数据');
+    console.log('⚠️ 使用模拟广告数据');
     setTimeout(() => {
       const success = Math.random() > 0.1;
       if (success) {
