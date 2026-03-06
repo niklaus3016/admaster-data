@@ -16,6 +16,7 @@ interface AdConfig {
 const isLoaded = ref(false);
 const isAdSdkReady = ref(false);
 const isAdLoading = ref(false);
+const lastError = ref('');
 
 export function useAdManager(config: AdConfig) {
   let rewardVerifyListener: any = null;
@@ -122,6 +123,7 @@ export function useAdManager(config: AdConfig) {
   const showNativeAd = async (resolve: (value: { ecpm: number }) => void, reject: (reason?: any) => void) => {
     try {
       isAdLoading.value = true;
+      lastError.value = '';
       
       console.log('开始加载原生广告...');
       
@@ -139,7 +141,9 @@ export function useAdManager(config: AdConfig) {
       };
       
       const onAdFailed = (error: any) => {
-        console.error('❌ 原生广告加载失败:', error);
+        const errorMsg = error?.error || error || '未知错误';
+        console.error('❌ 原生广告加载失败:', errorMsg);
+        lastError.value = '广告加载失败: ' + errorMsg;
         if (timeoutId) clearTimeout(timeoutId);
         isAdLoading.value = false;
         cleanupListeners();
@@ -152,7 +156,9 @@ export function useAdManager(config: AdConfig) {
           await BaiduAd.showRewardVideoAd();
           console.log('✅ 广告显示命令已发送');
         } catch (error) {
-          console.error('❌ 显示广告失败:', error);
+          const errorMsg = error?.message || error || '未知错误';
+          console.error('❌ 显示广告失败:', errorMsg);
+          lastError.value = '显示广告失败: ' + errorMsg;
           if (timeoutId) clearTimeout(timeoutId);
           isAdLoading.value = false;
           cleanupListeners();
@@ -162,6 +168,7 @@ export function useAdManager(config: AdConfig) {
 
       const onVideoDownloadFailed = () => {
         console.error('❌ 视频下载失败');
+        lastError.value = '视频下载失败，可能是广告填充不足';
         if (timeoutId) clearTimeout(timeoutId);
         isAdLoading.value = false;
         cleanupListeners();
@@ -186,13 +193,16 @@ export function useAdManager(config: AdConfig) {
       
       timeoutId = setTimeout(() => {
         console.warn('⏱️ 广告加载超时（10秒），使用模拟数据');
+        lastError.value = '广告加载超时，可能是网络问题或广告填充不足';
         isAdLoading.value = false;
         cleanupListeners();
         simulateAdPlay(resolve, reject);
       }, 10000);
       
     } catch (error) {
-      console.error('❌ 原生广告播放失败:', error);
+      const errorMsg = error?.message || error || '未知错误';
+      console.error('❌ 原生广告播放失败:', errorMsg);
+      lastError.value = '广告播放失败: ' + errorMsg;
       if (timeoutId) clearTimeout(timeoutId);
       isAdLoading.value = false;
       cleanupListeners();
@@ -263,6 +273,7 @@ export function useAdManager(config: AdConfig) {
     isLoaded,
     isAdSdkReady,
     isAdLoading,
+    lastError,
     showRewardVideo,
     initializeAdSdk
   };
