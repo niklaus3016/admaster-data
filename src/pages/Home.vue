@@ -130,8 +130,8 @@ const loadWithdrawStatus = async () => {
 };
 
 const adConfig = {
-  appId: 'YOUR_APP_ID',
-  slotId: 'YOUR_SLOT_ID',
+  appId: '2882303761520501672',
+  slotId: '19181348',
 };
 
 const { showRewardVideo } = useAdManager(adConfig);
