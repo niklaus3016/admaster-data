@@ -58,14 +58,11 @@ dependencies {
     
     // 百度广告 SDK
     implementation files('libs/Baidu_MobAds_SDK-release_v9.432.aar')
-    implementation files('libs/Baidu_MobAds_Tools_SDK-release_v3.1.aar')
+    // implementation files('libs/Baidu_MobAds_Tools_SDK-release_v3.1.aar')
     
     // 百度广告 SDK 依赖
     implementation 'com.google.android.gms:play-services-ads-identifier:18.0.1'
     implementation 'com.google.android.gms:play-services-appset:16.0.2'
-    
-    // Material Design（百度 Tools SDK 需要）
-    implementation 'com.google.android.material:material:1.11.0'
 }
 
 apply from: 'capacitor.build.gradle'
