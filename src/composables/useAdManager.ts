@@ -1,15 +1,11 @@
 import { ref, onMounted } from 'vue';
+import BaiduAd from '../plugins/BaiduAdPlugin';
 
 // 声明全局类型
 declare global {
   interface Window {
     baidu?: any;
     _baidu?: any;
-    // Capacitor 原生插件
-    RewardVideoAd?: {
-      loadAd: (options: { adId: string }) => Promise<void>;
-      showAd: () => Promise<{ ecpm: number }>;
-    };
   }
 }
 
@@ -32,37 +28,38 @@ export function useAdManager(config: AdConfig) {
   // 检测是否在原生 APP 环境中
   const isNativeApp = () => {
     return typeof window !== 'undefined' && 
-           (window as any).Capacitor !== undefined;
+           (window as any).Capacitor !== undefined &&
+           (window as any).Capacitor.getPlatform() === 'android';
   };
 
   // 加载广告SDK
-  const initializeAdSdk = () => {
+  const initializeAdSdk = async () => {
     if (typeof window === 'undefined') return;
 
-    // 检查是否有原生广告插件（Capacitor 插件）
-    if (window.RewardVideoAd) {
-      console.log('原生广告插件已就绪');
-      isAdSdkReady.value = true;
-      isLoaded.value = true;
-      return;
-    }
+    try {
+      // 检查是否在原生 Android 环境
+      if (isNativeApp()) {
+        console.log('原生 Android 环境，使用百度原生 SDK');
+        isAdSdkReady.value = true;
+        isLoaded.value = true;
+        return;
+      }
 
-    // 检查是否已经加载百度 H5 SDK
-    if (window.baidu && window.baidu.mobads) {
-      console.log('百度广告 SDK 已加载');
-      isAdSdkReady.value = true;
-      isLoaded.value = true;
-      return;
-    }
+      // 检查是否已经加载百度 H5 SDK
+      if (window.baidu && window.baidu.mobads) {
+        console.log('百度 H5 广告 SDK 已加载');
+        isAdSdkReady.value = true;
+        isLoaded.value = true;
+        return;
+      }
 
-    // 在 Web 环境中尝试加载百度 H5 SDK
-    if (!isNativeApp()) {
+      // 在 Web 环境中尝试加载百度 H5 SDK
       console.log('尝试加载百度 H5 广告 SDK');
       const script = document.createElement('script');
       script.src = 'https://mobads.baidu.com/js/mobads.js';
       script.async = true;
       script.onload = () => {
-        console.log('百度广告 SDK 加载成功');
+        console.log('百度 H5 广告 SDK 加载成功');
         isAdSdkReady.value = true;
         isLoaded.value = true;
         
@@ -71,13 +68,13 @@ export function useAdManager(config: AdConfig) {
         }
       };
       script.onerror = () => {
-        console.error('百度广告 SDK 加载失败');
+        console.error('百度 H5 广告 SDK 加载失败');
         isLoaded.value = true;
         isAdSdkReady.value = false;
       };
       document.head.appendChild(script);
-    } else {
-      console.log('原生 APP 环境，等待原生插件加载');
+    } catch (error) {
+      console.error('初始化广告 SDK 失败:', error);
       isLoaded.value = true;
       isAdSdkReady.value = false;
     }
@@ -85,26 +82,29 @@ export function useAdManager(config: AdConfig) {
 
   // 显示激励视频广告
   const showRewardVideo = async (): Promise<{ ecpm: number }> => {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       console.log('开始加载激励视频广告:', config.slotId);
-      console.log('SDK 状态:', { isAdSdkReady: isAdSdkReady.value, hasNative: !!window.RewardVideoAd });
       
-      // 检查是否有原生广告插件
-      if (window.RewardVideoAd) {
-        console.log('使用原生广告插件');
-        showNativeAd(resolve, reject);
-        return;
-      }
-      
-      // 检查 H5 SDK 是否准备就绪
-      if (!isAdSdkReady.value || !window.baidu || !window.baidu.mobads) {
-        console.warn('广告 SDK 未就绪，使用模拟数据');
-        simulateAdPlay(resolve, reject);
-        return;
-      }
+      try {
+        // 原生 Android 环境使用 Capacitor 插件
+        if (isNativeApp()) {
+          console.log('使用百度原生广告插件');
+          await showNativeAd(resolve, reject);
+          return;
+        }
+        
+        // H5 环境使用百度 H5 SDK
+        if (!isAdSdkReady.value || !window.baidu || !window.baidu.mobads) {
+          console.warn('百度 H5 广告 SDK 未就绪，使用模拟数据');
+          simulateAdPlay(resolve, reject);
+          return;
+        }
 
-      // 使用 H5 广告 SDK
-      showH5Ad(resolve, reject);
+        await showH5Ad(resolve, reject);
+      } catch (error) {
+        console.error('显示广告失败:', error);
+        simulateAdPlay(resolve, reject);
+      }
     });
   };
 
@@ -113,19 +113,41 @@ export function useAdManager(config: AdConfig) {
     try {
       isAdLoading.value = true;
       
+      // 设置监听器
+      const onRewardVerify = (result: any) => {
+        console.log('获得广告奖励:', result);
+        const ecpm = result.ecpm || 0;
+        isAdLoading.value = false;
+        resolve({ ecpm });
+      };
+      
+      const onAdFailed = () => {
+        console.error('原生广告加载失败');
+        isAdLoading.value = false;
+        // 失败后使用模拟数据
+        simulateAdPlay(resolve, reject);
+      };
+      
+      // 添加事件监听器
+      BaiduAd.addListener('onRewardVerify', onRewardVerify);
+      BaiduAd.addListener('onAdFailed', onAdFailed);
+      
       // 加载广告
-      await window.RewardVideoAd!.loadAd({ adId: config.slotId });
+      await BaiduAd.loadRewardVideoAd({ adId: config.slotId });
       
-      // 显示广告并获取奖励
-      const result = await window.RewardVideoAd!.showAd();
-      
-      console.log('原生广告完成，ECPM:', result.ecpm);
-      isAdLoading.value = false;
-      resolve({ ecpm: result.ecpm });
+      // 检查广告是否准备好
+      const ready = await BaiduAd.isReady();
+      if (ready.ready) {
+        // 显示广告
+        await BaiduAd.showRewardVideoAd();
+      } else {
+        console.warn('广告未准备好，使用模拟数据');
+        simulateAdPlay(resolve, reject);
+      }
     } catch (error) {
       console.error('原生广告播放失败:', error);
       isAdLoading.value = false;
-      reject(error);
+      simulateAdPlay(resolve, reject);
     }
   };
 
@@ -145,7 +167,6 @@ export function useAdManager(config: AdConfig) {
         onAdFailed: (error: any) => {
           console.error('H5 广告加载失败:', error);
           isAdLoading.value = false;
-          // 失败后使用模拟数据
           simulateAdPlay(resolve, reject);
         },
         onAdShow: () => {

@@ -55,6 +55,14 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
+    
+    // 百度广告 SDK
+    implementation files('libs/Baidu_MobAds_SDK-release_v9.432.aar')
+    implementation files('libs/Baidu_MobAds_Tools_SDK-release_v3.1.aar')
+    
+    // 百度广告 SDK 依赖
+    implementation 'com.google.android.gms:play-services-ads-identifier:18.0.1'
+    implementation 'com.google.android.gms:play-services-appset:16.0.2'
 }
 
 apply from: 'capacitor.build.gradle'
