@@ -8,14 +8,14 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
-
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.baidu.mobads.sdk.api.RewardVideoAd;
 
 @CapacitorPlugin(name = "BaiduAd")
 public class BaiduAdPlugin extends Plugin {
     
     private static final String TAG = "BaiduAdPlugin";
+    private RewardVideoAd mRewardVideoAd;
+    private PluginCall pendingShowCall;
     
     @PluginMethod
     public void loadRewardVideoAd(PluginCall call) {
@@ -27,10 +27,98 @@ public class BaiduAdPlugin extends Plugin {
         
         Log.d(TAG, "加载广告ID: " + adId);
         
-        // 由于暂时无法正确集成百度SDK，使用模拟数据
-        // 先保存call，后续可以替换为真实SDK调用
-        Log.d(TAG, "使用模拟广告数据");
-        call.resolve();
+        Activity activity = getActivity();
+        if (activity == null) {
+            call.reject("Activity 为空");
+            return;
+        }
+        
+        activity.runOnUiThread(() -> {
+            try {
+                mRewardVideoAd = new RewardVideoAd(activity, adId, new RewardVideoAd.RewardVideoAdListener() {
+                    @Override
+                    public void onAdLoaded() {
+                        Log.d(TAG, "广告加载成功");
+                        notifyListeners("onAdLoaded", new JSObject());
+                    }
+                    
+                    @Override
+                    public void onAdShow() {
+                        Log.d(TAG, "广告展示");
+                        notifyListeners("onAdShow", new JSObject());
+                    }
+                    
+                    @Override
+                    public void onAdClick() {
+                        Log.d(TAG, "广告点击");
+                        notifyListeners("onAdClick", new JSObject());
+                    }
+                    
+                    @Override
+                    public void onAdClose(float playScale) {
+                        Log.d(TAG, "广告关闭，播放比例: " + playScale);
+                        notifyListeners("onAdClose", new JSObject());
+                    }
+                    
+                    @Override
+                    public void onAdFailed(String error) {
+                        Log.e(TAG, "广告加载失败: " + error);
+                        notifyListeners("onAdFailed", new JSObject().put("error", error));
+                    }
+                    
+                    @Override
+                    public void onVideoDownloadSuccess() {
+                        Log.d(TAG, "视频下载成功");
+                        notifyListeners("onVideoDownloadSuccess", new JSObject());
+                    }
+                    
+                    @Override
+                    public void onVideoDownloadFailed() {
+                        Log.e(TAG, "视频下载失败");
+                        notifyListeners("onVideoDownloadFailed", new JSObject());
+                    }
+                    
+                    @Override
+                    public void playCompletion() {
+                        Log.d(TAG, "播放完成");
+                    }
+                    
+                    @Override
+                    public void onRewardVerify(boolean rewardVerify, java.util.Map<String, Object> rewardInfo) {
+                        Log.d(TAG, "获得奖励: " + rewardVerify);
+                        JSObject result = new JSObject();
+                        result.put("rewardVerify", rewardVerify);
+                        
+                        // 获取ECPM
+                        String ecpm = "0";
+                        if (mRewardVideoAd != null) {
+                            ecpm = mRewardVideoAd.getECPMLevel();
+                        }
+                        result.put("ecpm", ecpm != null ? Double.parseDouble(ecpm) : 0);
+                        
+                        notifyListeners("onRewardVerify", result);
+                        
+                        if (pendingShowCall != null) {
+                            pendingShowCall.resolve(result);
+                            pendingShowCall = null;
+                        }
+                    }
+                    
+                    @Override
+                    public void onAdSkip(float playScale) {
+                        Log.d(TAG, "广告跳过，播放比例: " + playScale);
+                    }
+                });
+                
+                // 加载广告
+                mRewardVideoAd.load();
+                call.resolve();
+                
+            } catch (Exception e) {
+                Log.e(TAG, "加载广告异常: " + e.getMessage(), e);
+                call.reject("加载广告异常: " + e.getMessage());
+            }
+        });
     }
     
     @PluginMethod
@@ -43,28 +131,19 @@ public class BaiduAdPlugin extends Plugin {
             return;
         }
         
+        if (mRewardVideoAd == null) {
+            call.reject("广告未加载");
+            return;
+        }
+        
         activity.runOnUiThread(() -> {
             try {
-                // 模拟广告播放，2秒后完成
-                new android.os.Handler().postDelayed(() -> {
-                    // 模拟获得奖励
-                    double ecpm = Math.random() * 500 + 100;
-                    Log.d(TAG, "模拟广告完成，ECPM: " + ecpm);
-                    
-                    JSObject result = new JSObject();
-                    result.put("ecpm", ecpm);
-                    result.put("rewardVerify", true);
-                    result.put("rewardAmount", (int) (ecpm * 0.5));
-                    result.put("rewardName", "金币");
-                    
-                    try {
-                        notifyListeners("onRewardVerify", result);
-                    } catch (Exception e) {
-                        Log.e(TAG, "通知奖励失败", e);
-                    }
-                    
-                    call.resolve();
-                }, 2000);
+                if (mRewardVideoAd.isReady()) {
+                    pendingShowCall = call;
+                    mRewardVideoAd.show();
+                } else {
+                    call.reject("广告未准备好");
+                }
             } catch (Exception e) {
                 Log.e(TAG, "展示广告异常: " + e.getMessage(), e);
                 call.reject("展示广告异常: " + e.getMessage());
@@ -75,7 +154,7 @@ public class BaiduAdPlugin extends Plugin {
     @PluginMethod
     public void isReady(PluginCall call) {
         JSObject result = new JSObject();
-        result.put("ready", true);
+        result.put("ready", mRewardVideoAd != null && mRewardVideoAd.isReady());
         call.resolve(result);
     }
 }
