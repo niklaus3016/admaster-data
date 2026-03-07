@@ -64,12 +64,14 @@
         <activity
             android:name="com.baidu.mobads.sdk.api.AppActivity"
             android:configChanges="screenSize|keyboard|keyboardHidden|orientation"
-            android:theme="@android:style/Theme.NoTitleBar" />
+            android:theme="@android:style/Theme.NoTitleBar"
+            tools:replace="android:configChanges" />
         <activity
             android:name="com.baidu.mobads.sdk.api.MobRewardVideoActivity"
-            android:configChanges="screenSize|orientation|keyboardHidden"
+            android:configChanges="screenSize|orientation|keyboardHidden|uiMode"
             android:launchMode="singleTask"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            tools:replace="android:configChanges" />
         <provider
             android:name="com.baidu.mobads.sdk.api.BdFileProvider"
             android:authorities="${applicationId}.bd.provider"
