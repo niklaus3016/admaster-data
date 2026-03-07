@@ -122,15 +122,15 @@ export function useAdManager(config: AdConfig) {
         }
         
         if (!isAdSdkReady.value || !window.baidu || !window.baidu.mobads) {
-          console.warn('百度 H5 广告 SDK 未就绪，使用模拟数据');
-          simulateAdPlay(resolve, reject);
+          console.error('百度 H5 广告 SDK 未就绪');
+          reject(new Error('广告 SDK 未就绪'));
           return;
         }
 
         await showH5Ad(resolve, reject);
       } catch (error) {
         console.error('显示广告失败:', error);
-        simulateAdPlay(resolve, reject);
+        reject(error);
       }
     });
   };
@@ -163,7 +163,12 @@ export function useAdManager(config: AdConfig) {
         isAdReady.value = false;
         cleanupListeners();
         
-        resolve({ ecpm });
+        // 只有当 ECPM > 0 时才认为广告成功
+        if (ecpm > 0) {
+          resolve({ ecpm });
+        } else {
+          reject(new Error('广告 ECPM 为 0，无法获得金币'));
+        }
       };
       
       const onAdFailed = (error: any) => {
@@ -172,20 +177,11 @@ export function useAdManager(config: AdConfig) {
         lastError.value = '广告加载失败: ' + errorMsg;
         
         if (timeoutId) clearTimeout(timeoutId);
+        isAdLoading.value = false;
+        isAdReady.value = false;
+        cleanupListeners();
         
-        console.log('3秒后自动重试加载广告...');
-        retryTimeoutId = setTimeout(() => {
-          console.log('重新加载广告...');
-          isAdReady.value = false;
-          isAdLoading.value = false;
-          cleanupListeners();
-          
-          if (currentResolve && currentReject) {
-            showNativeAd(currentResolve, currentReject);
-          }
-        }, 3000);
-        
-        return;
+        reject(new Error('广告加载失败: ' + errorMsg));
       };
 
       const onVideoDownloadSuccess = async () => {
@@ -203,7 +199,7 @@ export function useAdManager(config: AdConfig) {
           isAdReady.value = false;
           isAdLoading.value = false;
           cleanupListeners();
-          simulateAdPlay(resolve, reject);
+          reject(new Error('显示广告失败: ' + errorMsg));
         }
       };
 
@@ -212,20 +208,11 @@ export function useAdManager(config: AdConfig) {
         lastError.value = '视频下载失败，可能是广告填充不足';
         
         if (timeoutId) clearTimeout(timeoutId);
+        isAdLoading.value = false;
+        isAdReady.value = false;
+        cleanupListeners();
         
-        console.log('3秒后自动重试加载广告...');
-        retryTimeoutId = setTimeout(() => {
-          console.log('重新加载广告...');
-          isAdReady.value = false;
-          isAdLoading.value = false;
-          cleanupListeners();
-          
-          if (currentResolve && currentReject) {
-            showNativeAd(currentResolve, currentReject);
-          }
-        }, 3000);
-        
-        return;
+        reject(new Error('视频下载失败'));
       };
       
       adLoadedListener = onAdLoaded;
@@ -245,14 +232,14 @@ export function useAdManager(config: AdConfig) {
       console.log('✅ 广告加载请求已发送，等待回调...');
       
       timeoutId = setTimeout(() => {
-        console.warn('⏱️ 广告加载超时（15秒），使用模拟数据');
+        console.warn('⏱️ 广告加载超时（15秒）');
         lastError.value = '广告加载超时，可能是网络问题或广告填充不足';
         
         if (retryTimeoutId) clearTimeout(retryTimeoutId);
         isAdReady.value = false;
         isAdLoading.value = false;
         cleanupListeners();
-        simulateAdPlay(resolve, reject);
+        reject(new Error('广告加载超时'));
       }, 15000);
       
     } catch (error) {
@@ -264,7 +251,7 @@ export function useAdManager(config: AdConfig) {
       isAdReady.value = false;
       isAdLoading.value = false;
       cleanupListeners();
-      simulateAdPlay(resolve, reject);
+      reject(new Error('广告播放失败: ' + errorMsg));
     }
   };
 
@@ -285,7 +272,7 @@ export function useAdManager(config: AdConfig) {
           console.error('H5 广告加载失败:', error);
           isAdReady.value = false;
           isAdLoading.value = false;
-          simulateAdPlay(resolve, reject);
+          reject(new Error('H5 广告加载失败'));
         },
         onAdShow: () => {
           console.log('H5 广告开始播放');
@@ -297,10 +284,13 @@ export function useAdManager(config: AdConfig) {
           console.log('获得 H5 广告奖励:', reward);
           const ecpm = reward?.ecpm || reward?.amount || 0;
           isAdReady.value = false;
+          isAdLoading.value = false;
+          
+          // 只有当 ECPM > 0 时才认为广告成功
           if (ecpm > 0) {
             resolve({ ecpm });
           } else {
-            resolve({ ecpm: Math.floor(Math.random() * 500) + 100 });
+            reject(new Error('广告 ECPM 为 0，无法获得金币'));
           }
         },
         onAdClick: () => {
@@ -313,22 +303,8 @@ export function useAdManager(config: AdConfig) {
       console.error('H5 广告初始化失败:', error);
       isAdReady.value = false;
       isAdLoading.value = false;
-      simulateAdPlay(resolve, reject);
+      reject(new Error('H5 广告初始化失败'));
     }
-  };
-
-  const simulateAdPlay = (resolve: (value: { ecpm: number }) => void, reject: (reason?: any) => void) => {
-    console.log('⚠️ 使用模拟广告数据');
-    setTimeout(() => {
-      const success = Math.random() > 0.1;
-      if (success) {
-        const ecpm = Math.floor(Math.random() * 500) + 100;
-        console.log('模拟广告完成，ECPM:', ecpm);
-        resolve({ ecpm });
-      } else {
-        reject(new Error('广告播放失败'));
-      }
-    }, 2000);
   };
 
   return {
