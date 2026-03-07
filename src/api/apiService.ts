@@ -433,3 +433,37 @@ export async function getWithdrawStatus(): Promise<ApiResponse<WithdrawStatus>> 
     };
   }
 }
+
+// 广告行为记录接口
+interface AdBehaviorData {
+  userId: string;
+  adUnitId: string;
+  bidECPM: number;
+  rewardCoin: number;
+  shareRatio: number;
+  adTime: number;
+}
+
+/**
+ * 上报广告行为记录（仅记录，无对账）
+ * @param data 广告行为数据
+ * @returns 上报结果
+ */
+export async function reportAdBehavior(data: AdBehaviorData): Promise<ApiResponse<{ id: number }>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/ad/behavior`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('上报广告行为失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+    };
+  }
+}
