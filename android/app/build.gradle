@@ -56,19 +56,31 @@ dependencies {
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
     
-    // 百度广告 SDK
-    implementation(name:'Baidu_MobAds_SDK-release_v9.432',ext:'aar')
-    implementation(name:'Baidu_MobAds_Tools_SDK-release_v3.1',ext:'aar')
+    // 穿山甲GroMore SDK (手动下载的aar文件)
+    implementation(name:'open_ad_sdk',ext:'aar')
+    implementation(name:'open_ad_tk_sdk',ext:'aar')
+    implementation(name:'open_ad_gdt_sdk',ext:'aar')
+    implementation(name:'open_ad_baidu_sdk',ext:'aar')
+    implementation(name:'open_ad_kuaishou_sdk',ext:'aar')
+    implementation(name:'open_ad_ks_sdk',ext:'aar')
+    implementation(name:'open_ad_mintegral_sdk',ext:'aar')
+    implementation(name:'open_ad_sigmob_sdk',ext:'aar')
+    implementation(name:'open_ad_bigo_sdk',ext:'aar')
+    implementation(name:'open_ad_gromore_sdk',ext:'aar')
+    implementation(name:'open_ad_unity_sdk',ext:'aar')
+    implementation(name:'open_ad_applovin_sdk',ext:'aar')
+    implementation(name:'open_ad_mopub_sdk',ext:'aar')
+    implementation(name:'open_ad_chartboost_sdk',ext:'aar')
+    implementation(name:'open_ad_topon_sdk',ext:'aar')
+    implementation(name:'open_ad_nend_sdk',ext:'aar')
     
-    // 百度广告 SDK 依赖的 JAR 文件
-    implementation files('libs/android-query-full.0.26.7.jar')
-    implementation files('libs/okhttp-3.9.0.jar')
-    
-    // 百度广告 SDK 依赖
+    // 穿山甲SDK依赖
     implementation 'com.google.android.gms:play-services-ads-identifier:18.0.1'
     implementation 'com.google.android.gms:play-services-appset:16.0.2'
     implementation 'androidx.legacy:legacy-support-v4:1.0.0'
     implementation 'com.google.android.material:material:1.11.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.recyclerview:recyclerview:1.2.1'
 }
 
 apply from: 'capacitor.build.gradle'
