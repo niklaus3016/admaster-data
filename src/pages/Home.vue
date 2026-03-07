@@ -684,12 +684,20 @@ const submitWithdraw = async () => {
         </transition>
         
         <!-- 测试按钮 -->
-        <button
-          @click="showRewardAnimation(100)"
-          class="mt-4 px-6 py-3 bg-blue-500 text-white rounded-full text-sm font-medium hover:bg-blue-600 transition-colors"
-        >
-          测试奖励弹窗
-        </button>
+        <div class="flex gap-3 mt-4">
+          <button
+            @click="showRewardAnimation(100)"
+            class="px-6 py-3 bg-blue-500 text-white rounded-full text-sm font-medium hover:bg-blue-600 transition-colors"
+          >
+            测试奖励弹窗
+          </button>
+          <button
+            @click="playRewardSound(100)"
+            class="px-6 py-3 bg-green-500 text-white rounded-full text-sm font-medium hover:bg-green-600 transition-colors"
+          >
+            测试语音播报
+          </button>
+        </div>
       </div>
 
       <!-- History Section -->
