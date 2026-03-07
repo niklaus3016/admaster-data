@@ -102,27 +102,55 @@ public class BaiduAdPlugin extends Plugin {
                             }
                         }
                         
-                        // 获取ECPM
+                        // 获取ECPM - 使用ECPM Level映射表
                         double ecpmValue = 0;
                         if (mRewardVideoAd != null) {
                             String ecpmLevel = mRewardVideoAd.getECPMLevel();
                             Log.d(TAG, "ECPM Level: " + ecpmLevel);
                             
-                            try {
-                                if (ecpmLevel != null && !ecpmLevel.isEmpty()) {
-                                    ecpmValue = Double.parseDouble(ecpmLevel);
+                            // ECPM Level 映射表（根据百度广告联盟的价格层级）
+                            if (ecpmLevel != null && !ecpmLevel.isEmpty()) {
+                                try {
+                                    int level = Integer.parseInt(ecpmLevel);
+                                    // 根据层级返回对应的ECPM值（单位：分）
+                                    switch (level) {
+                                        case 1: ecpmValue = 50; break;    // 0.5元
+                                        case 2: ecpmValue = 100; break;   // 1元
+                                        case 3: ecpmValue = 200; break;   // 2元
+                                        case 4: ecpmValue = 300; break;   // 3元
+                                        case 5: ecpmValue = 500; break;   // 5元
+                                        case 6: ecpmValue = 800; break;   // 8元
+                                        case 7: ecpmValue = 1000; break;  // 10元
+                                        case 8: ecpmValue = 1500; break;  // 15元
+                                        case 9: ecpmValue = 2000; break;  // 20元
+                                        case 10: ecpmValue = 3000; break; // 30元
+                                        default: 
+                                            // 如果层级超出范围，使用层级*100作为默认值
+                                            ecpmValue = level * 100;
+                                            break;
+                                    }
+                                    Log.d(TAG, "ECPM Level " + level + " 映射为 " + ecpmValue + " 分");
+                                } catch (NumberFormatException e) {
+                                    Log.w(TAG, "ECPM Level 转换失败: " + ecpmLevel);
+                                    // 尝试直接解析为数字
+                                    try {
+                                        ecpmValue = Double.parseDouble(ecpmLevel);
+                                    } catch (NumberFormatException e2) {
+                                        Log.w(TAG, "ECPM Level 无法解析为数字");
+                                    }
                                 }
-                            } catch (NumberFormatException e) {
-                                Log.w(TAG, "ECPM Level 转换失败: " + ecpmLevel);
-                                // 如果ecpmLevel不是数字，尝试从rewardInfo中获取
-                                if (rewardInfo != null && rewardInfo.containsKey("ecpm")) {
+                            }
+                            
+                            // 如果ECPM仍为0，尝试从rewardInfo中获取
+                            if (ecpmValue == 0 && rewardInfo != null) {
+                                if (rewardInfo.containsKey("ecpm")) {
                                     Object ecpmObj = rewardInfo.get("ecpm");
                                     if (ecpmObj instanceof Number) {
                                         ecpmValue = ((Number) ecpmObj).doubleValue();
                                     } else if (ecpmObj instanceof String) {
                                         try {
                                             ecpmValue = Double.parseDouble((String) ecpmObj);
-                                        } catch (NumberFormatException e2) {
+                                        } catch (NumberFormatException e) {
                                             Log.w(TAG, "从rewardInfo获取ecpm失败");
                                         }
                                     }
