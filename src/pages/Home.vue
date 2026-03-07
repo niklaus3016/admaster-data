@@ -4,6 +4,8 @@ import { useRouter } from 'vue-router';
 import { Coins, History, PlayCircle, LogOut, TrendingUp, Wallet, CreditCard } from 'lucide-vue-next';
 import { getUserInfo, rewardGold, getGoldLogs, recordLogin, getLoginStats, submitWithdrawRequest, getWithdrawStatus, getWithdrawRecords, claimDailyBonus, type WithdrawRecord } from '../api/apiService';
 import { useAdManager } from '../composables/useAdManager';
+import { TTSPlugin } from '../plugins/TTSPlugin';
+import { Capacitor } from '@capacitor/core';
 
 interface Record {
   id: string;
@@ -39,19 +41,11 @@ const rewardAmount = ref(0);
 let rewardTimeout: ReturnType<typeof setTimeout> | null = null;
 
 // 播放金币到账语音
-const playRewardSound = (amount: number) => {
+const playRewardSound = async (amount: number) => {
   console.log('========== playRewardSound 被调用 ==========');
   console.log('金币数量:', amount);
   
   try {
-    if (typeof window === 'undefined' || !window.speechSynthesis) {
-      console.error('浏览器不支持语音合成');
-      return;
-    }
-    
-    // 取消之前的语音
-    window.speechSynthesis.cancel();
-    
     const gold = Math.floor(amount);
     let message = '';
     
@@ -67,45 +61,73 @@ const playRewardSound = (amount: number) => {
     
     console.log('语音内容:', message);
     
-    const utterance = new SpeechSynthesisUtterance(message);
-    utterance.lang = 'zh-CN';
-    utterance.rate = 1.0;
-    utterance.pitch = 1.2;
-    utterance.volume = 1.0;
-    
-    // 等待语音列表加载完成
-    const speak = () => {
-      const voices = window.speechSynthesis.getVoices();
-      console.log('可用语音数量:', voices.length);
-      
-      const zhVoice = voices.find(v => v.lang.includes('zh'));
-      if (zhVoice) {
-        utterance.voice = zhVoice;
-        console.log('使用中文语音:', zhVoice.name);
-      } else {
-        console.log('未找到中文语音，使用默认语音');
+    // 检查是否在 Android 平台
+    if (Capacitor.getPlatform() === 'android') {
+      console.log('使用原生 Android TTS');
+      try {
+        const result = await TTSPlugin.speak({ text: message });
+        console.log('原生 TTS 播放成功:', result);
+      } catch (err) {
+        console.error('原生 TTS 播放失败:', err);
+        // 回退到 Web Speech API
+        playWebSpeech(message);
       }
-      
-      window.speechSynthesis.speak(utterance);
-      console.log('语音播放命令已发送');
-    };
-    
-    // 检查语音列表是否已加载
-    if (window.speechSynthesis.getVoices().length > 0) {
-      speak();
     } else {
-      window.speechSynthesis.onvoiceschanged = () => {
-        window.speechSynthesis.onvoiceschanged = null;
-        speak();
-      };
+      // 在浏览器中使用 Web Speech API
+      console.log('使用 Web Speech API');
+      playWebSpeech(message);
     }
   } catch (err) {
     console.error('语音播放失败:', err);
   }
 };
 
+// 使用 Web Speech API 播放语音
+const playWebSpeech = (message: string) => {
+  if (typeof window === 'undefined' || !window.speechSynthesis) {
+    console.error('浏览器不支持语音合成');
+    return;
+  }
+  
+  // 取消之前的语音
+  window.speechSynthesis.cancel();
+  
+  const utterance = new SpeechSynthesisUtterance(message);
+  utterance.lang = 'zh-CN';
+  utterance.rate = 1.0;
+  utterance.pitch = 1.2;
+  utterance.volume = 1.0;
+  
+  // 等待语音列表加载完成
+  const speak = () => {
+    const voices = window.speechSynthesis.getVoices();
+    console.log('可用语音数量:', voices.length);
+    
+    const zhVoice = voices.find(v => v.lang.includes('zh'));
+    if (zhVoice) {
+      utterance.voice = zhVoice;
+      console.log('使用中文语音:', zhVoice.name);
+    } else {
+      console.log('未找到中文语音，使用默认语音');
+    }
+    
+    window.speechSynthesis.speak(utterance);
+    console.log('语音播放命令已发送');
+  };
+  
+  // 检查语音列表是否已加载
+  if (window.speechSynthesis.getVoices().length > 0) {
+    speak();
+  } else {
+    window.speechSynthesis.onvoiceschanged = () => {
+      window.speechSynthesis.onvoiceschanged = null;
+      speak();
+    };
+  }
+};
+
 // 显示金币奖励
-const showRewardAnimation = (amount: number) => {
+const showRewardAnimation = async (amount: number) => {
   console.log('========== showRewardAnimation 被调用 ==========');
   console.log('金币数量:', amount);
   
@@ -119,7 +141,7 @@ const showRewardAnimation = (amount: number) => {
   console.log('showRewardPopup 已设置为 true');
   
   // 播放语音
-  playRewardSound(amount);
+  await playRewardSound(amount);
   console.log('playRewardSound 已调用');
   
   // 1秒后隐藏

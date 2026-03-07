@@ -6,8 +6,9 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        // 注册百度广告插件
+        // 注册插件
         registerPlugin(BaiduAdPlugin.class);
+        registerPlugin(TTSPlugin.class);
         
         super.onCreate(savedInstanceState);
     }
