@@ -340,9 +340,16 @@ const handleWatchAd = async () => {
     } else {
       error.value = rewardResponse.message || '金币发放失败';
     }
-  } catch (err) {
+  } catch (err: any) {
     console.error('广告观看失败:', err);
-    error.value = '网络错误，请稍后重试';
+    // 显示具体的错误原因
+    if (err?.message) {
+      error.value = err.message;
+    } else if (typeof err === 'string') {
+      error.value = err;
+    } else {
+      error.value = '广告加载失败，请稍后重试';
+    }
   } finally {
     isWatching.value = false;
   }
