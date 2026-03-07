@@ -14,9 +14,9 @@ import com.bytedance.sdk.openadsdk.TTAdManager;
 import com.bytedance.sdk.openadsdk.TTAdConstant;
 import com.bytedance.sdk.openadsdk.TTAdSdk;
 import com.bytedance.sdk.openadsdk.TTAdConfig;
+import com.bytedance.sdk.openadsdk.TTAdNative;
 import com.bytedance.sdk.openadsdk.TTRewardVideoAd;
 import com.bytedance.sdk.openadsdk.AdSlot;
-import com.bytedance.sdk.openadsdk.TTRewardVideoAd.RewardAdInteractionListener;
 
 import java.util.Map;
 
@@ -24,6 +24,7 @@ import java.util.Map;
 public class PangolinAdPlugin extends Plugin {
     
     private static final String TAG = "PangolinAdPlugin";
+    private TTAdNative mTTAdNative;
     private TTRewardVideoAd mRewardVideoAd;
     private PluginCall pendingShowCall;
     private String appId = "5793939";
@@ -50,6 +51,9 @@ public class PangolinAdPlugin extends Plugin {
                     .titleBarTheme(TTAdConstant.TITLE_BAR_THEME_DARK)
                     .build());
             
+            TTAdManager ttAdManager = TTAdSdk.getAdManager();
+            mTTAdNative = ttAdManager.createAdNative(activity.getApplicationContext());
+            
             Log.d(TAG, "穿山甲SDK初始化成功");
             call.resolve();
         } catch (Exception e) {
@@ -74,25 +78,49 @@ public class PangolinAdPlugin extends Plugin {
             return;
         }
         
+        if (mTTAdNative == null) {
+            call.reject("穿山甲SDK未初始化");
+            return;
+        }
+        
         try {
-            TTAdManager adManager = TTAdSdk.getAdManager();
-            if (adManager == null) {
-                call.reject("穿山甲SDK未初始化");
-                return;
-            }
-            
             // 创建广告请求参数
             AdSlot adSlot = new AdSlot.Builder()
                     .setCodeId(adId)
-                    .setSupportDeepLink(true)
-                    .setImageAcceptedSize(1080, 1920)
-                    .setRewardName("金币")
-                    .setRewardAmount(1)
+                    .setExpressViewAcceptedSize(1080, 1920)
                     .setUserID("user_" + System.currentTimeMillis())
+                    .setMediaExtra("media_extra")
+                    .setOrientation(TTAdConstant.VERTICAL)
                     .build();
             
             // 加载激励视频广告
-            adManager.loadRewardVideoAd(adSlot, new TTRewardVideoAd.RewardVideoAdListener() {
+            mTTAdNative.loadRewardVideoAd(adSlot, new TTAdNative.RewardVideoAdListener() {
+                @Override
+                public void onError(int code, String message) {
+                    Log.e(TAG, "广告加载失败: " + code + ", " + message);
+                    JSObject errorObj = new JSObject();
+                    errorObj.put("code", code);
+                    errorObj.put("message", message);
+                    notifyListeners("onAdFailed", errorObj);
+                    
+                    if (pendingShowCall != null) {
+                        pendingShowCall.reject("广告加载失败: " + message);
+                        pendingShowCall = null;
+                    }
+                }
+                
+                @Override
+                public void onRewardVideoCached() {
+                    Log.d(TAG, "广告缓存完成");
+                    notifyListeners("onAdCached", new JSObject());
+                }
+                
+                @Override
+                public void onRewardVideoCached(TTRewardVideoAd ad) {
+                    Log.d(TAG, "广告缓存完成(带参数)");
+                    notifyListeners("onAdCached", new JSObject());
+                }
+                
                 @Override
                 public void onRewardVideoAdLoad(TTRewardVideoAd ad) {
                     Log.d(TAG, "广告加载成功");
@@ -120,32 +148,6 @@ public class PangolinAdPlugin extends Plugin {
                     
                     if (pendingShowCall != null) {
                         pendingShowCall.resolve(adInfo);
-                        pendingShowCall = null;
-                    }
-                }
-                
-                @Override
-                public void onRewardVideoCached() {
-                    Log.d(TAG, "广告缓存完成");
-                    notifyListeners("onAdCached", new JSObject());
-                }
-                
-                @Override
-                public void onRewardVideoCached(TTRewardVideoAd ad) {
-                    Log.d(TAG, "广告缓存完成(带参数)");
-                    notifyListeners("onAdCached", new JSObject());
-                }
-                
-                @Override
-                public void onError(int code, String message) {
-                    Log.e(TAG, "广告加载失败: " + code + ", " + message);
-                    JSObject errorObj = new JSObject();
-                    errorObj.put("code", code);
-                    errorObj.put("message", message);
-                    notifyListeners("onAdFailed", errorObj);
-                    
-                    if (pendingShowCall != null) {
-                        pendingShowCall.reject("广告加载失败: " + message);
                         pendingShowCall = null;
                     }
                 }
@@ -177,7 +179,7 @@ public class PangolinAdPlugin extends Plugin {
             pendingShowCall = call;
             
             // 设置广告交互监听器
-            mRewardVideoAd.setRewardAdInteractionListener(new RewardAdInteractionListener() {
+            mRewardVideoAd.setRewardAdInteractionListener(new TTRewardVideoAd.RewardAdInteractionListener() {
                 @Override
                 public void onAdShow() {
                     Log.d(TAG, "广告展示");
@@ -203,6 +205,12 @@ public class PangolinAdPlugin extends Plugin {
                 }
                 
                 @Override
+                public void onVideoError() {
+                    Log.e(TAG, "视频播放错误");
+                    notifyListeners("onVideoError", new JSObject());
+                }
+                
+                @Override
                 public void onRewardVerify(boolean rewardVerify, int rewardAmount, String rewardName, int errorCode, String errorMsg) {
                     Log.d(TAG, "奖励验证: " + rewardVerify + ", 奖励数量: " + rewardAmount + ", 奖励名称: " + rewardName);
                     
@@ -220,6 +228,31 @@ public class PangolinAdPlugin extends Plugin {
                         pendingShowCall.resolve(result);
                         pendingShowCall = null;
                     }
+                }
+                
+                @Override
+                public void onRewardArrived(boolean isRewardValid, int rewardType, Bundle extraInfo) {
+                    Log.d(TAG, "奖励到达: " + isRewardValid + ", 类型: " + rewardType);
+                    
+                    // 尝试从extraInfo获取ECPM
+                    if (extraInfo != null) {
+                        try {
+                            Object ecpmObj = extraInfo.get("ecpm");
+                            if (ecpmObj instanceof Number) {
+                                currentBidECPM = ((Number) ecpmObj).intValue();
+                                Log.d(TAG, "从extraInfo获取ECPM: " + currentBidECPM);
+                            }
+                        } catch (Exception e) {
+                            Log.w(TAG, "从extraInfo获取ECPM失败: " + e.getMessage());
+                        }
+                    }
+                    
+                    JSObject result = new JSObject();
+                    result.put("rewardVerify", isRewardValid);
+                    result.put("rewardType", rewardType);
+                    result.put("bidECPM", currentBidECPM);
+                    
+                    notifyListeners("onRewardArrived", result);
                 }
                 
                 @Override
