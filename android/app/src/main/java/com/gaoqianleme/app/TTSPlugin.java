@@ -80,7 +80,6 @@ public class TTSPlugin extends Plugin {
         }
     }
 
-    @Override
     public void onDestroy() {
         if (tts != null) {
             tts.stop();
