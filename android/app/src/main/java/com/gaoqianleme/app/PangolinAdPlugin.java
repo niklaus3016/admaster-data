@@ -23,7 +23,7 @@ public class PangolinAdPlugin extends Plugin {
     private static final String TAG = "PangolinAdPlugin";
     private TTRewardVideoAd mRewardVideoAd;
     private PluginCall pendingShowCall;
-    private String appId = "你的穿山甲AppId";
+    private String appId = "5793939";
     
     @PluginMethod
     public void init(PluginCall call) {

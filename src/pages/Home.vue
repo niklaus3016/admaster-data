@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Coins, History, PlayCircle, LogOut, TrendingUp, Wallet, CreditCard } from 'lucide-vue-next';
-import { getUserInfo, rewardGold, getGoldLogs, recordLogin, getLoginStats, submitWithdrawRequest, getWithdrawStatus, getWithdrawRecords, claimDailyBonus, type WithdrawRecord } from '../api/apiService';
+import { getUserInfo, rewardGold, getGoldLogs, recordLogin, getLoginStats, submitWithdrawRequest, getWithdrawStatus, getWithdrawRecords, claimDailyBonus, reportAdBehavior, type WithdrawRecord } from '../api/apiService';
 import { useAdManager } from '../composables/useAdManager';
 import { TTSPlugin } from '../plugins/TTSPlugin';
 import { Capacitor } from '@capacitor/core';
@@ -198,8 +198,8 @@ const loadWithdrawStatus = async () => {
 };
 
 const adConfig = {
-  appId: '2882303761520501672',
-  slotId: '19181348',
+  appId: '5793939',
+  adUnitId: '103942220',
 };
 
 const { showRewardVideo } = useAdManager(adConfig);
@@ -333,6 +333,21 @@ const handleWatchAd = async () => {
         showRewardAnimation(earned);
         // 重新加载金币记录（会自动计算今日金币）
         await loadGoldRecords();
+        
+        // 上报广告行为记录
+        try {
+          await reportAdBehavior({
+            userId: userId.value,
+            adUnitId: adConfig.adUnitId,
+            bidECPM: result.ecpm,
+            rewardCoin: earned,
+            shareRatio: 0.5, // 统一分成比例
+            adTime: Date.now()
+          });
+          console.log('广告行为记录上报成功');
+        } catch (err) {
+          console.error('广告行为记录上报失败:', err);
+        }
       } else {
         console.error('金币数量无效:', earned);
         error.value = '金币发放失败';
