@@ -24,64 +24,76 @@ const bonusGold = ref(0);  // 额外金币奖励
 const hasClaimedBonus = ref(false);  // 是否已领取额外金币
 const isClaimingBonus = ref(false);  // 是否正在领取额外金币
 
-// 播放金币到账语音提示
-const playCoinSound = (goldAmount: number) => {
-  try {
-    // 取消之前的语音
-    window.speechSynthesis.cancel();
-    
-    // 根据金币数量使用不同的开心文案
-    const gold = Math.floor(goldAmount);
-    let message = '';
-    
-    if (gold > 500) {
-      message = `哇塞！太厉害了！恭喜你赚了${gold}金币！你简直是赚钱小能手！`;
-    } else if (gold >= 400) {
-      message = `太棒了！恭喜你赚了${gold}金币！超级厉害！`;
-    } else if (gold >= 300) {
-      message = `哇！恭喜你赚了${gold}金币！太厉害了！`;
-    } else if (gold >= 200) {
-      message = `太好了！恭喜你赚了${gold}金币！继续加油哦！`;
-    } else if (gold >= 100) {
-      message = `恭喜你赚了${gold}金币！真不错呀！`;
-    } else if (gold >= 50) {
-      message = `恭喜你赚了${gold}金币！加油加油！`;
-    } else {
-      message = `恭喜你又赚了${gold}金币！继续努力哦！`;
-    }
-    
-    // 使用 Web Speech API 播报语音
-    const utterance = new SpeechSynthesisUtterance(message);
-    utterance.lang = 'zh-CN';
-    utterance.rate = 1.1;      // 稍快一点更活泼
-    utterance.pitch = 1.5;     // 更高的音调更开心
-    utterance.volume = 1.0;
-    
-    // 获取所有可用语音，优先选择中文女声
-    const voices = window.speechSynthesis.getVoices();
-    const femaleVoice = voices.find(voice => 
-      voice.lang.includes('zh') && 
-      (voice.name.includes('Female') || voice.name.includes('女') || voice.name.includes('Xiaoxiao'))
-    ) || voices.find(voice => voice.lang.includes('zh')) || voices[0];
-    
-    if (femaleVoice) {
-      utterance.voice = femaleVoice;
-    }
-    
-    // 播放语音
-    window.speechSynthesis.speak(utterance);
-  } catch (err) {
-    console.log('播放语音失败:', err);
-  }
-};
+
 const records = ref<Record[]>([]);
 const isLoading = ref(false);
 const isLoadingRecords = ref(false);
 const error = ref('');
 
 const isWatching = ref(false);
-const showReward = ref<number | null>(null);
 const showAllRecords = ref(false);
+
+// 金币奖励弹窗和语音
+const showRewardPopup = ref(false);
+const rewardAmount = ref(0);
+let rewardTimeout: ReturnType<typeof setTimeout> | null = null;
+
+// 播放金币到账语音
+const playRewardSound = (amount: number) => {
+  try {
+    // 取消之前的语音
+    window.speechSynthesis.cancel();
+    
+    const gold = Math.floor(amount);
+    let message = '';
+    
+    if (gold >= 500) {
+      message = `哇塞！太厉害了！恭喜你赚了${gold}金币！`;
+    } else if (gold >= 300) {
+      message = `太棒了！恭喜你赚了${gold}金币！`;
+    } else if (gold >= 100) {
+      message = `恭喜你赚了${gold}金币！`;
+    } else {
+      message = `恭喜你又赚了${gold}金币！`;
+    }
+    
+    const utterance = new SpeechSynthesisUtterance(message);
+    utterance.lang = 'zh-CN';
+    utterance.rate = 1.0;
+    utterance.pitch = 1.2;
+    utterance.volume = 1.0;
+    
+    // 尝试使用中文语音
+    const voices = window.speechSynthesis.getVoices();
+    const zhVoice = voices.find(v => v.lang.includes('zh'));
+    if (zhVoice) {
+      utterance.voice = zhVoice;
+    }
+    
+    window.speechSynthesis.speak(utterance);
+  } catch (err) {
+    console.error('语音播放失败:', err);
+  }
+};
+
+// 显示金币奖励
+const showRewardAnimation = (amount: number) => {
+  // 清除之前的定时器
+  if (rewardTimeout) {
+    clearTimeout(rewardTimeout);
+  }
+  
+  rewardAmount.value = amount;
+  showRewardPopup.value = true;
+  
+  // 播放语音
+  playRewardSound(amount);
+  
+  // 3秒后隐藏
+  rewardTimeout = setTimeout(() => {
+    showRewardPopup.value = false;
+  }, 3000);
+};
 const showWithdrawModal = ref(false);
 const withdrawAmount = ref(0);
 const alipayAccount = ref('');
@@ -257,16 +269,10 @@ const handleWatchAd = async () => {
       const earned = rewardResponse.data.gold;
       // 更新本地状态
       currentMonthGold.value = rewardResponse.data.currentMonthGold;
-      // 播放金币到账语音提示
-      playCoinSound(earned);
-      // 显示奖励动画
-      showReward.value = earned;
+      // 显示金币奖励动画和语音
+      showRewardAnimation(earned);
       // 重新加载金币记录（会自动计算今日金币）
       await loadGoldRecords();
-      // 3秒后隐藏奖励
-      setTimeout(() => {
-        showReward.value = null;
-      }, 3000);
     } else {
       error.value = rewardResponse.message || '金币发放失败';
     }
@@ -290,11 +296,8 @@ const handleClaimBonus = async () => {
       const earned = response.data.gold;
       currentMonthGold.value = response.data.currentMonthGold;
       hasClaimedBonus.value = true;
-      playCoinSound(earned);
-      showReward.value = earned;
-      setTimeout(() => {
-        showReward.value = null;
-      }, 3000);
+      // 显示金币奖励动画和语音
+      showRewardAnimation(earned);
       await loadGoldRecords();
     } else {
       error.value = response.message || '领取失败';
@@ -631,18 +634,20 @@ const submitWithdraw = async () => {
           </button>
         </div>
 
-        <transition name="reward">
-          <div v-if="showReward" class="absolute pointer-events-none z-30 top-[-40px]">
-            <div class="bg-linear-to-r from-amber-400 to-orange-500 text-white px-8 py-4 rounded-full font-bold shadow-[0_10px_30px_rgba(245,158,11,0.4)] flex items-center gap-3 border border-white/30">
-              <Coins class="w-6 h-6 animate-bounce" />
-              <span class="text-xl">+{{ Math.floor(showReward) }}</span>
-            </div>
-          </div>
-        </transition>
-        
+
         <p class="mt-4 text-[10px] text-zinc-500 uppercase tracking-[0.3em] font-medium">
           {{ isWatching ? '正在为您匹配优质广告资源' : '广告激励已就绪' }}
         </p>
+        
+        <!-- 金币奖励弹窗 -->
+        <transition name="reward-popup">
+          <div v-if="showRewardPopup" class="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
+            <div class="bg-gradient-to-r from-amber-400 to-orange-500 text-white px-10 py-6 rounded-2xl font-bold shadow-2xl flex items-center gap-4 border-2 border-white/50 animate-bounce">
+              <Coins class="w-10 h-10 text-white" />
+              <span class="text-3xl">+{{ Math.floor(rewardAmount) }} 金币</span>
+            </div>
+          </div>
+        </transition>
       </div>
 
       <!-- History Section -->
@@ -977,5 +982,35 @@ const submitWithdraw = async () => {
 }
 .modal-enter-from .relative, .modal-leave-to .relative {
   transform: translateY(100%);
+}
+
+/* 金币奖励弹窗动画 */
+.reward-popup-enter-active, .reward-popup-leave-active {
+  transition: all 0.3s ease-out;
+}
+.reward-popup-enter-from {
+  opacity: 0;
+  transform: scale(0.5);
+}
+.reward-popup-enter-to {
+  opacity: 1;
+  transform: scale(1);
+}
+.reward-popup-leave-to {
+  opacity: 0;
+  transform: scale(0.8);
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+.animate-bounce {
+  animation: bounce 0.6s ease-in-out infinite;
 }
 </style>
