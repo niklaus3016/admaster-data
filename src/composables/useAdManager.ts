@@ -148,17 +148,27 @@ export function useAdManager(config: AdConfig) {
 
       const onRewardVerify = (result: any) => {
         console.log('========== 广告奖励回调 ==========');
-        console.log('完整结果对象:', result);
-        console.log('rewardVerify:', result.rewardVerify);
-        console.log('ecpm:', result.ecpm);
-        console.log('所有属性:');
-        for (const key in result) {
-          console.log(`  ${key}:`, result[key]);
-        }
-        console.log('===================================');
+        console.log('完整结果对象:', JSON.stringify(result));
+        console.log('rewardVerify:', result?.rewardVerify);
+        console.log('ecpm (原始):', result?.ecpm);
+        console.log('ecpm 类型:', typeof result?.ecpm);
         
         if (timeoutId) clearTimeout(timeoutId);
-        const ecpm = result.ecpm || 0;
+        
+        // 解析 ECPM 值
+        let ecpm = 0;
+        if (result?.ecpm !== undefined && result?.ecpm !== null) {
+          const ecpmRaw = result.ecpm;
+          if (typeof ecpmRaw === 'number') {
+            ecpm = ecpmRaw;
+          } else if (typeof ecpmRaw === 'string') {
+            ecpm = parseFloat(ecpmRaw);
+          }
+        }
+        
+        console.log('解析后的 ECPM:', ecpm);
+        console.log('===================================');
+        
         isAdLoading.value = false;
         isAdReady.value = false;
         cleanupListeners();
