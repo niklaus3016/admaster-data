@@ -675,13 +675,21 @@ const submitWithdraw = async () => {
         
         <!-- 金币奖励弹窗 -->
         <transition name="reward-popup">
-          <div v-if="showRewardPopup" class="fixed inset-0 flex items-center justify-center z-[9999] pointer-events-none bg-black/50">
-            <div class="bg-gradient-to-r from-amber-400 to-orange-500 text-white px-10 py-6 rounded-2xl font-bold shadow-2xl flex items-center gap-4 border-2 border-white/50 animate-bounce pointer-events-auto">
+          <div v-if="showRewardPopup" class="fixed inset-0 flex items-center justify-center z-9999 pointer-events-none bg-black/50">
+            <div class="bg-linear-to-r from-amber-400 to-orange-500 text-white px-10 py-6 rounded-2xl font-bold shadow-2xl flex items-center gap-4 border-2 border-white/50 animate-bounce pointer-events-auto">
               <Coins class="w-10 h-10 text-white" />
               <span class="text-3xl">+{{ Math.floor(rewardAmount) }} 金币</span>
             </div>
           </div>
         </transition>
+        
+        <!-- 测试按钮 -->
+        <button
+          @click="showRewardAnimation(100)"
+          class="mt-4 px-6 py-3 bg-blue-500 text-white rounded-full text-sm font-medium hover:bg-blue-600 transition-colors"
+        >
+          测试奖励弹窗
+        </button>
       </div>
 
       <!-- History Section -->
