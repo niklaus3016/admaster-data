@@ -18,6 +18,8 @@ import com.bytedance.sdk.openadsdk.TTRewardVideoAd;
 import com.bytedance.sdk.openadsdk.AdSlot;
 import com.bytedance.sdk.openadsdk.TTRewardVideoAd.RewardAdInteractionListener;
 
+import java.util.Map;
+
 @CapacitorPlugin(name = "PangolinAd")
 public class PangolinAdPlugin extends Plugin {
     
@@ -90,18 +92,22 @@ public class PangolinAdPlugin extends Plugin {
                     .build();
             
             // 加载激励视频广告
-            mRewardVideoAd = adManager.createRewardVideoAd(adSlot);
-            
-            // 设置广告交互监听器
-            mRewardVideoAd.setRewardAdInteractionListener(new RewardAdInteractionListener() {
+            adManager.loadRewardVideoAd(adSlot, new TTRewardVideoAd.RewardVideoAdListener() {
                 @Override
-                public void onAdLoaded() {
+                public void onRewardVideoAdLoad(TTRewardVideoAd ad) {
                     Log.d(TAG, "广告加载成功");
+                    mRewardVideoAd = ad;
                     
                     // 获取ECPM
                     currentBidECPM = 0;
                     try {
-                        currentBidECPM = mRewardVideoAd.getMediaExtraInfo().getInt("ecpm", 0);
+                        Map<String, Object> extraInfo = ad.getMediaExtraInfo();
+                        if (extraInfo != null && extraInfo.containsKey("ecpm")) {
+                            Object ecpmObj = extraInfo.get("ecpm");
+                            if (ecpmObj instanceof Number) {
+                                currentBidECPM = ((Number) ecpmObj).intValue();
+                            }
+                        }
                     } catch (Exception e) {
                         Log.w(TAG, "获取ECPM失败: " + e.getMessage());
                     }
@@ -118,6 +124,60 @@ public class PangolinAdPlugin extends Plugin {
                     }
                 }
                 
+                @Override
+                public void onRewardVideoCached() {
+                    Log.d(TAG, "广告缓存完成");
+                    notifyListeners("onAdCached", new JSObject());
+                }
+                
+                @Override
+                public void onRewardVideoCached(TTRewardVideoAd ad) {
+                    Log.d(TAG, "广告缓存完成(带参数)");
+                    notifyListeners("onAdCached", new JSObject());
+                }
+                
+                @Override
+                public void onError(int code, String message) {
+                    Log.e(TAG, "广告加载失败: " + code + ", " + message);
+                    JSObject errorObj = new JSObject();
+                    errorObj.put("code", code);
+                    errorObj.put("message", message);
+                    notifyListeners("onAdFailed", errorObj);
+                    
+                    if (pendingShowCall != null) {
+                        pendingShowCall.reject("广告加载失败: " + message);
+                        pendingShowCall = null;
+                    }
+                }
+            });
+            
+            call.resolve();
+        } catch (Exception e) {
+            Log.e(TAG, "加载广告异常: " + e.getMessage(), e);
+            call.reject("加载广告异常: " + e.getMessage());
+        }
+    }
+    
+    @PluginMethod
+    public void showRewardVideoAd(PluginCall call) {
+        Log.d(TAG, "显示广告");
+        
+        Activity activity = getActivity();
+        if (activity == null) {
+            call.reject("Activity 为空");
+            return;
+        }
+        
+        if (mRewardVideoAd == null) {
+            call.reject("广告未加载");
+            return;
+        }
+        
+        try {
+            pendingShowCall = call;
+            
+            // 设置广告交互监听器
+            mRewardVideoAd.setRewardAdInteractionListener(new RewardAdInteractionListener() {
                 @Override
                 public void onAdShow() {
                     Log.d(TAG, "广告展示");
@@ -143,12 +203,13 @@ public class PangolinAdPlugin extends Plugin {
                 }
                 
                 @Override
-                public void onRewardArrived(boolean rewardVerify, int rewardAmount, Bundle rewardInfo) {
-                    Log.d(TAG, "奖励到达: " + rewardVerify + ", 奖励数量: " + rewardAmount);
+                public void onRewardVerify(boolean rewardVerify, int rewardAmount, String rewardName, int errorCode, String errorMsg) {
+                    Log.d(TAG, "奖励验证: " + rewardVerify + ", 奖励数量: " + rewardAmount + ", 奖励名称: " + rewardName);
                     
                     JSObject result = new JSObject();
                     result.put("rewardVerify", rewardVerify);
                     result.put("rewardAmount", rewardAmount);
+                    result.put("rewardName", rewardName);
                     result.put("bidECPM", currentBidECPM);
                     
                     Log.d(TAG, "最终返回的Bid ECPM: " + currentBidECPM);
@@ -166,48 +227,8 @@ public class PangolinAdPlugin extends Plugin {
                     Log.d(TAG, "视频被跳过");
                     notifyListeners("onAdSkip", new JSObject());
                 }
-                
-                @Override
-                public void onError(int code, String message) {
-                    Log.e(TAG, "广告错误: " + code + ", " + message);
-                    JSObject errorObj = new JSObject();
-                    errorObj.put("code", code);
-                    errorObj.put("message", message);
-                    notifyListeners("onAdFailed", errorObj);
-                    
-                    if (pendingShowCall != null) {
-                        pendingShowCall.reject("广告错误: " + message);
-                        pendingShowCall = null;
-                    }
-                }
             });
             
-            // 加载广告
-            mRewardVideoAd.loadAd(adSlot);
-            call.resolve();
-        } catch (Exception e) {
-            Log.e(TAG, "加载广告异常: " + e.getMessage(), e);
-            call.reject("加载广告异常: " + e.getMessage());
-        }
-    }
-    
-    @PluginMethod
-    public void showRewardVideoAd(PluginCall call) {
-        Log.d(TAG, "显示广告");
-        
-        Activity activity = getActivity();
-        if (activity == null) {
-            call.reject("Activity 为空");
-            return;
-        }
-        
-        if (mRewardVideoAd == null) {
-            call.reject("广告未加载");
-            return;
-        }
-        
-        try {
-            pendingShowCall = call;
             mRewardVideoAd.showRewardVideoAd(activity);
         } catch (Exception e) {
             Log.e(TAG, "展示广告异常: " + e.getMessage(), e);
