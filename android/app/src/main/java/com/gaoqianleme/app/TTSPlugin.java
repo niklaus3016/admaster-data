@@ -2,7 +2,6 @@ package com.gaoqianleme.app;
 
 import android.speech.tts.TextToSpeech;
 import android.util.Log;
-import androidx.annotation.Nullable;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -16,6 +15,7 @@ import java.util.Locale;
 public class TTSPlugin extends Plugin {
     private TextToSpeech tts;
     private boolean ttsInitialized = false;
+    private String pendingText = null;
 
     @PluginMethod
     public void speak(PluginCall call) {
@@ -26,9 +26,15 @@ public class TTSPlugin extends Plugin {
         }
 
         if (tts == null) {
-            initializeTTS(call, text);
-        } else {
+            // 保存待播放的文本
+            pendingText = text;
+            initializeTTS(call);
+        } else if (ttsInitialized) {
             speakText(call, text);
+        } else {
+            // TTS 正在初始化，保存文本
+            pendingText = text;
+            call.resolve();
         }
     }
 
@@ -48,7 +54,7 @@ public class TTSPlugin extends Plugin {
         call.resolve();
     }
 
-    private void initializeTTS(final PluginCall call, final String text) {
+    private void initializeTTS(final PluginCall call) {
         tts = new TextToSpeech(getContext(), new TextToSpeech.OnInitListener() {
             @Override
             public void onInit(int status) {
@@ -59,7 +65,12 @@ public class TTSPlugin extends Plugin {
                         call.reject("Language not supported");
                     } else {
                         ttsInitialized = true;
-                        speakText(call, text);
+                        // 初始化成功后立即播放待播放的文本
+                        if (pendingText != null) {
+                            speakText(null, pendingText);
+                            pendingText = null;
+                        }
+                        call.resolve();
                     }
                 } else {
                     Log.e("TTSPlugin", "TTS initialization failed");
@@ -70,12 +81,14 @@ public class TTSPlugin extends Plugin {
     }
 
     private void speakText(PluginCall call, String text) {
-        if (ttsInitialized) {
+        if (ttsInitialized && text != null) {
             tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, null);
-            JSObject result = new JSObject();
-            result.put("success", true);
-            call.resolve(result);
-        } else {
+            if (call != null) {
+                JSObject result = new JSObject();
+                result.put("success", true);
+                call.resolve(result);
+            }
+        } else if (call != null) {
             call.reject("TTS not initialized");
         }
     }

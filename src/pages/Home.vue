@@ -323,12 +323,20 @@ const handleWatchAd = async () => {
     
     if (rewardResponse.success && rewardResponse.data) {
       const earned = rewardResponse.data.gold;
-      // 更新本地状态
-      currentMonthGold.value = rewardResponse.data.currentMonthGold;
-      // 显示金币奖励动画和语音
-      showRewardAnimation(earned);
-      // 重新加载金币记录（会自动计算今日金币）
-      await loadGoldRecords();
+      console.log('获得金币数量:', earned);
+      
+      // 确保金币数量是有效的数字
+      if (typeof earned === 'number' && earned > 0) {
+        // 更新本地状态
+        currentMonthGold.value = rewardResponse.data.currentMonthGold;
+        // 显示金币奖励动画和语音
+        showRewardAnimation(earned);
+        // 重新加载金币记录（会自动计算今日金币）
+        await loadGoldRecords();
+      } else {
+        console.error('金币数量无效:', earned);
+        error.value = '金币发放失败';
+      }
     } else {
       error.value = rewardResponse.message || '金币发放失败';
     }
