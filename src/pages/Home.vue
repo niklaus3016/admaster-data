@@ -206,10 +206,11 @@ const loadGoldRecords = async () => {
       };
       
       records.value = response.data.map((log: any) => {
-        const beijingTime = toBeijingTime(new Date(log.createTime));
+        // 后端返回的时间已经是北京时间，直接显示
+        const recordTime = new Date(log.createTime);
         return {
           id: log._id,
-          time: beijingTime.toLocaleString('zh-CN', {
+          time: recordTime.toLocaleString('zh-CN', {
             year: 'numeric', month: '2-digit', day: '2-digit',
             hour: '2-digit', minute: '2-digit'
           }),
