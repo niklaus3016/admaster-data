@@ -52,7 +52,7 @@ public class PangolinAdPlugin extends Plugin {
                     .build());
             
             TTAdManager ttAdManager = TTAdSdk.getAdManager();
-            mTTAdNative = ttAdManager.createAdNative(activity.getApplicationContext());
+            mTTAdNative = ttAdManager.createAdNative(activity);
             
             Log.d(TAG, "穿山甲SDK初始化成功");
             call.resolve();
