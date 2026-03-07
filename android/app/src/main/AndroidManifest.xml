@@ -94,12 +94,14 @@
         </provider>
         <activity
             android:name="com.qq.e.ads.PortraitADActivity"
-            android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
-            android:screenOrientation="portrait" />
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout"
+            android:screenOrientation="portrait"
+            tools:replace="android:configChanges" />
         <activity
             android:name="com.qq.e.ads.LandscapeADActivity"
-            android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
-            android:screenOrientation="landscape" />
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout"
+            android:screenOrientation="sensorLandscape"
+            tools:replace="android:configChanges,android:screenOrientation" />
         <service
             android:name="com.qq.e.comm.DownloadService"
             android:exported="false" />
