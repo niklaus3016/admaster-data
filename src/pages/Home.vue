@@ -122,11 +122,11 @@ const showRewardAnimation = (amount: number) => {
   playRewardSound(amount);
   console.log('playRewardSound 已调用');
   
-  // 3秒后隐藏
+  // 1秒后隐藏
   rewardTimeout = setTimeout(() => {
     showRewardPopup.value = false;
     console.log('showRewardPopup 已设置为 false');
-  }, 3000);
+  }, 1000);
 };
 const showWithdrawModal = ref(false);
 const withdrawAmount = ref(0);
@@ -675,10 +675,10 @@ const submitWithdraw = async () => {
         
         <!-- 金币奖励弹窗 -->
         <transition name="reward-popup">
-          <div v-if="showRewardPopup" class="fixed inset-0 flex items-center justify-center z-9999 pointer-events-none bg-black/50">
-            <div class="bg-linear-to-r from-amber-400 to-orange-500 text-white px-10 py-6 rounded-2xl font-bold shadow-2xl flex items-center gap-4 border-2 border-white/50 animate-bounce pointer-events-auto">
-              <Coins class="w-10 h-10 text-white" />
-              <span class="text-3xl">+{{ Math.floor(rewardAmount) }} 金币</span>
+          <div v-if="showRewardPopup" class="fixed inset-0 flex items-center justify-center z-9999 pointer-events-none">
+            <div class="bg-linear-to-r from-amber-400 to-orange-500 text-white px-6 py-3 rounded-xl font-bold shadow-lg flex items-center gap-2 border border-white/30 animate-bounce pointer-events-auto">
+              <Coins class="w-6 h-6 text-white" />
+              <span class="text-xl">+{{ Math.floor(rewardAmount) }} 金币</span>
             </div>
           </div>
         </transition>
