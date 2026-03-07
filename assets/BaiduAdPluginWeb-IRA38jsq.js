@@ -1,1 +1,0 @@
-import{W as e}from"./index-RCXW8mzD.js";class a extends e{async loadRewardVideoAd(s){return console.log("Web 环境不支持百度原生广告，请使用 H5 SDK"),Promise.resolve()}async showRewardVideoAd(){return console.log("Web 环境不支持百度原生广告，请使用 H5 SDK"),Promise.resolve()}async isReady(){return{ready:!1}}}export{a as BaiduAdPluginWeb};
