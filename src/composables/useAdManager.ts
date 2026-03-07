@@ -193,13 +193,9 @@ export function useAdManager(config: AdConfig) {
           console.log('✅ 广告显示命令已发送');
         } catch (error) {
           const errorMsg = error?.message || error || '未知错误';
-          console.error('❌ 显示广告失败:', errorMsg);
-          lastError.value = '显示广告失败: ' + errorMsg;
-          if (timeoutId) clearTimeout(timeoutId);
-          isAdReady.value = false;
-          isAdLoading.value = false;
-          cleanupListeners();
-          reject(new Error('显示广告失败: ' + errorMsg));
+          console.warn('⚠️ 显示广告时遇到问题，但广告可能会继续加载:', errorMsg);
+          // 不要清理监听器，因为广告可能会继续加载并显示
+          // 只有当明确的错误发生时才清理监听器
         }
       };
 
@@ -232,7 +228,7 @@ export function useAdManager(config: AdConfig) {
       console.log('✅ 广告加载请求已发送，等待回调...');
       
       timeoutId = setTimeout(() => {
-        console.warn('⏱️ 广告加载超时（15秒）');
+        console.warn('⏱️ 广告加载超时（30秒）');
         lastError.value = '广告加载超时，可能是网络问题或广告填充不足';
         
         if (retryTimeoutId) clearTimeout(retryTimeoutId);
@@ -240,7 +236,7 @@ export function useAdManager(config: AdConfig) {
         isAdLoading.value = false;
         cleanupListeners();
         reject(new Error('广告加载超时'));
-      }, 15000);
+      }, 30000);
       
     } catch (error) {
       const errorMsg = error?.message || error || '未知错误';

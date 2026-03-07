@@ -175,15 +175,20 @@ public class BaiduAdPlugin extends Plugin {
         
         activity.runOnUiThread(() -> {
             try {
+                // 保存调用，无论广告是否准备好
+                pendingShowCall = call;
+                
                 if (mRewardVideoAd.isReady()) {
-                    pendingShowCall = call;
+                    Log.d(TAG, "广告已准备好，直接显示");
                     mRewardVideoAd.show();
                 } else {
-                    call.reject("广告未准备好");
+                    Log.d(TAG, "广告未准备好，等待准备完成后显示");
+                    // 广告会在准备好后自动显示
                 }
             } catch (Exception e) {
                 Log.e(TAG, "展示广告异常: " + e.getMessage(), e);
                 call.reject("展示广告异常: " + e.getMessage());
+                pendingShowCall = null;
             }
         });
     }
