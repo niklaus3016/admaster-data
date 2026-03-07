@@ -114,7 +114,8 @@
         <activity
             android:name="com.sigmob.sdk.base.common.AdActivity"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+            android:theme="@android:style/Theme.Light.NoTitleBar"
+            tools:replace="android:theme" />
         <provider
             android:name="com.sigmob.sdk.SigmobFileV4Provider"
             android:authorities="${applicationId}.sigprovider"
