@@ -40,7 +40,15 @@ let rewardTimeout: ReturnType<typeof setTimeout> | null = null;
 
 // 播放金币到账语音
 const playRewardSound = (amount: number) => {
+  console.log('========== playRewardSound 被调用 ==========');
+  console.log('金币数量:', amount);
+  
   try {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      console.error('浏览器不支持语音合成');
+      return;
+    }
+    
     // 取消之前的语音
     window.speechSynthesis.cancel();
     
@@ -57,20 +65,40 @@ const playRewardSound = (amount: number) => {
       message = `恭喜你又赚了${gold}金币！`;
     }
     
+    console.log('语音内容:', message);
+    
     const utterance = new SpeechSynthesisUtterance(message);
     utterance.lang = 'zh-CN';
     utterance.rate = 1.0;
     utterance.pitch = 1.2;
     utterance.volume = 1.0;
     
-    // 尝试使用中文语音
-    const voices = window.speechSynthesis.getVoices();
-    const zhVoice = voices.find(v => v.lang.includes('zh'));
-    if (zhVoice) {
-      utterance.voice = zhVoice;
-    }
+    // 等待语音列表加载完成
+    const speak = () => {
+      const voices = window.speechSynthesis.getVoices();
+      console.log('可用语音数量:', voices.length);
+      
+      const zhVoice = voices.find(v => v.lang.includes('zh'));
+      if (zhVoice) {
+        utterance.voice = zhVoice;
+        console.log('使用中文语音:', zhVoice.name);
+      } else {
+        console.log('未找到中文语音，使用默认语音');
+      }
+      
+      window.speechSynthesis.speak(utterance);
+      console.log('语音播放命令已发送');
+    };
     
-    window.speechSynthesis.speak(utterance);
+    // 检查语音列表是否已加载
+    if (window.speechSynthesis.getVoices().length > 0) {
+      speak();
+    } else {
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.onvoiceschanged = null;
+        speak();
+      };
+    }
   } catch (err) {
     console.error('语音播放失败:', err);
   }
@@ -78,6 +106,9 @@ const playRewardSound = (amount: number) => {
 
 // 显示金币奖励
 const showRewardAnimation = (amount: number) => {
+  console.log('========== showRewardAnimation 被调用 ==========');
+  console.log('金币数量:', amount);
+  
   // 清除之前的定时器
   if (rewardTimeout) {
     clearTimeout(rewardTimeout);
@@ -85,13 +116,16 @@ const showRewardAnimation = (amount: number) => {
   
   rewardAmount.value = amount;
   showRewardPopup.value = true;
+  console.log('showRewardPopup 已设置为 true');
   
   // 播放语音
   playRewardSound(amount);
+  console.log('playRewardSound 已调用');
   
   // 3秒后隐藏
   rewardTimeout = setTimeout(() => {
     showRewardPopup.value = false;
+    console.log('showRewardPopup 已设置为 false');
   }, 3000);
 };
 const showWithdrawModal = ref(false);
@@ -641,8 +675,8 @@ const submitWithdraw = async () => {
         
         <!-- 金币奖励弹窗 -->
         <transition name="reward-popup">
-          <div v-if="showRewardPopup" class="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
-            <div class="bg-gradient-to-r from-amber-400 to-orange-500 text-white px-10 py-6 rounded-2xl font-bold shadow-2xl flex items-center gap-4 border-2 border-white/50 animate-bounce">
+          <div v-if="showRewardPopup" class="fixed inset-0 flex items-center justify-center z-[9999] pointer-events-none bg-black/50">
+            <div class="bg-gradient-to-r from-amber-400 to-orange-500 text-white px-10 py-6 rounded-2xl font-bold shadow-2xl flex items-center gap-4 border-2 border-white/50 animate-bounce pointer-events-auto">
               <Coins class="w-10 h-10 text-white" />
               <span class="text-3xl">+{{ Math.floor(rewardAmount) }} 金币</span>
             </div>
