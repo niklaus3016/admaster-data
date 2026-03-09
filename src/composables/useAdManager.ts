@@ -38,6 +38,30 @@ export function useAdManager(config: AdConfig) {
   const MAX_RETRY_ROUNDS = 2; // 最大轮询轮数
   const SLOT_TIMEOUT = 3000; // 单层超时时间（3秒）
   
+  // 根据广告位 ID 生成模拟 ECPM
+  const generateSimulatedEcpm = (slotId: string): number => {
+    const ecpmRanges: { [key: string]: [number, number] } = {
+      '19188423': [400, 500],   // 保价500
+      '19188422': [200, 300],   // 保价300
+      '19188421': [100, 150],   // 保价150
+      '19183768': [80, 100],    // 保价100
+      '19188420': [50, 80],     // 保价80
+      '19188419': [50, 80],     // 保价50
+      '19188418': [30, 50],     // 保价30
+      '19188417': [20, 30],     // 保价20
+      '19181348': [1, 20]      // 无保价
+    };
+    
+    const range = ecpmRanges[slotId];
+    if (!range) {
+      return 0;
+    }
+    
+    const min = range[0];
+    const max = range[1];
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  };
+  
   // 获取下一个广告位（轮询模式）
   const getNextSlotId = (): string => {
     if (!config.slotIds || config.slotIds.length === 0) {
@@ -239,6 +263,9 @@ export function useAdManager(config: AdConfig) {
       if (!currentResolve && !currentReject) {
         // 第一次点击，重置广告状态
         resetAdState();
+      } else {
+        // 轮询时，只重置 adSuccess 标志
+        adSuccess = false;
       }
       
       // 保存当前的 resolve 和 reject 函数
@@ -288,7 +315,17 @@ export function useAdManager(config: AdConfig) {
         // 清除单层超时定时器
         if (slotTimeoutId) clearTimeout(slotTimeoutId);
         
-        const ecpm = result.ecpm || 0;
+        let ecpm = result.ecpm || 0;
+        
+        // 获取当前广告位 ID
+        const currentSlotId = config.slotIds[(currentSlotIndex - 1 + config.slotIds.length) % config.slotIds.length];
+        
+        // 如果是保价位（非竞价位），生成模拟 ecpm
+        if (currentSlotId !== '19188426' && ecpm === 0) {
+          console.log('保价位广告，生成模拟 ECPM');
+          ecpm = generateSimulatedEcpm(currentSlotId);
+        }
+        
         isAdLoading.value = false;
         isAdReady.value = false;
         adSuccess = true; // 标记广告成功
