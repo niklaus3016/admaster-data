@@ -34,7 +34,9 @@ export function useAdManager(config: AdConfig) {
   let currentSlotIndex = 0; // 当前广告位索引
   let adSuccess = false; // 广告是否已成功
   let triedSlots = 0; // 已经尝试过的广告位数量
-  const MAX_RETRY_ROUNDS = 5; // 最大轮询轮数
+  let slotTimeoutId: any = null; // 单层超时定时器
+  const MAX_RETRY_ROUNDS = 2; // 最大轮询轮数
+  const SLOT_TIMEOUT = 3000; // 单层超时时间（3秒）
   
   // 获取下一个广告位（轮询模式）
   const getNextSlotId = (): string => {
@@ -283,8 +285,9 @@ export function useAdManager(config: AdConfig) {
         }
         console.log('===================================');
         
-        if (timeoutId) clearTimeout(timeoutId);
-        if (retryTimeoutId) clearTimeout(retryTimeoutId);
+        // 清除单层超时定时器
+        if (slotTimeoutId) clearTimeout(slotTimeoutId);
+        
         const ecpm = result.ecpm || 0;
         isAdLoading.value = false;
         isAdReady.value = false;
@@ -310,7 +313,8 @@ export function useAdManager(config: AdConfig) {
         console.warn('⚠️ 广告加载失败:', errorMsg);
         lastError.value = '广告加载失败: ' + errorMsg;
         
-        if (timeoutId) clearTimeout(timeoutId);
+        // 清除单层超时定时器
+        if (slotTimeoutId) clearTimeout(slotTimeoutId);
         
         // 如果广告已经成功，不再重试
         if (adSuccess) {
@@ -324,31 +328,31 @@ export function useAdManager(config: AdConfig) {
           console.log(`所有${MAX_RETRY_ROUNDS}轮广告位都已尝试，暂无合适广告`);
           isAdReady.value = false;
           isAdLoading.value = false;
-          if (retryTimeoutId) clearTimeout(retryTimeoutId);
           showNoAdAvailable(reject);
           return;
         }
         
-        console.log('0.5秒后尝试下一个广告位...');
-        retryTimeoutId = setTimeout(() => {
-          // 再次检查广告是否已成功
-          if (adSuccess) {
-            console.log('广告已成功，取消重试');
-            return;
-          }
-          
-          // 再次检查是否已经尝试了所有轮次
-          if (triedSlots >= maxSlots) {
-            console.log(`所有${MAX_RETRY_ROUNDS}轮广告位都已尝试，暂无合适广告`);
-            isAdReady.value = false;
-            isAdLoading.value = false;
-            showNoAdAvailable(reject);
-            return;
-          }
-          
-          console.log('尝试下一个广告位...');
+        console.log('立即尝试下一个广告位...');
+        
+        // 立即尝试下一个，不再等待0.5秒
+        // 再次检查广告是否已成功
+        if (adSuccess) {
+          console.log('广告已成功，取消重试');
+          return;
+        }
+        
+        // 再次检查是否已经尝试了所有轮次
+        if (triedSlots >= maxSlots) {
+          console.log(`所有${MAX_RETRY_ROUNDS}轮广告位都已尝试，暂无合适广告`);
           isAdReady.value = false;
           isAdLoading.value = false;
+          showNoAdAvailable(reject);
+          return;
+        }
+        
+        console.log('尝试下一个广告位...');
+        isAdReady.value = false;
+        isAdLoading.value = false;
           cleanupListeners();
           
           if (currentResolve && currentReject) {
@@ -372,13 +376,9 @@ export function useAdManager(config: AdConfig) {
           adSuccess = true;
           
           // 立即清理所有监听器和定时器，防止轮询继续
-          if (timeoutId) {
-            clearTimeout(timeoutId);
-            console.log('✅ 广告已成功加载，清除超时定时器');
-          }
-          if (retryTimeoutId) {
-            clearTimeout(retryTimeoutId);
-            console.log('✅ 清除重试定时器');
+          if (slotTimeoutId) {
+            clearTimeout(slotTimeoutId);
+            console.log('✅ 清除单层超时定时器');
           }
           
           // 立即清理所有监听器，防止轮询继续添加新监听器
@@ -500,24 +500,33 @@ export function useAdManager(config: AdConfig) {
       await BaiduAd.loadRewardVideoAd({ adId: selectedSlotId });
       console.log('✅ 广告加载请求已发送，等待回调...');
       
-      timeoutId = setTimeout(() => {
-        // 如果广告已经成功，不再处理
+      // 单层超时机制：3秒内没有成功或失败回调，自动轮询下一个
+      slotTimeoutId = setTimeout(() => {
         if (adSuccess) {
-          console.log('广告已成功，取消超时处理');
+          console.log('广告已成功，取消单层超时处理');
           return;
         }
+        
+        console.warn(`⏱️ 单层广告加载超时（${SLOT_TIMEOUT}ms），尝试下一个广告位`);
         
         // 检查是否已经尝试了所有轮次
         const maxSlots = config.slotIds.length * MAX_RETRY_ROUNDS;
         if (triedSlots >= maxSlots) {
-          console.warn(`⏱️ 广告加载超时（15秒），所有${MAX_RETRY_ROUNDS}轮广告位都已尝试`);
+          console.warn(`所有${MAX_RETRY_ROUNDS}轮广告位都已尝试，暂无合适广告`);
           isAdReady.value = false;
           isAdLoading.value = false;
           showNoAdAvailable(reject);
-        } else {
-          console.log('广告加载超时（15秒），但还有广告位未尝试，继续轮询');
+          return;
         }
-      }, 15000);
+        
+        // 清除当前监听器
+        cleanupListeners();
+        
+        // 继续轮询下一个广告位
+        if (currentResolve && currentReject) {
+          showNativeAd(currentResolve, currentReject);
+        }
+      }, SLOT_TIMEOUT);
       
     } catch (error) {
       const errorMsg = error?.message || error || '未知错误';
