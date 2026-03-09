@@ -436,16 +436,18 @@ export function useAdManager(config: AdConfig) {
       };
       
       const onAdClose = () => {
+        // 如果广告已经成功，直接返回，不处理关闭回调
+        if (adSuccess) {
+          return;
+        }
+        
         console.log('✅ 广告关闭回调');
         if (timeoutId) clearTimeout(timeoutId);
         if (retryTimeoutId) clearTimeout(retryTimeoutId);
         isAdReady.value = false;
         isAdLoading.value = false;
-        // 只有当广告还未成功时才清理监听器，避免重复清理
-        if (!adSuccess) {
-          console.log('✅ 广告关闭，清理监听器');
-          cleanupListeners();
-        }
+        console.log('✅ 广告关闭，清理监听器');
+        cleanupListeners();
       };
       
       adLoadedListener = onAdLoaded;
