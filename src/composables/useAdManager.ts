@@ -229,6 +229,10 @@ export function useAdManager(config: AdConfig) {
 
   const showNativeAd = async (resolve: (value: { ecpm: number }) => void, reject: (reason?: any) => void) => {
     try {
+      // 保存当前的 resolve 和 reject 函数
+      currentResolve = resolve;
+      currentReject = reject;
+      
       // 清理之前的所有监听器和定时器
       cleanupListeners();
       
@@ -306,6 +310,7 @@ export function useAdManager(config: AdConfig) {
           console.log(`所有${MAX_RETRY_ROUNDS}轮广告位都已尝试，暂无合适广告`);
           isAdReady.value = false;
           isAdLoading.value = false;
+          if (retryTimeoutId) clearTimeout(retryTimeoutId);
           showNoAdAvailable(reject);
           return;
         }
@@ -409,6 +414,7 @@ export function useAdManager(config: AdConfig) {
           console.log(`所有${MAX_RETRY_ROUNDS}轮广告位都已尝试，暂无合适广告`);
           isAdReady.value = false;
           isAdLoading.value = false;
+          if (retryTimeoutId) clearTimeout(retryTimeoutId);
           showNoAdAvailable(reject);
           return;
         }
