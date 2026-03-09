@@ -34,6 +34,7 @@ export function useAdManager(config: AdConfig) {
   let currentSlotIndex = 0; // 当前广告位索引
   let adSuccess = false; // 广告是否已成功
   let triedSlots = 0; // 已经尝试过的广告位数量
+  const MAX_RETRY_ROUNDS = 2; // 最大轮询轮数
   
   // 获取下一个广告位（轮询模式）
   const getNextSlotId = (): string => {
@@ -41,7 +42,9 @@ export function useAdManager(config: AdConfig) {
       throw new Error('广告位配置为空');
     }
     const slotId = config.slotIds[currentSlotIndex];
-    console.log(`当前轮询广告位: ${slotId} (${currentSlotIndex + 1}/${config.slotIds.length})`);
+    const currentRound = Math.floor(triedSlots / config.slotIds.length) + 1;
+    const positionInRound = (triedSlots % config.slotIds.length) + 1;
+    console.log(`当前轮询广告位: ${slotId} (第${currentRound}轮 ${positionInRound}/${config.slotIds.length})`);
     // 递增索引，循环使用
     currentSlotIndex = (currentSlotIndex + 1) % config.slotIds.length;
     triedSlots++;
@@ -209,15 +212,15 @@ export function useAdManager(config: AdConfig) {
         }
         
         if (!isAdSdkReady.value || !window.baidu || !window.baidu.mobads) {
-          console.warn('百度 H5 广告 SDK 未就绪，使用模拟数据');
-          simulateAdPlay(resolve, reject);
+          console.warn('百度 H5 广告 SDK 未就绪');
+          showNoAdAvailable(reject);
           return;
         }
 
         await showH5Ad(resolve, reject);
       } catch (error) {
         console.error('显示广告失败:', error);
-        simulateAdPlay(resolve, reject);
+        showNoAdAvailable(reject);
       }
     });
   };
@@ -295,17 +298,17 @@ export function useAdManager(config: AdConfig) {
           return;
         }
         
-        // 检查是否已经尝试了所有广告位
-        if (triedSlots >= config.slotIds.length) {
-          console.log('所有广告位都已尝试，使用模拟数据');
+        // 检查是否已经尝试了所有轮次
+        const maxSlots = config.slotIds.length * MAX_RETRY_ROUNDS;
+        if (triedSlots >= maxSlots) {
+          console.log(`所有${MAX_RETRY_ROUNDS}轮广告位都已尝试，暂无合适广告`);
           isAdReady.value = false;
           isAdLoading.value = false;
-          cleanupListeners();
-          simulateAdPlay(resolve, reject);
+          showNoAdAvailable(reject);
           return;
         }
         
-        console.log('立即尝试下一个广告位...');
+        console.log('0.5秒后尝试下一个广告位...');
         retryTimeoutId = setTimeout(() => {
           // 再次检查广告是否已成功
           if (adSuccess) {
@@ -313,13 +316,12 @@ export function useAdManager(config: AdConfig) {
             return;
           }
           
-          // 再次检查是否已经尝试了所有广告位
-          if (triedSlots >= config.slotIds.length) {
-            console.log('所有广告位都已尝试，使用模拟数据');
+          // 再次检查是否已经尝试了所有轮次
+          if (triedSlots >= maxSlots) {
+            console.log(`所有${MAX_RETRY_ROUNDS}轮广告位都已尝试，暂无合适广告`);
             isAdReady.value = false;
             isAdLoading.value = false;
-            cleanupListeners();
-            simulateAdPlay(resolve, reject);
+            showNoAdAvailable(reject);
             return;
           }
           
@@ -331,7 +333,7 @@ export function useAdManager(config: AdConfig) {
           if (currentResolve && currentReject) {
             showNativeAd(currentResolve, currentReject);
           }
-        }, 0);
+        }, 500);
         
         return;
       };
@@ -391,17 +393,17 @@ export function useAdManager(config: AdConfig) {
           return;
         }
         
-        // 检查是否已经尝试了所有广告位
-        if (triedSlots >= config.slotIds.length) {
-          console.log('所有广告位都已尝试，使用模拟数据');
+        // 检查是否已经尝试了所有轮次
+        const maxSlots = config.slotIds.length * MAX_RETRY_ROUNDS;
+        if (triedSlots >= maxSlots) {
+          console.log(`所有${MAX_RETRY_ROUNDS}轮广告位都已尝试，暂无合适广告`);
           isAdReady.value = false;
           isAdLoading.value = false;
-          cleanupListeners();
-          simulateAdPlay(resolve, reject);
+          showNoAdAvailable(reject);
           return;
         }
         
-        console.log('立即尝试下一个广告位...');
+        console.log('0.5秒后尝试下一个广告位...');
         retryTimeoutId = setTimeout(() => {
           // 再次检查广告是否已成功
           if (adSuccess) {
@@ -409,13 +411,12 @@ export function useAdManager(config: AdConfig) {
             return;
           }
           
-          // 再次检查是否已经尝试了所有广告位
-          if (triedSlots >= config.slotIds.length) {
-            console.log('所有广告位都已尝试，使用模拟数据');
+          // 再次检查是否已经尝试了所有轮次
+          if (triedSlots >= maxSlots) {
+            console.log(`所有${MAX_RETRY_ROUNDS}轮广告位都已尝试，暂无合适广告`);
             isAdReady.value = false;
             isAdLoading.value = false;
-            cleanupListeners();
-            simulateAdPlay(resolve, reject);
+            showNoAdAvailable(reject);
             return;
           }
           
@@ -427,7 +428,7 @@ export function useAdManager(config: AdConfig) {
           if (currentResolve && currentReject) {
             showNativeAd(currentResolve, currentReject);
           }
-        }, 0);
+        }, 500);
         
         return;
       };
@@ -464,22 +465,19 @@ export function useAdManager(config: AdConfig) {
       console.log('✅ 广告加载请求已发送，等待回调...');
       
       timeoutId = setTimeout(() => {
-        // 如果广告已经成功，不再使用模拟数据
+        // 如果广告已经成功，不再处理
         if (adSuccess) {
           console.log('广告已成功，取消超时处理');
           return;
         }
         
-        // 检查是否已经尝试了所有广告位
-        if (triedSlots >= config.slotIds.length) {
-          console.warn('⏱️ 广告加载超时（15秒），所有广告位都已尝试，使用模拟数据');
-          lastError.value = '广告加载超时，可能是网络问题或广告填充不足';
-          
-          if (retryTimeoutId) clearTimeout(retryTimeoutId);
+        // 检查是否已经尝试了所有轮次
+        const maxSlots = config.slotIds.length * MAX_RETRY_ROUNDS;
+        if (triedSlots >= maxSlots) {
+          console.warn(`⏱️ 广告加载超时（15秒），所有${MAX_RETRY_ROUNDS}轮广告位都已尝试`);
           isAdReady.value = false;
           isAdLoading.value = false;
-          cleanupListeners();
-          simulateAdPlay(resolve, reject);
+          showNoAdAvailable(reject);
         } else {
           console.log('广告加载超时（15秒），但还有广告位未尝试，继续轮询');
         }
@@ -493,8 +491,7 @@ export function useAdManager(config: AdConfig) {
       if (retryTimeoutId) clearTimeout(retryTimeoutId);
       isAdReady.value = false;
       isAdLoading.value = false;
-      cleanupListeners();
-      simulateAdPlay(resolve, reject);
+      showNoAdAvailable(reject);
     }
   };
 
@@ -519,7 +516,7 @@ export function useAdManager(config: AdConfig) {
           console.error('H5 广告加载失败:', error);
           isAdReady.value = false;
           isAdLoading.value = false;
-          simulateAdPlay(resolve, reject);
+          showNoAdAvailable(reject);
         },
         onAdShow: () => {
           console.log('H5 广告开始播放');
@@ -534,7 +531,7 @@ export function useAdManager(config: AdConfig) {
           if (ecpm > 0) {
             resolve({ ecpm });
           } else {
-            resolve({ ecpm: Math.floor(Math.random() * 500) + 100 });
+            showNoAdAvailable(reject);
           }
         },
         onAdClick: () => {
@@ -547,26 +544,15 @@ export function useAdManager(config: AdConfig) {
       console.error('H5 广告初始化失败:', error);
       isAdReady.value = false;
       isAdLoading.value = false;
-      simulateAdPlay(resolve, reject);
+      showNoAdAvailable(reject);
     }
   };
 
-  const simulateAdPlay = (resolve: (value: { ecpm: number }) => void, reject: (reason?: any) => void) => {
-    console.log('⚠️ 使用模拟广告数据');
-    setTimeout(() => {
-      const success = Math.random() > 0.1;
-      if (success) {
-        const ecpm = Math.floor(Math.random() * 500) + 100;
-        console.log('模拟广告完成，ECPM:', ecpm);
-        // 使用模拟数据后清理监听器
-        cleanupListeners();
-        resolve({ ecpm });
-      } else {
-        // 失败时也清理监听器
-        cleanupListeners();
-        reject(new Error('广告播放失败'));
-      }
-    }, 2000);
+  const showNoAdAvailable = (reject: (reason?: any) => void) => {
+    console.log('⚠️ 所有广告位都已尝试，暂无合适广告');
+    lastError.value = '暂无合适广告匹配，请稍后重试';
+    cleanupListeners();
+    reject(new Error('暂无合适广告匹配'));
   };
 
   return {
