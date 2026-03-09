@@ -64,14 +64,73 @@ export function useAdManager(config: AdConfig) {
   });
 
   const cleanupListeners = () => {
-    if (rewardVerifyListener) BaiduAd.removeListener('onRewardVerify', rewardVerifyListener);
-    if (adFailedListener) BaiduAd.removeListener('onAdFailed', adFailedListener);
-    if (videoDownloadSuccessListener) BaiduAd.removeListener('onVideoDownloadSuccess', videoDownloadSuccessListener);
-    if (videoDownloadFailedListener) BaiduAd.removeListener('onVideoDownloadFailed', videoDownloadFailedListener);
-    if (adLoadedListener) BaiduAd.removeListener('onAdLoaded', adLoadedListener);
-    if (adCloseListener) BaiduAd.removeListener('onAdClose', adCloseListener);
-    if (timeoutId) clearTimeout(timeoutId);
-    if (retryTimeoutId) clearTimeout(retryTimeoutId);
+    console.log('🔄 清理广告监听器...');
+    
+    if (rewardVerifyListener) {
+      try {
+        BaiduAd.removeListener('onRewardVerify', rewardVerifyListener);
+        rewardVerifyListener = null;
+      } catch (e) {
+        console.warn('移除 onRewardVerify 监听器失败:', e);
+      }
+    }
+    
+    if (adFailedListener) {
+      try {
+        BaiduAd.removeListener('onAdFailed', adFailedListener);
+        adFailedListener = null;
+      } catch (e) {
+        console.warn('移除 onAdFailed 监听器失败:', e);
+      }
+    }
+    
+    if (videoDownloadSuccessListener) {
+      try {
+        BaiduAd.removeListener('onVideoDownloadSuccess', videoDownloadSuccessListener);
+        videoDownloadSuccessListener = null;
+      } catch (e) {
+        console.warn('移除 onVideoDownloadSuccess 监听器失败:', e);
+      }
+    }
+    
+    if (videoDownloadFailedListener) {
+      try {
+        BaiduAd.removeListener('onVideoDownloadFailed', videoDownloadFailedListener);
+        videoDownloadFailedListener = null;
+      } catch (e) {
+        console.warn('移除 onVideoDownloadFailed 监听器失败:', e);
+      }
+    }
+    
+    if (adLoadedListener) {
+      try {
+        BaiduAd.removeListener('onAdLoaded', adLoadedListener);
+        adLoadedListener = null;
+      } catch (e) {
+        console.warn('移除 onAdLoaded 监听器失败:', e);
+      }
+    }
+    
+    if (adCloseListener) {
+      try {
+        BaiduAd.removeListener('onAdClose', adCloseListener);
+        adCloseListener = null;
+      } catch (e) {
+        console.warn('移除 onAdClose 监听器失败:', e);
+      }
+    }
+    
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+    
+    if (retryTimeoutId) {
+      clearTimeout(retryTimeoutId);
+      retryTimeoutId = null;
+    }
+    
+    console.log('✅ 监听器清理完成');
   };
 
   const isNativeApp = () => {
@@ -168,6 +227,14 @@ export function useAdManager(config: AdConfig) {
       // 清理之前的所有监听器和定时器
       cleanupListeners();
       
+      // 重置所有监听器变量
+      adLoadedListener = null;
+      rewardVerifyListener = null;
+      adFailedListener = null;
+      videoDownloadSuccessListener = null;
+      videoDownloadFailedListener = null;
+      adCloseListener = null;
+      
       isAdLoading.value = true;
       lastError.value = '';
       
@@ -178,6 +245,11 @@ export function useAdManager(config: AdConfig) {
       console.log('选择的广告位:', selectedSlotId);
       
       const onAdLoaded = () => {
+        // 检查广告是否已经成功，如果已经成功则不再处理
+        if (adSuccess) {
+          console.log('广告已成功，忽略重复的广告加载成功回调');
+          return;
+        }
         console.log('✅ 广告加载成功回调');
       };
 
@@ -198,10 +270,14 @@ export function useAdManager(config: AdConfig) {
         isAdLoading.value = false;
         isAdReady.value = false;
         adSuccess = true; // 标记广告成功
+        
+        // 立即清理所有监听器，避免重复回调
+        console.log('✅ 广告奖励回调，清理所有监听器');
         cleanupListeners();
         
         // 只有当 resolve 函数还存在时才调用，避免超时后重复处理
         if (resolve) {
+          console.log('✅ 广告成功，返回 ECPM:', ecpm);
           resolve({ ecpm });
         }
       };
@@ -263,6 +339,12 @@ export function useAdManager(config: AdConfig) {
       const onVideoDownloadSuccess = async () => {
         console.log('✅ 视频下载成功，准备显示广告');
         try {
+          // 检查广告是否已经成功，如果已经成功则不再处理
+          if (adSuccess) {
+            console.log('广告已成功，忽略重复的视频下载成功回调');
+            return;
+          }
+          
           isAdReady.value = true;
           isAdLoading.value = false;
           // 广告已成功加载，清除超时定时器
@@ -281,6 +363,13 @@ export function useAdManager(config: AdConfig) {
           const errorMsg = error?.message || error || '未知错误';
           console.error('❌ 显示广告失败:', errorMsg);
           lastError.value = '显示广告失败: ' + errorMsg;
+          
+          // 检查广告是否已经成功，如果已经成功则不再处理
+          if (adSuccess) {
+            console.log('广告已成功，忽略显示广告失败');
+            return;
+          }
+          
           if (timeoutId) clearTimeout(timeoutId);
           if (retryTimeoutId) clearTimeout(retryTimeoutId);
           isAdReady.value = false;
@@ -349,7 +438,11 @@ export function useAdManager(config: AdConfig) {
         if (retryTimeoutId) clearTimeout(retryTimeoutId);
         isAdReady.value = false;
         isAdLoading.value = false;
-        cleanupListeners();
+        // 只有当广告还未成功时才清理监听器，避免重复清理
+        if (!adSuccess) {
+          console.log('✅ 广告关闭，清理监听器');
+          cleanupListeners();
+        }
       };
       
       adLoadedListener = onAdLoaded;
@@ -357,7 +450,7 @@ export function useAdManager(config: AdConfig) {
       adFailedListener = onAdFailed;
       videoDownloadSuccessListener = onVideoDownloadSuccess;
       videoDownloadFailedListener = onVideoDownloadFailed;
-      let adCloseListener = onAdClose;
+      adCloseListener = onAdClose;
       
       BaiduAd.addListener('onAdLoaded', onAdLoaded);
       BaiduAd.addListener('onRewardVerify', onRewardVerify);
