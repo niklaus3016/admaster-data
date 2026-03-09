@@ -258,6 +258,12 @@ export function useAdManager(config: AdConfig) {
       } catch (error) {
         console.error('显示广告失败:', error);
         showNoAdAvailable(reject);
+      } finally {
+        // 确保最终状态重置
+        if (!adSuccess) {
+          isAdLoading.value = false;
+          isAdReady.value = false;
+        }
       }
     });
   };
@@ -304,6 +310,12 @@ export function useAdManager(config: AdConfig) {
       };
 
       const onRewardVerify = (result: any) => {
+        // 如果广告已经成功，直接返回，不处理重复的奖励回调
+        if (adSuccess) {
+          console.log('广告已成功，忽略重复的奖励回调');
+          return;
+        }
+        
         console.log('========== 广告奖励回调 ==========');
         console.log('完整结果对象:', result);
         console.log('rewardVerify:', result.rewardVerify);
@@ -417,16 +429,16 @@ export function useAdManager(config: AdConfig) {
             console.log('✅ 清除单层超时定时器');
           }
           
-          // 立即清理所有监听器，防止轮询继续添加新监听器
-          console.log('✅ 广告成功，立即清理所有监听器');
-          cleanupListeners();
-          
           isAdReady.value = true;
           isAdLoading.value = false;
           
           console.log('✅ 广告位加载成功，准备播放');
           await BaiduAd.showRewardVideoAd();
           console.log('✅ 广告显示命令已发送');
+          
+          // 立即清理所有监听器，防止轮询继续添加新监听器
+          console.log('✅ 广告成功，立即清理所有监听器');
+          cleanupListeners();
           
           // 重置 resolve 和 reject 函数，确保下次点击时是全新的状态
           currentResolve = null;
@@ -444,8 +456,10 @@ export function useAdManager(config: AdConfig) {
           
           if (timeoutId) clearTimeout(timeoutId);
           if (retryTimeoutId) clearTimeout(retryTimeoutId);
+          if (slotTimeoutId) clearTimeout(slotTimeoutId);
           isAdReady.value = false;
           isAdLoading.value = false;
+          cleanupListeners();
           showNoAdAvailable(reject);
         }
       };
@@ -501,11 +515,6 @@ export function useAdManager(config: AdConfig) {
       };
       
       const onAdClose = () => {
-        // 如果广告已经成功，直接返回，不处理关闭回调
-        if (adSuccess) {
-          return;
-        }
-        
         console.log('✅ 广告关闭回调');
         if (timeoutId) clearTimeout(timeoutId);
         if (retryTimeoutId) clearTimeout(retryTimeoutId);
@@ -631,6 +640,7 @@ export function useAdManager(config: AdConfig) {
     lastError.value = '暂无合适广告匹配，请稍后重试';
     isAdLoading.value = false;
     isAdReady.value = false;
+    adSuccess = false;
     // 重置 resolve 和 reject 函数，确保下次点击时是全新的状态
     currentResolve = null;
     currentReject = null;
