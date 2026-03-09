@@ -347,6 +347,9 @@ export function useAdManager(config: AdConfig) {
             return;
           }
           
+          // 标记广告已成功，防止其他回调触发
+          adSuccess = true;
+          
           isAdReady.value = true;
           isAdLoading.value = false;
           // 广告已成功加载，清除超时定时器
@@ -376,8 +379,7 @@ export function useAdManager(config: AdConfig) {
           if (retryTimeoutId) clearTimeout(retryTimeoutId);
           isAdReady.value = false;
           isAdLoading.value = false;
-          cleanupListeners();
-          simulateAdPlay(resolve, reject);
+          showNoAdAvailable(reject);
         }
       };
 
