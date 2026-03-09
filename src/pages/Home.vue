@@ -21,6 +21,7 @@ const userId = ref(localStorage.getItem('userId') || '');
 const currentMonthGold = ref(0);
 const lastMonthGold = ref(0);
 const todayCoins = ref(0);
+const todayRecordCount = ref(0);
 const todayTarget = ref(100000);
 const bonusGold = ref(0);  // 额外金币奖励
 const hasClaimedBonus = ref(false);  // 是否已领取额外金币
@@ -200,9 +201,9 @@ const loadWithdrawStatus = async () => {
 const adConfig = {
   appId: '2882303761520501672',
   slotIds: [
-    '19188426', // 竞价位
     '19188423', // 保价500
     '19188422', // 保价300
+    '19188426', // 竞价位
     '19188421', // 保价150
     '19183768', // 保价100
     '19188420', // 保价80
@@ -304,12 +305,12 @@ const loadGoldRecords = async () => {
       };
       
       const today = getBeijingDate(new Date());
-      todayCoins.value = response.data
-        .filter((log: any) => {
-          const logDate = getBeijingDate(new Date(log.createTime));
-          return logDate === today;
-        })
-        .reduce((sum: number, log: any) => sum + log.gold, 0);
+      const todayRecords = response.data.filter((log: any) => {
+        const logDate = getBeijingDate(new Date(log.createTime));
+        return logDate === today;
+      });
+      todayCoins.value = todayRecords.reduce((sum: number, log: any) => sum + log.gold, 0);
+      todayRecordCount.value = todayRecords.length;
     }
   } catch (err) {
     console.error('获取金币记录失败:', err);
@@ -602,7 +603,10 @@ const submitWithdraw = async () => {
                 {{ todayCoins >= todayTarget ? '已完成' : '未完成' }}
               </div>
               <p class="text-zinc-500 text-[9px] uppercase tracking-wider mb-1">今日金币收益</p>
-              <p class="text-lg font-light tracking-tight text-amber-400">{{ Math.floor(todayCoins).toLocaleString() }}</p>
+              <div class="flex items-center gap-2">
+                <p class="text-lg font-bold text-amber-400 tracking-tight">{{ Math.floor(todayCoins).toLocaleString() }}</p>
+                <span class="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">{{ todayRecordCount }}条</span>
+              </div>
             </div>
           </div>
       </div>
@@ -724,8 +728,8 @@ const submitWithdraw = async () => {
           </div>
         </transition>
         
-        <!-- 测试按钮 -->
-        <div class="flex gap-3 mt-4">
+        <!-- 测试按钮（已隐藏） -->
+        <!-- <div class="flex gap-3 mt-4">
           <button
             @click="showRewardAnimation(100)"
             class="px-6 py-3 bg-blue-500 text-white rounded-full text-sm font-medium hover:bg-blue-600 transition-colors"
@@ -738,7 +742,7 @@ const submitWithdraw = async () => {
           >
             测试语音播报
           </button>
-        </div>
+        </div> -->
       </div>
 
       <!-- History Section -->
