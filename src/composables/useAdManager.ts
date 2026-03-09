@@ -161,6 +161,11 @@ export function useAdManager(config: AdConfig) {
       retryTimeoutId = null;
     }
     
+    if (slotTimeoutId) {
+      clearTimeout(slotTimeoutId);
+      slotTimeoutId = null;
+    }
+    
     console.log('✅ 监听器清理完成');
   };
 
@@ -257,14 +262,11 @@ export function useAdManager(config: AdConfig) {
     });
   };
 
-  const showNativeAd = async (resolve: (value: { ecpm: number }) => void, reject: (reason?: any) => void) => {
+  const showNativeAd = async (resolve: (value: { ecpm: number }) => void, reject: (reason?: any) => void, isRetry: boolean = false) => {
     try {
-      // 只在第一次调用时重置状态，轮询时不重置
-      if (!currentResolve && !currentReject) {
-        // 第一次点击，重置广告状态
-        resetAdState();
-      } else {
-        // 轮询时，只重置 adSuccess 标志
+      // 如果是轮询重试，只重置 adSuccess 标志
+      // 如果是新点击，showRewardVideo 已经调用了 resetAdState()
+      if (isRetry) {
         adSuccess = false;
       }
       
@@ -393,7 +395,7 @@ export function useAdManager(config: AdConfig) {
         cleanupListeners();
         
         if (currentResolve && currentReject) {
-          showNativeAd(currentResolve, currentReject);
+          showNativeAd(currentResolve, currentReject, true);
         }
       };
 
@@ -452,7 +454,8 @@ export function useAdManager(config: AdConfig) {
         console.warn('⚠️ 视频下载失败');
         lastError.value = '视频下载失败，可能是广告填充不足';
         
-        if (timeoutId) clearTimeout(timeoutId);
+        // 清除单层超时定时器
+        if (slotTimeoutId) clearTimeout(slotTimeoutId);
         
         // 如果广告已经成功，不再重试
         if (adSuccess) {
@@ -466,39 +469,35 @@ export function useAdManager(config: AdConfig) {
           console.log(`所有${MAX_RETRY_ROUNDS}轮广告位都已尝试，暂无合适广告`);
           isAdReady.value = false;
           isAdLoading.value = false;
-          if (retryTimeoutId) clearTimeout(retryTimeoutId);
           showNoAdAvailable(reject);
           return;
         }
         
-        console.log('0.5秒后尝试下一个广告位...');
-        retryTimeoutId = setTimeout(() => {
-          // 再次检查广告是否已成功
-          if (adSuccess) {
-            console.log('广告已成功，取消重试');
-            return;
-          }
-          
-          // 再次检查是否已经尝试了所有轮次
-          if (triedSlots >= maxSlots) {
-            console.log(`所有${MAX_RETRY_ROUNDS}轮广告位都已尝试，暂无合适广告`);
-            isAdReady.value = false;
-            isAdLoading.value = false;
-            showNoAdAvailable(reject);
-            return;
-          }
-          
-          console.log('尝试下一个广告位...');
+        console.log('立即尝试下一个广告位...');
+        
+        // 再次检查广告是否已成功
+        if (adSuccess) {
+          console.log('广告已成功，取消重试');
+          return;
+        }
+        
+        // 再次检查是否已经尝试了所有轮次
+        if (triedSlots >= maxSlots) {
+          console.log(`所有${MAX_RETRY_ROUNDS}轮广告位都已尝试，暂无合适广告`);
           isAdReady.value = false;
           isAdLoading.value = false;
-          cleanupListeners();
-          
-          if (currentResolve && currentReject) {
-            showNativeAd(currentResolve, currentReject);
-          }
-        }, 500);
+          showNoAdAvailable(reject);
+          return;
+        }
         
-        return;
+        console.log('尝试下一个广告位...');
+        isAdReady.value = false;
+        isAdLoading.value = false;
+        cleanupListeners();
+        
+        if (currentResolve && currentReject) {
+          showNativeAd(currentResolve, currentReject, true);
+        }
       };
       
       const onAdClose = () => {
@@ -558,7 +557,7 @@ export function useAdManager(config: AdConfig) {
         
         // 继续轮询下一个广告位
         if (currentResolve && currentReject) {
-          showNativeAd(currentResolve, currentReject);
+          showNativeAd(currentResolve, currentReject, true);
         }
       }, SLOT_TIMEOUT);
       
