@@ -34,7 +34,7 @@ export function useAdManager(config: AdConfig) {
   let currentSlotIndex = 0; // 当前广告位索引
   let adSuccess = false; // 广告是否已成功
   let triedSlots = 0; // 已经尝试过的广告位数量
-  const MAX_RETRY_ROUNDS = 2; // 最大轮询轮数
+  const MAX_RETRY_ROUNDS = 5; // 最大轮询轮数
   
   // 获取下一个广告位（轮询模式）
   const getNextSlotId = (): string => {
