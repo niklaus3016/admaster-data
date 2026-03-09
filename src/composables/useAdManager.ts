@@ -229,8 +229,11 @@ export function useAdManager(config: AdConfig) {
 
   const showNativeAd = async (resolve: (value: { ecpm: number }) => void, reject: (reason?: any) => void) => {
     try {
-      // 重置广告状态，确保每次点击都是全新的状态
-      resetAdState();
+      // 只在第一次调用时重置状态，轮询时不重置
+      if (!currentResolve && !currentReject) {
+        // 第一次点击，重置广告状态
+        resetAdState();
+      }
       
       // 保存当前的 resolve 和 reject 函数
       currentResolve = resolve;
@@ -292,6 +295,10 @@ export function useAdManager(config: AdConfig) {
           console.log('✅ 广告成功，返回 ECPM:', ecpm);
           resolve({ ecpm });
         }
+        
+        // 重置 resolve 和 reject 函数，确保下次点击时是全新的状态
+        currentResolve = null;
+        currentReject = null;
       };
       
       const onAdFailed = (error: any) => {
@@ -574,6 +581,9 @@ export function useAdManager(config: AdConfig) {
     lastError.value = '暂无合适广告匹配，请稍后重试';
     isAdLoading.value = false;
     isAdReady.value = false;
+    // 重置 resolve 和 reject 函数，确保下次点击时是全新的状态
+    currentResolve = null;
+    currentReject = null;
     cleanupListeners();
     reject(new Error('暂无合适广告匹配'));
   };
