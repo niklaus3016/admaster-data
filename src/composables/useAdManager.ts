@@ -443,13 +443,20 @@ export function useAdManager(config: AdConfig) {
             return;
           }
           
+          // 广告已经加载成功，只是显示失败，不应该触发轮询
+          // 直接重置状态并返回错误
           if (timeoutId) clearTimeout(timeoutId);
           if (retryTimeoutId) clearTimeout(retryTimeoutId);
           if (slotTimeoutId) clearTimeout(slotTimeoutId);
           isAdReady.value = false;
           isAdLoading.value = false;
           cleanupListeners();
-          showNoAdAvailable(reject);
+          
+          // 直接调用 reject，不触发轮询
+          console.log('广告显示失败，直接返回错误');
+          currentResolve = null;
+          currentReject = null;
+          reject(new Error('显示广告失败: ' + errorMsg));
         }
       };
 
