@@ -307,6 +307,7 @@ export function useAdManager(config: AdConfig) {
           return;
         }
         console.log('✅ 广告加载成功回调');
+        // 广告加载成功，不立即标记为成功，等待视频下载完成
       };
 
       const onRewardVerify = (result: any) => {
@@ -417,8 +418,13 @@ export function useAdManager(config: AdConfig) {
           // 检查广告是否已经成功，如果已经成功则不再处理
           if (adSuccess) {
             console.log('广告已成功，忽略重复的视频下载成功回调');
+            // 清理监听器，避免内存泄漏
+            cleanupListeners();
             return;
           }
+          
+          // 标记广告已成功，防止其他回调触发
+          adSuccess = true;
           
           // 立即清理所有监听器和定时器，防止轮询继续
           if (slotTimeoutId) {
@@ -440,6 +446,8 @@ export function useAdManager(config: AdConfig) {
           // 检查广告是否已经成功，如果已经成功则不再处理
           if (adSuccess) {
             console.log('广告已成功，忽略显示广告失败');
+            // 清理监听器，避免内存泄漏
+            cleanupListeners();
             return;
           }
           
