@@ -198,6 +198,10 @@ export function useAdManager(config: AdConfig) {
       // 重置广告状态
       resetAdState();
       
+      // 确保 currentResolve 和 currentReject 也被重置
+      currentResolve = null;
+      currentReject = null;
+      
       console.log('========== 开始加载激励视频广告 ==========');
       console.log('所有广告位:', config.slotIds);
       console.log('是否原生环境:', isNativeApp());
@@ -387,6 +391,10 @@ export function useAdManager(config: AdConfig) {
           console.log('✅ 广告位加载成功，准备播放');
           await BaiduAd.showRewardVideoAd();
           console.log('✅ 广告显示命令已发送');
+          
+          // 重置 resolve 和 reject 函数，确保下次点击时是全新的状态
+          currentResolve = null;
+          currentReject = null;
         } catch (error) {
           const errorMsg = error?.message || error || '未知错误';
           console.error('❌ 显示广告失败:', errorMsg);
