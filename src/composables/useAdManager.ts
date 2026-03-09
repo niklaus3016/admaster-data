@@ -420,9 +420,6 @@ export function useAdManager(config: AdConfig) {
             return;
           }
           
-          // 标记广告已成功，防止其他回调触发
-          adSuccess = true;
-          
           // 立即清理所有监听器和定时器，防止轮询继续
           if (slotTimeoutId) {
             clearTimeout(slotTimeoutId);
@@ -435,14 +432,6 @@ export function useAdManager(config: AdConfig) {
           console.log('✅ 广告位加载成功，准备播放');
           await BaiduAd.showRewardVideoAd();
           console.log('✅ 广告显示命令已发送');
-          
-          // 立即清理所有监听器，防止轮询继续添加新监听器
-          console.log('✅ 广告成功，立即清理所有监听器');
-          cleanupListeners();
-          
-          // 重置 resolve 和 reject 函数，确保下次点击时是全新的状态
-          currentResolve = null;
-          currentReject = null;
         } catch (error) {
           const errorMsg = error?.message || error || '未知错误';
           console.error('❌ 显示广告失败:', errorMsg);
@@ -518,10 +507,18 @@ export function useAdManager(config: AdConfig) {
         console.log('✅ 广告关闭回调');
         if (timeoutId) clearTimeout(timeoutId);
         if (retryTimeoutId) clearTimeout(retryTimeoutId);
+        if (slotTimeoutId) clearTimeout(slotTimeoutId);
         isAdReady.value = false;
         isAdLoading.value = false;
         console.log('✅ 广告关闭，清理监听器');
         cleanupListeners();
+        
+        // 如果广告未成功，确保状态正确重置
+        if (!adSuccess) {
+          console.log('广告未成功，重置状态');
+          currentResolve = null;
+          currentReject = null;
+        }
       };
       
       adLoadedListener = onAdLoaded;
