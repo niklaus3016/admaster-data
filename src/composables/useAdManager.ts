@@ -32,6 +32,7 @@ export function useAdManager(config: AdConfig) {
   let currentResolve: any = null;
   let currentReject: any = null;
   let currentSlotIndex = 0; // 当前广告位索引
+  let adSuccess = false; // 广告是否已成功
   
   // 获取下一个广告位（轮询模式）
   const getNextSlotId = (): string => {
@@ -42,6 +43,12 @@ export function useAdManager(config: AdConfig) {
     // 递增索引，循环使用
     currentSlotIndex = (currentSlotIndex + 1) % config.slotIds.length;
     return slotId;
+  };
+  
+  // 重置广告状态
+  const resetAdState = () => {
+    adSuccess = false;
+    currentSlotIndex = 0;
   };
 
   onMounted(() => {
@@ -120,6 +127,9 @@ export function useAdManager(config: AdConfig) {
 
   const showRewardVideo = async (): Promise<{ ecpm: number }> => {
     return new Promise(async (resolve, reject) => {
+      // 重置广告状态
+      resetAdState();
+      
       console.log('========== 开始加载激励视频广告 ==========');
       console.log('所有广告位:', config.slotIds);
       console.log('是否原生环境:', isNativeApp());
@@ -183,6 +193,7 @@ export function useAdManager(config: AdConfig) {
         const ecpm = result.ecpm || 0;
         isAdLoading.value = false;
         isAdReady.value = false;
+        adSuccess = true; // 标记广告成功
         cleanupListeners();
         
         // 只有当 resolve 函数还存在时才调用，避免超时后重复处理
@@ -198,9 +209,21 @@ export function useAdManager(config: AdConfig) {
         
         if (timeoutId) clearTimeout(timeoutId);
         
-        console.log('3秒后自动重试加载广告...');
+        // 如果广告已经成功，不再重试
+        if (adSuccess) {
+          console.log('广告已成功，不再重试');
+          return;
+        }
+        
+        console.log('立即尝试下一个广告位...');
         retryTimeoutId = setTimeout(() => {
-          console.log('重新加载广告...');
+          // 再次检查广告是否已成功
+          if (adSuccess) {
+            console.log('广告已成功，取消重试');
+            return;
+          }
+          
+          console.log('尝试下一个广告位...');
           isAdReady.value = false;
           isAdLoading.value = false;
           cleanupListeners();
@@ -208,7 +231,7 @@ export function useAdManager(config: AdConfig) {
           if (currentResolve && currentReject) {
             showNativeAd(currentResolve, currentReject);
           }
-        }, 3000);
+        }, 0);
         
         return;
       };
@@ -248,9 +271,21 @@ export function useAdManager(config: AdConfig) {
         
         if (timeoutId) clearTimeout(timeoutId);
         
-        console.log('3秒后自动重试加载广告...');
+        // 如果广告已经成功，不再重试
+        if (adSuccess) {
+          console.log('广告已成功，不再重试');
+          return;
+        }
+        
+        console.log('立即尝试下一个广告位...');
         retryTimeoutId = setTimeout(() => {
-          console.log('重新加载广告...');
+          // 再次检查广告是否已成功
+          if (adSuccess) {
+            console.log('广告已成功，取消重试');
+            return;
+          }
+          
+          console.log('尝试下一个广告位...');
           isAdReady.value = false;
           isAdLoading.value = false;
           cleanupListeners();
@@ -258,7 +293,7 @@ export function useAdManager(config: AdConfig) {
           if (currentResolve && currentReject) {
             showNativeAd(currentResolve, currentReject);
           }
-        }, 3000);
+        }, 0);
         
         return;
       };
@@ -291,6 +326,12 @@ export function useAdManager(config: AdConfig) {
       console.log('✅ 广告加载请求已发送，等待回调...');
       
       timeoutId = setTimeout(() => {
+        // 如果广告已经成功，不再使用模拟数据
+        if (adSuccess) {
+          console.log('广告已成功，取消超时处理');
+          return;
+        }
+        
         console.warn('⏱️ 广告加载超时（15秒），使用模拟数据');
         lastError.value = '广告加载超时，可能是网络问题或广告填充不足';
         
