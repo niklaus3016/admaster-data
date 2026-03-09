@@ -563,6 +563,8 @@ export function useAdManager(config: AdConfig) {
   const showNoAdAvailable = (reject: (reason?: any) => void) => {
     console.log('⚠️ 所有广告位都已尝试，暂无合适广告');
     lastError.value = '暂无合适广告匹配，请稍后重试';
+    isAdLoading.value = false;
+    isAdReady.value = false;
     cleanupListeners();
     reject(new Error('暂无合适广告匹配'));
   };
