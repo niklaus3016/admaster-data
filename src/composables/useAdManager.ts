@@ -56,6 +56,8 @@ export function useAdManager(config: AdConfig) {
     adSuccess = false;
     currentSlotIndex = 0;
     triedSlots = 0;
+    isAdLoading.value = false;
+    isAdReady.value = false;
   };
 
   onMounted(() => {
