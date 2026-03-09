@@ -214,6 +214,11 @@ export function useAdManager(config: AdConfig) {
         try {
           isAdReady.value = true;
           isAdLoading.value = false;
+          // 广告已成功加载，清除超时定时器
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+            console.log('✅ 广告已成功加载，清除超时定时器');
+          }
           await BaiduAd.showRewardVideoAd();
           console.log('✅ 广告显示命令已发送');
         } catch (error) {
