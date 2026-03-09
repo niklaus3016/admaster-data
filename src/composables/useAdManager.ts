@@ -352,9 +352,7 @@ export function useAdManager(config: AdConfig) {
           // 标记广告已成功，防止其他回调触发
           adSuccess = true;
           
-          isAdReady.value = true;
-          isAdLoading.value = false;
-          // 广告已成功加载，清除超时定时器
+          // 立即清理所有监听器和定时器，防止轮询继续
           if (timeoutId) {
             clearTimeout(timeoutId);
             console.log('✅ 广告已成功加载，清除超时定时器');
@@ -363,6 +361,14 @@ export function useAdManager(config: AdConfig) {
             clearTimeout(retryTimeoutId);
             console.log('✅ 清除重试定时器');
           }
+          
+          // 立即清理所有监听器，防止轮询继续添加新监听器
+          console.log('✅ 广告成功，立即清理所有监听器');
+          cleanupListeners();
+          
+          isAdReady.value = true;
+          isAdLoading.value = false;
+          
           console.log('✅ 广告位加载成功，准备播放');
           await BaiduAd.showRewardVideoAd();
           console.log('✅ 广告显示命令已发送');
