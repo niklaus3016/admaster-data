@@ -311,12 +311,6 @@ export function useAdManager(config: AdConfig) {
       };
 
       const onRewardVerify = (result: any) => {
-        // 如果广告已经成功，直接返回，不处理重复的奖励回调
-        if (adSuccess) {
-          console.log('广告已成功，忽略重复的奖励回调');
-          return;
-        }
-        
         console.log('========== 广告奖励回调 ==========');
         console.log('完整结果对象:', result);
         console.log('rewardVerify:', result.rewardVerify);
@@ -349,11 +343,9 @@ export function useAdManager(config: AdConfig) {
         console.log('✅ 广告奖励回调，清理所有监听器');
         cleanupListeners();
         
-        // 只有当 resolve 函数还存在时才调用，避免超时后重复处理
-        if (resolve) {
-          console.log('✅ 广告成功，返回 ECPM:', ecpm);
-          resolve({ ecpm });
-        }
+        // 调用 resolve 函数给用户发金币
+        console.log('✅ 广告成功，返回 ECPM:', ecpm);
+        resolve({ ecpm });
         
         // 重置 resolve 和 reject 函数，确保下次点击时是全新的状态
         currentResolve = null;
@@ -528,12 +520,10 @@ export function useAdManager(config: AdConfig) {
         console.log('✅ 广告关闭，清理监听器');
         cleanupListeners();
         
-        // 如果广告未成功，确保状态正确重置
-        if (!adSuccess) {
-          console.log('广告未成功，重置状态');
-          currentResolve = null;
-          currentReject = null;
-        }
+        // 无论广告是否成功，都重置状态
+        console.log('广告关闭，重置状态');
+        currentResolve = null;
+        currentReject = null;
       };
       
       adLoadedListener = onAdLoaded;
