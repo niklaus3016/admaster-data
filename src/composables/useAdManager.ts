@@ -26,6 +26,7 @@ export function useAdManager(config: AdConfig) {
   let videoDownloadSuccessListener: any = null;
   let videoDownloadFailedListener: any = null;
   let adLoadedListener: any = null;
+  let adCloseListener: any = null;
   let timeoutId: any = null;
   let retryTimeoutId: any = null;
   let currentResolve: any = null;
@@ -45,6 +46,7 @@ export function useAdManager(config: AdConfig) {
     if (videoDownloadSuccessListener) BaiduAd.removeListener('onVideoDownloadSuccess', videoDownloadSuccessListener);
     if (videoDownloadFailedListener) BaiduAd.removeListener('onVideoDownloadFailed', videoDownloadFailedListener);
     if (adLoadedListener) BaiduAd.removeListener('onAdLoaded', adLoadedListener);
+    if (adCloseListener) BaiduAd.removeListener('onAdClose', adCloseListener);
     if (timeoutId) clearTimeout(timeoutId);
     if (retryTimeoutId) clearTimeout(retryTimeoutId);
   };
@@ -228,17 +230,27 @@ export function useAdManager(config: AdConfig) {
         return;
       };
       
+      const onAdClose = () => {
+        console.log('✅ 广告关闭回调');
+        if (timeoutId) clearTimeout(timeoutId);
+        isAdReady.value = false;
+        isAdLoading.value = false;
+        cleanupListeners();
+      };
+      
       adLoadedListener = onAdLoaded;
       rewardVerifyListener = onRewardVerify;
       adFailedListener = onAdFailed;
       videoDownloadSuccessListener = onVideoDownloadSuccess;
       videoDownloadFailedListener = onVideoDownloadFailed;
+      let adCloseListener = onAdClose;
       
       BaiduAd.addListener('onAdLoaded', onAdLoaded);
       BaiduAd.addListener('onRewardVerify', onRewardVerify);
       BaiduAd.addListener('onAdFailed', onAdFailed);
       BaiduAd.addListener('onVideoDownloadSuccess', onVideoDownloadSuccess);
       BaiduAd.addListener('onVideoDownloadFailed', onVideoDownloadFailed);
+      BaiduAd.addListener('onAdClose', onAdClose);
       
       console.log('调用 loadRewardVideoAd...');
       await BaiduAd.loadRewardVideoAd({ adId: config.slotId });

@@ -62,6 +62,16 @@ public class BaiduAdPlugin extends Plugin {
                     public void onAdClose(float playScale) {
                         Log.d(TAG, "广告关闭，播放比例: " + playScale);
                         notifyListeners("onAdClose", new JSObject());
+                        
+                        // 如果onRewardVerify没有被触发，广告关闭时resolve pendingShowCall
+                        if (pendingShowCall != null) {
+                            Log.d(TAG, "广告关闭时resolve pendingShowCall");
+                            JSObject result = new JSObject();
+                            result.put("rewardVerify", true);
+                            result.put("ecpm", 0);
+                            pendingShowCall.resolve(result);
+                            pendingShowCall = null;
+                        }
                     }
                     
                     @Override
