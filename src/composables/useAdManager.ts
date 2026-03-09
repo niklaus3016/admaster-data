@@ -229,6 +229,9 @@ export function useAdManager(config: AdConfig) {
 
   const showNativeAd = async (resolve: (value: { ecpm: number }) => void, reject: (reason?: any) => void) => {
     try {
+      // 重置广告状态，确保每次点击都是全新的状态
+      resetAdState();
+      
       // 保存当前的 resolve 和 reject 函数
       currentResolve = resolve;
       currentReject = reject;
