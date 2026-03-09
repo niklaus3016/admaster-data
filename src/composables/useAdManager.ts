@@ -353,14 +353,11 @@ export function useAdManager(config: AdConfig) {
         console.log('尝试下一个广告位...');
         isAdReady.value = false;
         isAdLoading.value = false;
-          cleanupListeners();
-          
-          if (currentResolve && currentReject) {
-            showNativeAd(currentResolve, currentReject);
-          }
-        }, 500);
+        cleanupListeners();
         
-        return;
+        if (currentResolve && currentReject) {
+          showNativeAd(currentResolve, currentReject);
+        }
       };
 
       const onVideoDownloadSuccess = async () => {
