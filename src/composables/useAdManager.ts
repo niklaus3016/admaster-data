@@ -10,7 +10,7 @@ declare global {
 
 interface AdConfig {
   appId: string;
-  slotId: string;
+  slotIds: string[];
 }
 
 const isLoaded = ref(false);
@@ -31,6 +31,18 @@ export function useAdManager(config: AdConfig) {
   let retryTimeoutId: any = null;
   let currentResolve: any = null;
   let currentReject: any = null;
+  let currentSlotIndex = 0; // 当前广告位索引
+  
+  // 获取下一个广告位（轮询模式）
+  const getNextSlotId = (): string => {
+    if (!config.slotIds || config.slotIds.length === 0) {
+      throw new Error('广告位配置为空');
+    }
+    const slotId = config.slotIds[currentSlotIndex];
+    // 递增索引，循环使用
+    currentSlotIndex = (currentSlotIndex + 1) % config.slotIds.length;
+    return slotId;
+  };
 
   onMounted(() => {
     initializeAdSdk();
@@ -109,7 +121,7 @@ export function useAdManager(config: AdConfig) {
   const showRewardVideo = async (): Promise<{ ecpm: number }> => {
     return new Promise(async (resolve, reject) => {
       console.log('========== 开始加载激励视频广告 ==========');
-      console.log('广告位 ID:', config.slotId);
+      console.log('所有广告位:', config.slotIds);
       console.log('是否原生环境:', isNativeApp());
       console.log('广告是否已准备:', isAdReady.value);
       
@@ -144,6 +156,10 @@ export function useAdManager(config: AdConfig) {
       
       console.log('开始加载原生广告...');
       
+      // 获取下一个广告位
+      const selectedSlotId = getNextSlotId();
+      console.log('选择的广告位:', selectedSlotId);
+      
       const onAdLoaded = () => {
         console.log('✅ 广告加载成功回调');
       };
@@ -165,7 +181,10 @@ export function useAdManager(config: AdConfig) {
         isAdReady.value = false;
         cleanupListeners();
         
-        resolve({ ecpm });
+        // 只有当 resolve 函数还存在时才调用，避免超时后重复处理
+        if (resolve) {
+          resolve({ ecpm });
+        }
       };
       
       const onAdFailed = (error: any) => {
@@ -253,7 +272,7 @@ export function useAdManager(config: AdConfig) {
       BaiduAd.addListener('onAdClose', onAdClose);
       
       console.log('调用 loadRewardVideoAd...');
-      await BaiduAd.loadRewardVideoAd({ adId: config.slotId });
+      await BaiduAd.loadRewardVideoAd({ adId: selectedSlotId });
       console.log('✅ 广告加载请求已发送，等待回调...');
       
       timeoutId = setTimeout(() => {
@@ -263,7 +282,8 @@ export function useAdManager(config: AdConfig) {
         if (retryTimeoutId) clearTimeout(retryTimeoutId);
         isAdReady.value = false;
         isAdLoading.value = false;
-        cleanupListeners();
+        // 不要清理监听器，因为广告可能正在播放
+        // cleanupListeners();
         simulateAdPlay(resolve, reject);
       }, 15000);
       
@@ -284,8 +304,12 @@ export function useAdManager(config: AdConfig) {
     isAdLoading.value = true;
 
     try {
+      // 获取下一个广告位
+      const selectedSlotId = getNextSlotId();
+      console.log('选择的H5广告位:', selectedSlotId);
+      
       const rewardVideoAd = window.baidu.mobads.RewardVideoAd({
-        slotId: config.slotId,
+        slotId: selectedSlotId,
         appId: config.appId,
         onAdLoaded: () => {
           console.log('H5 广告加载成功');
@@ -336,8 +360,12 @@ export function useAdManager(config: AdConfig) {
       if (success) {
         const ecpm = Math.floor(Math.random() * 500) + 100;
         console.log('模拟广告完成，ECPM:', ecpm);
+        // 使用模拟数据后清理监听器
+        cleanupListeners();
         resolve({ ecpm });
       } else {
+        // 失败时也清理监听器
+        cleanupListeners();
         reject(new Error('广告播放失败'));
       }
     }, 2000);

@@ -199,7 +199,14 @@ const loadWithdrawStatus = async () => {
 
 const adConfig = {
   appId: '2882303761520501672',
-  slotId: '19181348',
+  slotIds: [
+    '19188426', // #bidding模式
+    '19188423', // #保价500
+    '19188422', // #保价300
+    '19188421', // #保价150
+    '19188420', // #保价80
+    '19188418'  // #保价0
+  ], // 按优先级从高到低排列
 };
 
 const { showRewardVideo } = useAdManager(adConfig);
