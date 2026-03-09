@@ -33,6 +33,7 @@ export function useAdManager(config: AdConfig) {
   let currentReject: any = null;
   let currentSlotIndex = 0; // 当前广告位索引
   let adSuccess = false; // 广告是否已成功
+  let triedSlots = 0; // 已经尝试过的广告位数量
   
   // 获取下一个广告位（轮询模式）
   const getNextSlotId = (): string => {
@@ -40,8 +41,10 @@ export function useAdManager(config: AdConfig) {
       throw new Error('广告位配置为空');
     }
     const slotId = config.slotIds[currentSlotIndex];
+    console.log(`当前轮询广告位: ${slotId} (${currentSlotIndex + 1}/${config.slotIds.length})`);
     // 递增索引，循环使用
     currentSlotIndex = (currentSlotIndex + 1) % config.slotIds.length;
+    triedSlots++;
     return slotId;
   };
   
@@ -49,6 +52,7 @@ export function useAdManager(config: AdConfig) {
   const resetAdState = () => {
     adSuccess = false;
     currentSlotIndex = 0;
+    triedSlots = 0;
   };
 
   onMounted(() => {
@@ -215,11 +219,31 @@ export function useAdManager(config: AdConfig) {
           return;
         }
         
+        // 检查是否已经尝试了所有广告位
+        if (triedSlots >= config.slotIds.length) {
+          console.log('所有广告位都已尝试，使用模拟数据');
+          isAdReady.value = false;
+          isAdLoading.value = false;
+          cleanupListeners();
+          simulateAdPlay(resolve, reject);
+          return;
+        }
+        
         console.log('立即尝试下一个广告位...');
         retryTimeoutId = setTimeout(() => {
           // 再次检查广告是否已成功
           if (adSuccess) {
             console.log('广告已成功，取消重试');
+            return;
+          }
+          
+          // 再次检查是否已经尝试了所有广告位
+          if (triedSlots >= config.slotIds.length) {
+            console.log('所有广告位都已尝试，使用模拟数据');
+            isAdReady.value = false;
+            isAdLoading.value = false;
+            cleanupListeners();
+            simulateAdPlay(resolve, reject);
             return;
           }
           
@@ -250,6 +274,7 @@ export function useAdManager(config: AdConfig) {
             clearTimeout(retryTimeoutId);
             console.log('✅ 清除重试定时器');
           }
+          console.log('✅ 广告位加载成功，准备播放');
           await BaiduAd.showRewardVideoAd();
           console.log('✅ 广告显示命令已发送');
         } catch (error) {
@@ -277,11 +302,31 @@ export function useAdManager(config: AdConfig) {
           return;
         }
         
+        // 检查是否已经尝试了所有广告位
+        if (triedSlots >= config.slotIds.length) {
+          console.log('所有广告位都已尝试，使用模拟数据');
+          isAdReady.value = false;
+          isAdLoading.value = false;
+          cleanupListeners();
+          simulateAdPlay(resolve, reject);
+          return;
+        }
+        
         console.log('立即尝试下一个广告位...');
         retryTimeoutId = setTimeout(() => {
           // 再次检查广告是否已成功
           if (adSuccess) {
             console.log('广告已成功，取消重试');
+            return;
+          }
+          
+          // 再次检查是否已经尝试了所有广告位
+          if (triedSlots >= config.slotIds.length) {
+            console.log('所有广告位都已尝试，使用模拟数据');
+            isAdReady.value = false;
+            isAdLoading.value = false;
+            cleanupListeners();
+            simulateAdPlay(resolve, reject);
             return;
           }
           
@@ -332,14 +377,19 @@ export function useAdManager(config: AdConfig) {
           return;
         }
         
-        console.warn('⏱️ 广告加载超时（15秒），使用模拟数据');
-        lastError.value = '广告加载超时，可能是网络问题或广告填充不足';
-        
-        if (retryTimeoutId) clearTimeout(retryTimeoutId);
-        isAdReady.value = false;
-        isAdLoading.value = false;
-        cleanupListeners();
-        simulateAdPlay(resolve, reject);
+        // 检查是否已经尝试了所有广告位
+        if (triedSlots >= config.slotIds.length) {
+          console.warn('⏱️ 广告加载超时（15秒），所有广告位都已尝试，使用模拟数据');
+          lastError.value = '广告加载超时，可能是网络问题或广告填充不足';
+          
+          if (retryTimeoutId) clearTimeout(retryTimeoutId);
+          isAdReady.value = false;
+          isAdLoading.value = false;
+          cleanupListeners();
+          simulateAdPlay(resolve, reject);
+        } else {
+          console.log('广告加载超时（15秒），但还有广告位未尝试，继续轮询');
+        }
       }, 15000);
       
     } catch (error) {
