@@ -525,20 +525,21 @@ const submitWithdraw = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#0a0a0b] text-white pb-12 relative overflow-hidden">
+  <div class="min-h-screen bg-[#020205] text-white pb-12 relative overflow-hidden">
     <!-- 背景装饰光晕 -->
     <div class="absolute top-[-10%] right-[-10%] w-[60%] h-[60%] bg-purple-600/10 blur-[120px] rounded-full pointer-events-none" />
     <div class="absolute top-[20%] left-[-10%] w-[50%] h-[50%] bg-blue-600/10 blur-[120px] rounded-full pointer-events-none" />
     <div class="absolute bottom-[-10%] left-[20%] w-[40%] h-[40%] bg-emerald-500/10 blur-[120px] rounded-full pointer-events-none" />
+    <div class="absolute top-[30%] right-[20%] w-[40%] h-[40%] bg-emerald-500/10 blur-[120px] rounded-full pointer-events-none" />
 
     <!-- Header -->
     <header class="bg-black/40 backdrop-blur-xl border-b border-white/5 pt-8 pb-5 px-6 flex justify-between items-center sticky top-0 z-20">
       <div class="flex items-center gap-3">
-        <div class="w-8 h-8 bg-linear-to-br from-emerald-400 to-blue-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+        <div class="w-8 h-8 bg-gradient-to-br from-emerald-400 to-blue-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
           <TrendingUp class="text-white w-5 h-5" />
         </div>
         <div class="flex flex-col">
-          <span class="font-bold text-sm tracking-widest uppercase bg-linear-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent">广告变现系统</span>
+          <span class="font-bold text-sm tracking-widest uppercase bg-gradient-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent">广告变现系统</span>
           <span class="text-[10px] text-zinc-400 font-bold tracking-wider">员工ID：{{ empId }} · 已登录{{ loginDays }}天</span>
         </div>
       </div>
@@ -584,9 +585,9 @@ const submitWithdraw = async () => {
           
           <!-- 金币统计数据 -->
           <div v-else class="grid grid-cols-2 gap-3">
-            <div class="group relative bg-white/3 border border-white/5 p-4 rounded-[1.25rem] backdrop-blur-md overflow-hidden transition-all hover:bg-white/5">
+            <div class="group relative glass-card rounded-[1.25rem] overflow-hidden transition-all hover:bg-white/5">
               <div class="absolute top-0 right-0 w-16 h-16 bg-blue-500/10 blur-2xl rounded-full -mr-8 -mt-8" />
-              <div class="flex justify-between items-start">
+              <div class="p-4 flex justify-between items-start">
                 <div>
                   <p class="text-zinc-500 text-[9px] uppercase tracking-wider mb-1">上月累计金币</p>
                   <p class="text-lg font-light tracking-tight text-blue-400">{{ Math.floor(lastMonthGold).toLocaleString() }}</p>
@@ -613,28 +614,34 @@ const submitWithdraw = async () => {
                 </div>
               </div>
             </div>
-            <div class="group relative bg-linear-to-br from-emerald-500 to-teal-700 p-4 rounded-[1.25rem] shadow-xl shadow-emerald-500/10 overflow-hidden transition-all hover:scale-[1.02]">
+            <div class="group relative bg-gradient-to-br from-emerald-500 to-teal-700 rounded-[1.25rem] shadow-xl shadow-emerald-500/10 overflow-hidden transition-all hover:scale-[1.02]">
               <div class="absolute top-0 right-0 w-16 h-16 bg-white/10 blur-2xl rounded-full -mr-8 -mt-8" />
-              <p class="text-emerald-100/60 text-[9px] uppercase tracking-wider mb-1">本月累计金币</p>
-              <p class="text-lg font-bold text-white tracking-tight">{{ Math.floor(currentMonthGold).toLocaleString() }}</p>
-            </div>
-            <div class="group relative bg-white/3 border border-white/5 p-4 rounded-[1.25rem] backdrop-blur-md overflow-hidden transition-all hover:bg-white/5">
-              <div class="absolute top-0 right-0 w-16 h-16 bg-purple-500/10 blur-2xl rounded-full -mr-8 -mt-8" />
-              <p class="text-zinc-500 text-[9px] uppercase tracking-wider mb-1">今日目标任务</p>
-              <p class="text-lg font-light tracking-tight text-purple-400">{{ todayTarget.toLocaleString() }}</p>
-            </div>
-            <div class="group relative bg-white/3 border border-white/5 p-4 rounded-[1.25rem] backdrop-blur-md overflow-hidden transition-all hover:bg-white/5">
-              <div class="absolute top-0 right-0 w-16 h-16 bg-amber-500/10 blur-2xl rounded-full -mr-8 -mt-8" />
-              <div 
-                class="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[8px] font-bold tracking-widest border"
-                :class="todayCoins >= todayTarget ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'"
-              >
-                {{ todayCoins >= todayTarget ? '已完成' : '未完成' }}
+              <div class="p-4">
+                <p class="text-emerald-100/60 text-[9px] uppercase tracking-wider mb-1">本月累计金币</p>
+                <p class="text-lg font-bold text-white tracking-tight">{{ Math.floor(currentMonthGold).toLocaleString() }}</p>
               </div>
-              <p class="text-zinc-500 text-[9px] uppercase tracking-wider mb-1">今日金币收益</p>
-              <div class="flex items-center gap-2">
-                <p class="text-lg font-bold text-amber-400 tracking-tight">{{ Math.floor(todayCoins).toLocaleString() }}</p>
-                <span class="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">{{ todayRecordCount }}条</span>
+            </div>
+            <div class="group relative glass-card rounded-[1.25rem] overflow-hidden transition-all hover:bg-white/5">
+              <div class="absolute top-0 right-0 w-16 h-16 bg-purple-500/10 blur-2xl rounded-full -mr-8 -mt-8" />
+              <div class="p-4">
+                <p class="text-zinc-500 text-[9px] uppercase tracking-wider mb-1">今日目标任务</p>
+                <p class="text-lg font-light tracking-tight text-purple-400">{{ todayTarget.toLocaleString() }}</p>
+              </div>
+            </div>
+            <div class="group relative glass-card rounded-[1.25rem] overflow-hidden transition-all hover:bg-white/5">
+              <div class="absolute top-0 right-0 w-16 h-16 bg-amber-500/10 blur-2xl rounded-full -mr-8 -mt-8" />
+              <div class="p-4">
+                <div 
+                  class="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[8px] font-bold tracking-widest border"
+                  :class="todayCoins >= todayTarget ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'"
+                >
+                  {{ todayCoins >= todayTarget ? '已完成' : '未完成' }}
+                </div>
+                <p class="text-zinc-500 text-[9px] uppercase tracking-wider mb-1">今日金币收益</p>
+                <div class="flex items-center gap-2">
+                  <p class="text-lg font-bold text-amber-400 tracking-tight">{{ Math.floor(todayCoins).toLocaleString() }}</p>
+                  <span class="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">{{ todayRecordCount }}条</span>
+                </div>
               </div>
             </div>
           </div>
@@ -728,7 +735,7 @@ const submitWithdraw = async () => {
             :class="[
               isWatching 
                 ? 'bg-zinc-900/80 border-zinc-800 text-zinc-600 cursor-not-allowed' 
-                : 'bg-linear-to-br from-zinc-800 to-black border-white/10 text-white shadow-[0_20px_50px_rgba(0,0,0,0.5)] hover:border-emerald-500/50'
+                : 'bg-black border-white/10 text-white shadow-[0_20px_50px_rgba(0,0,0,0.5)] hover:border-emerald-500/50'
             ]"
           >
             <div :class="{ 'animate-spin': isWatching }">
@@ -788,8 +795,8 @@ const submitWithdraw = async () => {
             查看全部
           </button>
         </div>
-        <div class="bg-white/2 rounded-4xl border border-white/5 backdrop-blur-md overflow-hidden">
-          <div class="divide-y divide-white/3 max-h-[250px] overflow-y-auto no-scrollbar">
+        <div class="glass-card rounded-4xl overflow-hidden">
+          <div class="divide-y divide-white/5 max-h-[250px] overflow-y-auto no-scrollbar">
             <!-- 加载状态 -->
             <div v-if="isLoadingRecords" class="py-16 text-center">
               <div class="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 animate-spin">

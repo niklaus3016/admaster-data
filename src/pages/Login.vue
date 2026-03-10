@@ -57,14 +57,14 @@ const onInput = (e: Event) => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#0a0a0b] flex items-center justify-center p-6 relative overflow-hidden">
+  <div class="min-h-screen bg-[#020205] flex items-center justify-center p-6 relative overflow-hidden">
     <!-- 背景光晕 -->
     <div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-500/10 blur-[120px] rounded-full" />
     <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full" />
 
     <div class="w-full max-w-[400px] z-10">
       <!-- 玻璃拟态卡片 -->
-      <div class="bg-white/3 backdrop-blur-2xl rounded-[32px] p-10 border border-white/8 shadow-2xl">
+      <div class="glass-card rounded-[32px] p-10 shadow-2xl">
         <div class="text-center mb-10">
           <h1 class="text-3xl font-bold tracking-tight mb-1 bg-linear-to-r from-emerald-400 to-emerald-600 bg-clip-text text-transparent">
             广告变现系统
