@@ -534,8 +534,8 @@ const submitWithdraw = async () => {
 
     <!-- Header -->
     <header class="bg-black/40 backdrop-blur-xl border-b border-white/5 pt-8 pb-5 px-6 flex justify-between items-center sticky top-0 z-20">
-      <div class="flex items-center gap-3">
-        <div class="w-8 h-8 bg-gradient-to-br from-emerald-400 to-blue-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+      <div class="flex items-center">
+        <div class="w-8 h-8 bg-gradient-to-br from-emerald-400 to-blue-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20 mr-3">
           <TrendingUp class="text-white w-5 h-5" />
         </div>
         <div class="flex flex-col">
@@ -553,8 +553,8 @@ const submitWithdraw = async () => {
       <div class="space-y-3">
         <div class="flex justify-between items-end px-2">
           <h2 class="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-medium">收益看板</h2>
-          <div class="flex items-center gap-1.5">
-            <div class="w-1 h-1 bg-emerald-500 rounded-full animate-pulse" />
+          <div class="flex items-center">
+            <div class="w-1 h-1 bg-emerald-500 rounded-full animate-pulse mr-1.5" />
             <span class="text-[10px] text-emerald-500 font-mono">实时同步</span>
           </div>
         </div>
@@ -564,7 +564,7 @@ const submitWithdraw = async () => {
           </div>
           
           <!-- 加载状态 -->
-          <div v-if="isLoading" class="grid grid-cols-2 gap-3">
+          <div v-if="isLoading" class="grid grid-cols-2 space-x-3">
             <div class="bg-white/3 border border-white/5 p-4 rounded-[1.25rem] backdrop-blur-md animate-pulse">
               <div class="h-3 bg-white/10 rounded w-1/2 mb-2"></div>
               <div class="h-6 bg-white/10 rounded w-3/4"></div>
@@ -584,7 +584,7 @@ const submitWithdraw = async () => {
           </div>
           
           <!-- 金币统计数据 -->
-          <div v-else class="grid grid-cols-2 gap-3">
+          <div v-else class="grid grid-cols-2 space-x-3">
             <div class="group relative glass-card rounded-[1.25rem] overflow-hidden transition-all hover:bg-white/5">
               <div class="absolute top-0 right-0 w-16 h-16 bg-blue-500/10 blur-2xl rounded-full -mr-8 -mt-8" />
               <div class="p-4 flex justify-between items-start">
@@ -592,23 +592,23 @@ const submitWithdraw = async () => {
                   <p class="text-zinc-500 text-[9px] uppercase tracking-wider mb-1">上月累计金币</p>
                   <p class="text-lg font-light tracking-tight text-blue-400">{{ Math.floor(lastMonthGold).toLocaleString() }}</p>
                 </div>
-                <div class="flex flex-col gap-1.5">
+                <div class="flex flex-col">
                   <button 
                     @click="withdrawEnabled ? openWithdrawModal() : null"
                     :disabled="!withdrawEnabled"
-                    class="px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all border flex items-center justify-center gap-1"
+                    class="px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all border flex items-center justify-center mb-1.5"
                     :class="withdrawEnabled 
                       ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border-blue-500/30 cursor-pointer' 
                       : 'bg-zinc-500/10 text-zinc-600 border-zinc-500/20 cursor-not-allowed'"
                   >
-                    <Wallet class="w-3 h-3" />
+                    <Wallet class="w-3 h-3 mr-1" />
                     提现
                   </button>
                   <button 
                     @click="openWithdrawRecordsModal"
-                    class="px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all border flex items-center justify-center gap-1 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border-blue-500/30 cursor-pointer"
+                    class="px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all border flex items-center justify-center bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border-blue-500/30 cursor-pointer"
                   >
-                    <CreditCard class="w-3 h-3" />
+                    <CreditCard class="w-3 h-3 mr-1" />
                     记录
                   </button>
                 </div>
@@ -638,8 +638,8 @@ const submitWithdraw = async () => {
                   {{ todayCoins >= todayTarget ? '已完成' : '未完成' }}
                 </div>
                 <p class="text-zinc-500 text-[9px] uppercase tracking-wider mb-1">今日金币收益</p>
-                <div class="flex items-center gap-2">
-                  <p class="text-lg font-bold text-amber-400 tracking-tight">{{ Math.floor(todayCoins).toLocaleString() }}</p>
+                <div class="flex items-center">
+                  <p class="text-lg font-bold text-amber-400 tracking-tight mr-2">{{ Math.floor(todayCoins).toLocaleString() }}</p>
                   <span class="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">{{ todayRecordCount }}条</span>
                 </div>
               </div>
@@ -649,9 +649,9 @@ const submitWithdraw = async () => {
 
       <!-- 今日目标进度条和额外金币奖励 -->
       <div v-if="todayTarget >= 0" class="px-4 py-2">
-        <div class="flex gap-3 items-center">
+        <div class="flex items-center">
           <!-- 进度条 - 占3/4 -->
-          <div class="w-3/4 space-y-2">
+          <div class="w-3/4 space-y-2 mr-3">
             <div class="flex justify-between items-center text-[9px]">
               <span class="text-zinc-500 uppercase tracking-wider">今日目标进度</span>
               <span class="text-purple-400 font-bold">{{ todayTarget > 0 ? `${Math.min(100, Math.floor((todayCoins / todayTarget) * 100))}%` : '未设置' }}</span>
@@ -686,7 +686,7 @@ const submitWithdraw = async () => {
               v-else-if="bonusGold > 0"
               @click="handleClaimBonus"
               :disabled="isClaimingBonus || todayCoins < todayTarget || todayTarget === 0"
-              class="w-full h-full py-1.5 px-2 rounded-lg font-bold text-[9px] uppercase tracking-widest transition-all border flex flex-col items-center justify-center gap-0.5 relative overflow-hidden group"
+              class="w-full h-full py-1.5 px-2 rounded-lg font-bold text-[9px] uppercase tracking-widest transition-all border flex flex-col items-center justify-center relative overflow-hidden group"
               :class="[
                     isClaimingBonus || todayCoins < todayTarget || todayTarget === 0
                       ? 'bg-zinc-800/50 border-zinc-700 text-zinc-600 cursor-not-allowed' 
@@ -709,7 +709,7 @@ const submitWithdraw = async () => {
                 class="absolute inset-0 rounded-lg animate-pulse bg-gradient-to-r from-zinc-500/10 via-zinc-600/20 to-zinc-500/10"
               />
               <!-- 图标 -->
-              <Coins class="w-3 h-3 relative z-10" :class="{ 'animate-spin': isClaimingBonus, 'animate-bounce': !isClaimingBonus && todayCoins >= todayTarget && todayTarget > 0 }" />
+              <Coins class="w-3 h-3 relative z-10 mb-0.5" :class="{ 'animate-spin': isClaimingBonus, 'animate-bounce': !isClaimingBonus && todayCoins >= todayTarget && todayTarget > 0 }" />
               <span class="text-center leading-tight relative z-10">{{ isClaimingBonus ? '领取中...' : `奖${bonusGold}金币` }}</span>
             </button>
           </div>
@@ -731,14 +731,14 @@ const submitWithdraw = async () => {
           <button
             @click="handleWatchAd"
             :disabled="isWatching"
-            class="relative w-48 h-48 rounded-full flex flex-col items-center justify-center gap-3 transition-all active:scale-90 border-2"
+            class="relative w-48 h-48 rounded-full flex flex-col items-center justify-center transition-all active:scale-90 border-2"
             :class="[
               isWatching 
                 ? 'bg-zinc-900/80 border-zinc-800 text-zinc-600 cursor-not-allowed' 
                 : 'bg-black border-white/10 text-white shadow-[0_20px_50px_rgba(0,0,0,0.5)] hover:border-emerald-500/50'
             ]"
           >
-            <div :class="{ 'animate-spin': isWatching }">
+            <div :class="{ 'animate-spin': isWatching }" class="mb-3">
               <PlayCircle class="w-16 h-16" :class="isWatching ? 'text-zinc-700' : 'text-emerald-400'" />
             </div>
             <div class="text-center">
@@ -757,8 +757,8 @@ const submitWithdraw = async () => {
         <!-- 金币奖励弹窗 -->
         <transition name="reward-popup">
           <div v-if="showRewardPopup" class="fixed inset-0 flex items-center justify-center z-9999 pointer-events-none">
-            <div class="bg-gradient-to-r from-amber-400 to-orange-500 text-white px-6 py-3 rounded-xl font-bold shadow-lg flex items-center gap-2 border border-white/30 animate-bounce pointer-events-auto">
-              <Coins class="w-6 h-6 text-white" />
+            <div class="bg-gradient-to-r from-amber-400 to-orange-500 text-white px-6 py-3 rounded-xl font-bold shadow-lg flex items-center border border-white/30 animate-bounce pointer-events-auto">
+              <Coins class="w-6 h-6 text-white mr-2" />
               <span class="text-xl">+{{ Math.floor(rewardAmount) }} 金币</span>
             </div>
           </div>
@@ -784,8 +784,8 @@ const submitWithdraw = async () => {
       <!-- History Section -->
       <div class="space-y-3">
         <div class="flex items-center justify-between px-2">
-          <div class="flex items-center gap-2">
-            <History class="w-3 h-3 text-zinc-500" />
+          <div class="flex items-center">
+            <History class="w-3 h-3 text-zinc-500 mr-2" />
             <h2 class="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-medium">最近收益</h2>
           </div>
           <button 
@@ -822,8 +822,8 @@ const submitWithdraw = async () => {
                 <span class="text-[11px] text-zinc-400 font-mono tracking-tighter">{{ record.time }}</span>
                 <span class="text-[9px] text-zinc-600 uppercase tracking-widest mt-0.5">广告激励成功</span>
               </div>
-              <div class="flex items-center gap-2">
-                <span class="text-sm font-bold text-amber-400 font-mono group-hover:scale-110 transition-transform">+{{ Math.floor(record.amount) }}</span>
+              <div class="flex items-center">
+                <span class="text-sm font-bold text-amber-400 font-mono group-hover:scale-110 transition-transform mr-2">+{{ Math.floor(record.amount) }}</span>
                 <Coins class="w-3 h-3 text-amber-500/50" />
               </div>
             </div>
@@ -838,8 +838,8 @@ const submitWithdraw = async () => {
         <div class="absolute inset-0 bg-black/80 backdrop-blur-md z-[9998]" @click="showAllRecords = false" />
         <div class="relative w-full max-w-md bg-[#020205] border-t sm:border border-white/10 rounded-t-[3rem] sm:rounded-[3rem] overflow-hidden flex flex-col max-h-[85vh] z-[9999] shadow-2xl">
           <div class="px-8 py-6 border-b border-white/5 flex justify-between items-center sticky top-0 bg-[#020205] z-10">
-            <div class="flex items-center gap-3">
-              <div class="w-8 h-8 bg-white/5 rounded-full flex items-center justify-center">
+            <div class="flex items-center">
+              <div class="w-8 h-8 bg-white/5 rounded-full flex items-center justify-center mr-3">
                 <History class="w-4 h-4 text-zinc-400" />
               </div>
               <h3 class="text-sm font-bold uppercase tracking-widest">所有收益记录</h3>
@@ -876,8 +876,8 @@ const submitWithdraw = async () => {
                   <span class="text-[11px] text-zinc-400 font-mono tracking-tighter">{{ record.time }}</span>
                   <span class="text-[9px] text-zinc-600 uppercase tracking-widest mt-0.5">激励视频收益</span>
                 </div>
-                <div class="flex items-center gap-2">
-                  <span class="text-sm font-bold text-amber-400 font-mono">+{{ Math.floor(record.amount) }}</span>
+                <div class="flex items-center">
+                  <span class="text-sm font-bold text-amber-400 font-mono mr-2">+{{ Math.floor(record.amount) }}</span>
                   <Coins class="w-3 h-3 text-amber-500/50" />
                 </div>
               </div>
@@ -892,12 +892,12 @@ const submitWithdraw = async () => {
     </transition>
 
     <footer class="text-center mt-8 px-6 pb-8">
-      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/2 border border-white/5">
-        <div class="w-1 h-1 bg-zinc-700 rounded-full" />
+      <div class="inline-flex items-center px-4 py-2 rounded-full bg-white/2 border border-white/5">
+        <div class="w-1 h-1 bg-zinc-700 rounded-full mr-2" />
         <p class="text-zinc-600 text-[9px] uppercase tracking-[0.4em]">
           安全加密连接已建立
         </p>
-        <div class="w-1 h-1 bg-zinc-700 rounded-full" />
+        <div class="w-1 h-1 bg-zinc-700 rounded-full ml-2" />
       </div>
     </footer>
 
@@ -908,8 +908,8 @@ const submitWithdraw = async () => {
         <div class="relative w-full max-w-md bg-[#020205] border-t sm:border border-white/10 rounded-t-[3rem] sm:rounded-[3rem] overflow-hidden flex flex-col max-h-[85vh] z-[9999] shadow-2xl">
           <!-- 弹窗头部 -->
           <div class="px-8 py-6 border-b border-white/5 flex justify-between items-center sticky top-0 bg-[#020205] z-10">
-            <div class="flex items-center gap-3">
-              <div class="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center border border-blue-500/30">
+            <div class="flex items-center">
+              <div class="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center border border-blue-500/30 mr-3">
                 <Wallet class="w-4 h-4 text-blue-400" />
               </div>
               <h3 class="text-sm font-bold uppercase tracking-widest">申请提现</h3>
@@ -940,9 +940,9 @@ const submitWithdraw = async () => {
               <!-- 提现金额 -->
               <div class="glass-card rounded-2xl p-4">
                 <p class="text-zinc-500 text-[10px] uppercase tracking-wider mb-2">可提现金额</p>
-                <div class="flex items-baseline gap-1">
+                <div class="flex items-baseline">
                   <span class="text-3xl font-bold text-blue-400">¥{{ withdrawAmount }}</span>
-                  <span class="text-sm text-zinc-500">元</span>
+                  <span class="text-sm text-zinc-500 ml-1">元</span>
                 </div>
                 <p class="text-[10px] text-zinc-600 mt-2">
                   {{ Math.floor(lastMonthGold).toLocaleString() }} 金币 ÷ 1000 = ¥{{ withdrawAmount }}
@@ -985,9 +985,9 @@ const submitWithdraw = async () => {
             <button 
               @click="submitWithdraw"
               :disabled="isSubmittingWithdraw || withdrawAmount <= 0 || !alipayAccount.trim() || !alipayName.trim()"
-              class="w-full py-4 rounded-xl bg-linear-to-r from-blue-500 to-blue-600 text-white font-bold uppercase tracking-widest text-sm hover:from-blue-400 hover:to-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              class="w-full py-4 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold uppercase tracking-widest text-sm hover:from-blue-400 hover:to-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
-              <span v-if="isSubmittingWithdraw" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <span v-if="isSubmittingWithdraw" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
               {{ isSubmittingWithdraw ? '提交中...' : '确认提现' }}
             </button>
           </div>
@@ -1002,8 +1002,8 @@ const submitWithdraw = async () => {
         <div class="relative w-full max-w-md bg-[#020205] border-t sm:border border-white/10 rounded-t-[3rem] sm:rounded-[3rem] overflow-hidden flex flex-col max-h-[85vh] z-[9999] shadow-2xl">
           <!-- 弹窗头部 -->
           <div class="px-8 py-6 border-b border-white/5 flex justify-between items-center sticky top-0 bg-[#020205] z-10">
-            <div class="flex items-center gap-3">
-              <div class="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center border border-blue-500/30">
+            <div class="flex items-center">
+              <div class="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center border border-blue-500/30 mr-3">
                 <CreditCard class="w-4 h-4 text-blue-400" />
               </div>
               <h3 class="text-sm font-bold uppercase tracking-widest">提现记录</h3>
