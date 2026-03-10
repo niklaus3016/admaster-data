@@ -389,7 +389,7 @@ const handleWatchAd = async () => {
     }
   } catch (err) {
     console.error('广告观看失败:', err);
-    error.value = '网络错误，请稍后重试';
+    error.value = '暂无合适广告匹配，请点击重试';
   } finally {
     isWatching.value = false;
   }
@@ -482,10 +482,18 @@ const formatDate = (dateStr: string) => {
   return `${beijingTime.getFullYear()}-${String(beijingTime.getMonth() + 1).padStart(2, '0')}-${String(beijingTime.getDate()).padStart(2, '0')} ${String(beijingTime.getHours()).padStart(2, '0')}:${String(beijingTime.getMinutes()).padStart(2, '0')}`;
 };
 
-// 获取状态样式（简化：只有成功状态）
+// 获取状态样式
 const getStatusStyle = (status: number) => {
-  // 0: 提现成功
-  return { text: '提现成功', class: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' };
+  switch (status) {
+    case 0:
+      return { text: '待打款', class: 'text-amber-400 bg-amber-500/10 border-amber-500/20' };
+    case 1:
+      return { text: '已打款', class: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' };
+    case 2:
+      return { text: '已拒绝', class: 'text-red-400 bg-red-500/10 border-red-500/20' };
+    default:
+      return { text: '未知状态', class: 'text-zinc-400 bg-zinc-500/10 border-zinc-500/20' };
+  }
 };
 
 // 提交提现申请
@@ -644,9 +652,9 @@ const submitWithdraw = async () => {
               <div class="absolute top-0 right-0 w-16 h-16 bg-amber-500/10 blur-2xl rounded-full -mr-8 -mt-8" />
               <div class="p-4">
                 <p class="text-zinc-500 text-[9px] uppercase tracking-wider mb-1">今日金币收益</p>
-                <div class="flex items-center gap-4">
-                  <p class="text-lg font-bold text-amber-400 tracking-tight">{{ Math.floor(todayCoins).toLocaleString() }}</p>
-                  <span class="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">{{ todayRecordCount }}条</span>
+                <div class="flex items-center gap-2">
+                  <p class="text-lg font-bold text-amber-400 tracking-tight whitespace-nowrap">{{ Math.floor(todayCoins).toLocaleString() }}</p>
+                  <span class="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded whitespace-nowrap flex-shrink-0">{{ todayRecordCount }}条</span>
                 </div>
               </div>
             </div>
@@ -871,10 +879,10 @@ const submitWithdraw = async () => {
               <div v-else-if="records.length === 0" class="py-20 text-center">
                 <p class="text-xs text-zinc-600 uppercase tracking-widest">暂无记录</p>
               </div>
-              <!-- 记录列表 -->
+              <!-- 记录列表 - 只显示最近100条 -->
               <div 
                 v-else
-                v-for="record in records" 
+                v-for="record in records.slice(0, 100)" 
                 :key="record.id" 
                 class="px-6 py-4 rounded-2xl glass-card flex justify-between items-center"
               >
@@ -886,6 +894,10 @@ const submitWithdraw = async () => {
                   <span class="text-sm font-bold text-amber-400 font-mono mr-2">+{{ Math.floor(record.amount) }}</span>
                   <Coins class="w-3 h-3 text-amber-500/50" />
                 </div>
+              </div>
+              <!-- 如果记录超过100条，显示提示 -->
+              <div v-if="records.length > 100" class="text-center py-4">
+                <p class="text-[10px] text-zinc-600">仅显示最近100条记录</p>
               </div>
             </div>
           </div>
@@ -957,28 +969,28 @@ const submitWithdraw = async () => {
               
               <!-- 支付宝账号 -->
               <div class="space-y-2">
-                <label class="text-[10px] text-zinc-500 uppercase tracking-wider">支付宝账号</label>
+                <label class="text-[10px] text-amber-400 uppercase tracking-wider">支付宝账号</label>
                 <input 
                   v-model="alipayAccount"
                   type="text"
                   placeholder="请输入支付宝账号"
-                  class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-blue-500/50 transition-all"
+                  class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 transition-all"
                 />
               </div>
               
               <!-- 支付宝姓名 -->
               <div class="space-y-2">
-                <label class="text-[10px] text-zinc-500 uppercase tracking-wider">支付宝姓名</label>
+                <label class="text-[10px] text-amber-400 uppercase tracking-wider">支付宝姓名</label>
                 <input 
                   v-model="alipayName"
                   type="text"
                   placeholder="请输入支付宝实名姓名"
-                  class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-blue-500/50 transition-all"
+                  class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 transition-all"
                 />
               </div>
               
               <!-- 提示信息 -->
-              <p class="text-[10px] text-zinc-600 uppercase tracking-wider mt-4">
+              <p class="text-[10px] text-amber-400/80 uppercase tracking-wider mt-4">
                 提现申请将在3个工作日内处理，请确保支付宝信息准确无误
               </p>
             </div>
@@ -988,8 +1000,9 @@ const submitWithdraw = async () => {
           <div class="px-6 py-6 border-t border-white/5 sticky bottom-0 bg-[#020205]">
             <button 
               @click="submitWithdraw"
-              :disabled="!alipayAccount || !alipayName || isSubmittingWithdraw"
-              class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-4 rounded-xl disabled:bg-zinc-800 disabled:cursor-not-allowed transition-all"
+              :disabled="!alipayAccount || !alipayName || isSubmittingWithdraw || withdrawAmount <= 0"
+              class="w-full font-bold py-4 rounded-xl transition-all text-white"
+              :class="[!alipayAccount || !alipayName || isSubmittingWithdraw || withdrawAmount <= 0 ? 'bg-zinc-800 cursor-not-allowed' : 'bg-gradient-to-r from-blue-500 to-blue-600']"
             >
               {{ isSubmittingWithdraw ? '提交中...' : '提交提现申请' }}
             </button>
