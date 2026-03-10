@@ -738,7 +738,7 @@ const submitWithdraw = async () => {
                 : 'bg-black border-white/10 text-white shadow-[0_20px_50px_rgba(0,0,0,0.5)] hover:border-emerald-500/50'
             ]"
           >
-            <div :class="{ 'animate-spin': isWatching }" class="mb-3">
+            <div :class="{ 'animate-spin': isWatching }" class="mb-5">
               <PlayCircle class="w-16 h-16" :class="isWatching ? 'text-zinc-700' : 'text-emerald-400'" />
             </div>
             <div class="text-center">
