@@ -585,7 +585,7 @@ const submitWithdraw = async () => {
           
           <!-- 金币统计数据 -->
           <div v-else class="grid grid-cols-2 space-x-3 space-y-3">
-            <div class="group relative glass-card rounded-[1.25rem] overflow-hidden transition-all hover:bg-white/5">
+            <div class="group relative glass-card rounded-[1.25rem] overflow-hidden transition-all hover:bg-white/5 h-32">
               <div class="absolute top-0 right-0 w-16 h-16 bg-blue-500/10 blur-2xl rounded-full -mr-8 -mt-8" />
               <div class="p-4 flex justify-between items-start">
                 <div>
@@ -614,21 +614,21 @@ const submitWithdraw = async () => {
                 </div>
               </div>
             </div>
-            <div class="group relative bg-gradient-to-br from-emerald-500 to-teal-700 rounded-[1.25rem] shadow-xl shadow-emerald-500/10 overflow-hidden transition-all hover:scale-[1.02]">
+            <div class="group relative bg-gradient-to-br from-emerald-500 to-teal-700 rounded-[1.25rem] shadow-xl shadow-emerald-500/10 overflow-hidden transition-all hover:scale-[1.02] h-32">
               <div class="absolute top-0 right-0 w-16 h-16 bg-white/10 blur-2xl rounded-full -mr-8 -mt-8" />
               <div class="p-4">
                 <p class="text-emerald-100/60 text-[9px] uppercase tracking-wider mb-1">本月累计金币</p>
                 <p class="text-lg font-bold text-white tracking-tight">{{ Math.floor(currentMonthGold).toLocaleString() }}</p>
               </div>
             </div>
-            <div class="group relative glass-card rounded-[1.25rem] overflow-hidden transition-all hover:bg-white/5">
+            <div class="group relative glass-card rounded-[1.25rem] overflow-hidden transition-all hover:bg-white/5 h-32">
               <div class="absolute top-0 right-0 w-16 h-16 bg-purple-500/10 blur-2xl rounded-full -mr-8 -mt-8" />
               <div class="p-4">
                 <p class="text-zinc-500 text-[9px] uppercase tracking-wider mb-1">今日目标任务</p>
                 <p class="text-lg font-light tracking-tight text-purple-400">{{ todayTarget.toLocaleString() }}</p>
               </div>
             </div>
-            <div class="group relative glass-card rounded-[1.25rem] overflow-hidden transition-all hover:bg-white/5">
+            <div class="group relative glass-card rounded-[1.25rem] overflow-hidden transition-all hover:bg-white/5 h-32">
               <div class="absolute top-0 right-0 w-16 h-16 bg-amber-500/10 blur-2xl rounded-full -mr-8 -mt-8" />
               <div class="p-4">
                 <div 
