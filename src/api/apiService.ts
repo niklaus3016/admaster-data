@@ -195,16 +195,17 @@ export async function getUserInfo(userId: string, employeeId: string): Promise<A
  * @param userId 用户ID
  * @param employeeId 员工号
  * @param ecpm 广告ECPM值
+ * @param slotId 广告位ID
  * @returns 发放的金币数量和当前月金币总数
  */
-export async function rewardGold(userId: string, employeeId: string, ecpm: number): Promise<ApiResponse<GoldReward>> {
+export async function rewardGold(userId: string, employeeId: string, ecpm: number, slotId: string): Promise<ApiResponse<GoldReward>> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/gold/reward`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ userId, employeeId, ecpm }),
+      body: JSON.stringify({ userId, employeeId, ecpm, slotId }),
     });
     return await response.json();
   } catch (error) {

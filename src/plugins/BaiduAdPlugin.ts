@@ -9,7 +9,7 @@ export interface BaiduAdPlugin {
 }
 
 const BaiduAd = registerPlugin<BaiduAdPlugin>('BaiduAd', {
-  web: () => import('./BaiduAdPluginWeb').then(m => new m.BaiduAdPluginWeb()),
+  web: () => import('./BaiduAdPluginWeb').then(m => new m.BaiduAdPluginWeb() as any),
 });
 
 export default BaiduAd;

@@ -193,10 +193,17 @@ const loadLoginStats = async () => {
   if (!userId.value || !empId.value) return;
 
   try {
-    // 1. 记录本次登录
-    await recordLogin(userId.value, empId.value);
+    // 检查今天是否已经记录过登录
+    const today = new Date().toISOString().split('T')[0];
+    const lastLoginDate = localStorage.getItem('lastLoginDate');
 
-    // 2. 获取登录统计
+    // 如果今天还没有记录过登录，则记录本次登录
+    if (lastLoginDate !== today) {
+      await recordLogin(userId.value, empId.value);
+      localStorage.setItem('lastLoginDate', today);
+    }
+
+    // 获取登录统计
     const response = await getLoginStats(userId.value, empId.value);
     if (response.success && response.data) {
       loginDays.value = response.data.totalLoginDays;
@@ -210,9 +217,18 @@ const loadLoginStats = async () => {
 const loadWithdrawStatus = async () => {
   try {
     const response = await getWithdrawStatus();
+    console.log('提现状态响应:', response);
+    // 后端返回的数据结构: {success: true, enabled: true}
+    // enabled字段在根级别，不在data对象中
     if (response.success) {
-      withdrawEnabled.value = response.enabled;
+      // 处理后端返回的enabled字段，可能是布尔值或字符串
+      const enabledValue = (response as any).enabled;
+      console.log('提现开关原始值:', enabledValue, '类型:', typeof enabledValue);
+      // 转换为布尔值
+      withdrawEnabled.value = enabledValue === true || enabledValue === 'true' || enabledValue === 1 || enabledValue === '1';
+      console.log('提现开关最终状态:', withdrawEnabled.value);
     } else {
+      console.log('提现状态获取失败');
       withdrawEnabled.value = false;
     }
   } catch (err) {
@@ -246,21 +262,6 @@ onMounted(async () => {
     return;
   }
   
-  // 尝试从 employeeInfo 中重新获取 userId（确保使用最新的 userId）
-  try {
-    const employeeInfoStr = localStorage.getItem('employeeInfo');
-    if (employeeInfoStr) {
-      const employeeInfo = JSON.parse(employeeInfoStr);
-      if (employeeInfo.userId && employeeInfo.userId !== userId.value) {
-        console.log('更新 userId:', userId.value, '->', employeeInfo.userId);
-        userId.value = employeeInfo.userId;
-        localStorage.setItem('userId', employeeInfo.userId);
-      }
-    }
-  } catch (e) {
-    console.error('解析 employeeInfo 失败:', e);
-  }
-  
   await loadLoginStats();
   await loadWithdrawStatus();
   await loadUserInfo();
@@ -281,11 +282,11 @@ const loadUserInfo = async () => {
     const response = await getUserInfo(userId.value, empId.value);
     console.log('用户信息响应:', response);
     if (response.success && response.data) {
-      currentMonthGold.value = response.data.currentMonthGold;
-      lastMonthGold.value = response.data.lastMonthGold;
-      todayTarget.value = response.data.todayTarget || 0;
-      bonusGold.value = response.data.bonusGold || 5000;
-      hasClaimedBonus.value = response.data.hasClaimedBonus || false;
+      currentMonthGold.value = Number(response.data.currentMonthGold) || 0;
+      lastMonthGold.value = Number(response.data.lastMonthGold) || 0;
+      todayTarget.value = Number(response.data.todayTarget) || 0;
+      bonusGold.value = Number(response.data.bonusGold) || 5000;
+      hasClaimedBonus.value = Boolean(response.data.hasClaimedBonus);
     } else {
       error.value = response.message || '获取金币信息失败';
     }
@@ -302,6 +303,11 @@ const loadGoldRecords = async () => {
   if (!userId.value) return;
 
   isLoadingRecords.value = true;
+  
+  // 重置数据，避免显示旧数据
+  records.value = [];
+  todayCoins.value = 0;
+  todayRecordCount.value = 0;
 
   try {
     const response = await getGoldLogs(userId.value);
@@ -324,15 +330,14 @@ const loadGoldRecords = async () => {
         };
       });
 
-      // 计算今日金币收益（使用北京时间 UTC+8）
-      const getBeijingDate = (date: Date) => {
-        const beijingTime = new Date(date.getTime() + 8 * 60 * 60 * 1000);
-        return beijingTime.toISOString().split('T')[0];
+      // 计算今日金币收益（使用本地日期）
+      const getLocalDate = (date: Date) => {
+        return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
       };
       
-      const today = getBeijingDate(new Date());
+      const today = getLocalDate(new Date());
       const todayRecords = response.data.filter((log: any) => {
-        const logDate = getBeijingDate(new Date(log.createTime));
+        const logDate = getLocalDate(new Date(log.createTime));
         return logDate === today;
       });
       todayCoins.value = todayRecords.reduce((sum: number, log: any) => sum + log.gold, 0);
@@ -358,9 +363,10 @@ const handleWatchAd = async () => {
     
     // 调用广告管理逻辑
     const result = await showRewardVideo();
+    console.log('广告观看成功，ECPM:', result.ecpm, '广告位ID:', result.slotId);
     
-    // 调用后端发放金币接口
-    const rewardResponse = await rewardGold(userId.value, empId.value, result.ecpm);
+    // 调用后端发放金币接口，传递ecpm和广告位ID
+    const rewardResponse = await rewardGold(userId.value, empId.value, result.ecpm, result.slotId);
     
     if (rewardResponse.success && rewardResponse.data) {
       const earned = rewardResponse.data.gold;
@@ -592,7 +598,7 @@ const submitWithdraw = async () => {
                   <p class="text-zinc-500 text-[9px] uppercase tracking-wider mb-1">上月累计金币</p>
                   <p class="text-lg font-light tracking-tight text-blue-400">{{ Math.floor(lastMonthGold).toLocaleString() }}</p>
                 </div>
-                <div class="flex flex-col gap-1.5">
+                <div class="flex flex-col gap-2.5">
                   <button 
                     @click="withdrawEnabled ? openWithdrawModal() : null"
                     :disabled="!withdrawEnabled"
@@ -666,7 +672,7 @@ const submitWithdraw = async () => {
               <span>{{ Math.floor(todayCoins).toLocaleString() }} 金币</span>
               <span>目标 {{ todayTarget.toLocaleString() }} 金币</span>
             </div>
-            <div v-if="todayTarget > 0" class="text-[7px] text-zinc-500 text-center mt-1">
+            <div v-if="todayTarget > 0 && !hasClaimedBonus" class="text-[7px] text-zinc-500 text-center mt-1">
               {{ todayCoins >= todayTarget ? '✓ 已达标可领取' : `✗ 还差 ${Math.floor(todayTarget - todayCoins).toLocaleString()} 金币` }}
             </div>
           </div>
@@ -795,7 +801,7 @@ const submitWithdraw = async () => {
             查看全部
           </button>
         </div>
-        <div class="glass-card rounded-4xl overflow-hidden">
+        <div class="glass-card rounded-[2rem] overflow-hidden">
           <div class="divide-y divide-white/5 max-h-[250px] overflow-y-auto no-scrollbar">
             <!-- 加载状态 -->
             <div v-if="isLoadingRecords" class="py-16 text-center">
@@ -814,7 +820,7 @@ const submitWithdraw = async () => {
             <!-- 记录列表 -->
             <div 
               v-else
-              v-for="record in records.slice(0, 5)" 
+              v-for="record in records.slice(0, 20)" 
               :key="record.id" 
               class="px-8 py-5 flex justify-between items-center hover:bg-white/2 transition-colors group"
             >
@@ -834,8 +840,8 @@ const submitWithdraw = async () => {
 
     <!-- View All Records Modal -->
     <transition name="modal">
-      <div v-if="showAllRecords" class="fixed inset-0 z-9999 flex items-end justify-center sm:items-center p-0 sm:p-6 pointer-events-auto">
-        <div class="absolute inset-0 bg-black/80 backdrop-blur-md z-[9998]" @click="showAllRecords = false" />
+      <div v-if="showAllRecords" class="fixed inset-0 z-[9999] flex items-end justify-center sm:items-center p-0 sm:p-6 pointer-events-auto">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-md z-[9998] pointer-events-auto" @click="showAllRecords = false" />
         <div class="relative w-full max-w-md bg-[#020205] border-t sm:border border-white/10 rounded-t-[3rem] sm:rounded-[3rem] overflow-hidden flex flex-col max-h-[85vh] z-[9999] shadow-2xl">
           <div class="px-8 py-6 border-b border-white/5 flex justify-between items-center sticky top-0 bg-[#020205] z-10">
             <div class="flex items-center">
@@ -903,8 +909,8 @@ const submitWithdraw = async () => {
 
     <!-- 提现弹窗 -->
     <transition name="modal">
-      <div v-if="showWithdrawModal" class="fixed inset-0 z-9999 flex items-end justify-center sm:items-center p-0 sm:p-6 pointer-events-auto">
-        <div class="absolute inset-0 bg-black/80 backdrop-blur-md z-[9998]" @click="closeWithdrawModal" />
+      <div v-if="showWithdrawModal" class="fixed inset-0 z-[9999] flex items-end justify-center sm:items-center p-0 sm:p-6 pointer-events-auto">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-md z-[9998] pointer-events-auto" @click="closeWithdrawModal" />
         <div class="relative w-full max-w-md bg-[#020205] border-t sm:border border-white/10 rounded-t-[3rem] sm:rounded-[3rem] overflow-hidden flex flex-col max-h-[85vh] z-[9999] shadow-2xl">
           <!-- 弹窗头部 -->
           <div class="px-8 py-6 border-b border-white/5 flex justify-between items-center sticky top-0 bg-[#020205] z-10">
@@ -972,23 +978,20 @@ const submitWithdraw = async () => {
               </div>
               
               <!-- 提示信息 -->
-              <div class="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
-                <p class="text-[10px] text-amber-400 leading-relaxed">
-                  <span class="font-bold">提示：</span>提现申请提交后，财务将在3个工作日内完成打款。请确保支付宝信息准确无误。
-                </p>
-              </div>
+              <p class="text-[10px] text-zinc-600 uppercase tracking-wider mt-4">
+                提现申请将在3个工作日内处理，请确保支付宝信息准确无误
+              </p>
             </div>
           </div>
           
           <!-- 弹窗底部 -->
-          <div v-if="!withdrawSuccess" class="p-6 border-t border-white/5">
+          <div class="px-6 py-6 border-t border-white/5 sticky bottom-0 bg-[#020205]">
             <button 
               @click="submitWithdraw"
-              :disabled="isSubmittingWithdraw || withdrawAmount <= 0 || !alipayAccount.trim() || !alipayName.trim()"
-              class="w-full py-4 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold uppercase tracking-widest text-sm hover:from-blue-400 hover:to-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              :disabled="!alipayAccount || !alipayName || isSubmittingWithdraw"
+              class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-4 rounded-xl disabled:bg-zinc-800 disabled:cursor-not-allowed transition-all"
             >
-              <span v-if="isSubmittingWithdraw" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
-              {{ isSubmittingWithdraw ? '提交中...' : '确认提现' }}
+              {{ isSubmittingWithdraw ? '提交中...' : '提交提现申请' }}
             </button>
           </div>
         </div>
@@ -997,8 +1000,8 @@ const submitWithdraw = async () => {
 
     <!-- 提现记录弹窗 -->
     <transition name="modal">
-      <div v-if="showWithdrawRecordsModal" class="fixed inset-0 z-9999 flex items-end justify-center sm:items-center p-0 sm:p-6 pointer-events-auto">
-        <div class="absolute inset-0 bg-black/80 backdrop-blur-md z-[9998]" @click="closeWithdrawRecordsModal" />
+      <div v-if="showWithdrawRecordsModal" class="fixed inset-0 z-[9999] flex items-end justify-center sm:items-center p-0 sm:p-6 pointer-events-auto">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-md z-[9998] pointer-events-auto" @click="closeWithdrawRecordsModal" />
         <div class="relative w-full max-w-md bg-[#020205] border-t sm:border border-white/10 rounded-t-[3rem] sm:rounded-[3rem] overflow-hidden flex flex-col max-h-[85vh] z-[9999] shadow-2xl">
           <!-- 弹窗头部 -->
           <div class="px-8 py-6 border-b border-white/5 flex justify-between items-center sticky top-0 bg-[#020205] z-10">
@@ -1019,7 +1022,7 @@ const submitWithdraw = async () => {
           <!-- 弹窗内容 -->
           <div class="flex-1 overflow-y-auto no-scrollbar p-6">
             <!-- 加载状态 -->
-            <div v-if="isLoadingWithdrawRecords" class="py-20 text-center">
+            <div v-if="isLoadingWithdrawRecords" class="py-12 text-center">
               <div class="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 animate-spin">
                 <CreditCard class="w-5 h-5 text-zinc-700" />
               </div>
@@ -1027,12 +1030,11 @@ const submitWithdraw = async () => {
             </div>
             
             <!-- 空状态 -->
-            <div v-else-if="withdrawRecords.length === 0" class="py-20 text-center">
-              <div class="w-16 h-16 bg-zinc-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CreditCard class="w-8 h-8 text-zinc-600" />
+            <div v-else-if="withdrawRecords.length === 0" class="py-12 text-center">
+              <div class="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CreditCard class="w-5 h-5 text-zinc-700" />
               </div>
-              <p class="text-sm text-zinc-500 mb-1">暂无提现记录</p>
-              <p class="text-[10px] text-zinc-600">您的提现申请将显示在这里</p>
+              <p class="text-xs text-zinc-600 uppercase tracking-widest">暂无提现记录</p>
             </div>
             
             <!-- 提现记录列表 -->
@@ -1040,47 +1042,23 @@ const submitWithdraw = async () => {
               <div 
                 v-for="record in withdrawRecords" 
                 :key="record._id" 
-                class="glass-card rounded-2xl p-4 space-y-3"
+                class="glass-card rounded-2xl p-4"
               >
-                <!-- 头部：金额和状态 -->
-                <div class="flex justify-between items-start">
-                  <div>
-                    <p class="text-lg font-bold text-blue-400">¥{{ record.amount }}</p>
-                    <p class="text-[10px] text-zinc-600 mt-0.5">{{ Math.floor(record.goldAmount).toLocaleString() }} 金币</p>
+                <div class="flex justify-between items-start mb-3">
+                  <div class="flex-1">
+                    <p class="text-sm font-bold text-white">{{ record.amount }} 元</p>
+                    <p class="text-[10px] text-zinc-500 mt-1">{{ record.alipayAccount }} ({{ record.alipayName }})</p>
                   </div>
-                  <span 
-                    class="px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider border"
+                  <div 
+                    class="px-3 py-1 rounded-full text-[8px] font-bold tracking-wider border"
                     :class="getStatusStyle(record.status).class"
                   >
                     {{ getStatusStyle(record.status).text }}
-                  </span>
-                </div>
-                
-                <!-- 支付宝信息 -->
-                <div class="pt-3 border-t border-white/5 space-y-1">
-                  <div class="flex justify-between text-[11px]">
-                    <span class="text-zinc-500">支付宝账号</span>
-                    <span class="text-zinc-300">{{ record.alipayAccount }}</span>
-                  </div>
-                  <div class="flex justify-between text-[11px]">
-                    <span class="text-zinc-500">支付宝姓名</span>
-                    <span class="text-zinc-300">{{ record.alipayName }}</span>
                   </div>
                 </div>
-                
-                <!-- 时间 -->
-                <div class="pt-2 border-t border-white/5">
-                  <p class="text-[10px] text-zinc-600 font-mono">{{ formatDate(record.createTime) }}</p>
-                </div>
+                <p class="text-[10px] text-zinc-600">{{ formatDate(record.createTime) }}</p>
               </div>
             </div>
-          </div>
-          
-          <!-- 弹窗底部 -->
-          <div class="p-6 border-t border-white/5 text-center">
-            <p class="text-[10px] text-zinc-600 uppercase tracking-[0.2em]">
-              共计 {{ withdrawRecords.length }} 条提现记录
-            </p>
           </div>
         </div>
       </div>
@@ -1089,82 +1067,72 @@ const submitWithdraw = async () => {
 </template>
 
 <style scoped>
-.reward-enter-active, .reward-leave-active {
-  transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-.reward-enter-from {
-  opacity: 0;
-  transform: translateY(20px) scale(0.5);
-}
-.reward-enter-to {
-  opacity: 1;
-  transform: translateY(-100px) scale(1.2);
-}
-.reward-leave-to {
-  opacity: 0;
-  transform: translateY(-140px) scale(1.5);
+/* 自定义样式 */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
-.modal-enter-active, .modal-leave-active {
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.modal-enter-from, .modal-leave-to {
-  opacity: 0;
-}
-.modal-enter-from .relative, .modal-leave-to .relative {
-  transform: translateY(100%);
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
-/* 金币奖励弹窗动画 */
-.reward-popup-enter-active, .reward-popup-leave-active {
-  transition: all 0.3s ease-out;
+/* 弹窗动画 */
+.modal-enter-active,
+.modal-leave-active {
+  transition: all 0.3s ease;
 }
-.reward-popup-enter-from {
+
+.modal-enter-from,
+.modal-leave-to {
   opacity: 0;
-  transform: scale(0.5);
+  transform: translateY(30px);
 }
-.reward-popup-enter-to {
-  opacity: 1;
-  transform: scale(1);
+
+/* 奖励弹窗动画 */
+.reward-popup-enter-active,
+.reward-popup-leave-active {
+  transition: all 0.3s ease;
 }
+
+.reward-popup-enter-from,
 .reward-popup-leave-to {
   opacity: 0;
   transform: scale(0.8);
 }
 
-@keyframes bounce {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.1);
-  }
+/* 玻璃卡片 */
+.glass-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.animate-bounce {
-  animation: bounce 0.6s ease-in-out infinite;
-}
-
-/* WebView 兼容性处理 */
-@supports not (backdrop-filter: blur(12px)) {
-  .backdrop-blur-xl,
-  .backdrop-blur-md,
-  .backdrop-blur-sm {
-    background-color: rgba(0, 0, 0, 0.8) !important;
+/* 背景光晕动画 */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
   }
 }
 
-/* 降级样式 */
-.bg-white-3 {
-  background-color: rgba(255, 255, 255, 0.05);
+/* 自定义滚动条（隐藏） */
+::-webkit-scrollbar {
+  display: none;
 }
 
-.bg-white-2 {
-  background-color: rgba(255, 255, 255, 0.03);
+/* 确保弹窗覆盖所有内容 */
+.modal {
+  z-index: 9999 !important;
 }
 
-/* 圆角降级 */
-.rounded-4xl {
-  border-radius: 2rem;
+/* 背景遮罩 */
+.modal-backdrop {
+  z-index: 9998 !important;
+  background-color: rgba(0, 0, 0, 0.8) !important;
+  backdrop-filter: blur(10px) !important;
 }
 </style>

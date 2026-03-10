@@ -170,7 +170,7 @@ export function useAdManager(config: AdConfig) {
     }
   };
 
-  const showRewardVideo = async (): Promise<{ ecpm: number }> => {
+  const showRewardVideo = async (): Promise<{ ecpm: number; slotId: string }> => {
     return new Promise(async (resolve, reject) => {
       // 防止并发请求
       if (isProcessing) {
@@ -205,7 +205,7 @@ export function useAdManager(config: AdConfig) {
     });
   };
 
-  const showNativeAd = async (resolve: (value: { ecpm: number }) => void, reject: (reason?: any) => void) => {
+  const showNativeAd = async (resolve: (value: { ecpm: number; slotId: string }) => void, reject: (reason?: any) => void) => {
     const sessionId = currentSessionId;
     let currentAdSuccess = false; // 当前广告是否成功
     
@@ -265,9 +265,9 @@ export function useAdManager(config: AdConfig) {
           isAdLoading.value = false;
           isAdReady.value = false;
           
-          console.log('✅ 广告成功，返回 ECPM:', ecpm);
+          console.log('✅ 广告成功，返回 ECPM:', ecpm, '广告位ID:', currentSlotId);
           cleanupListeners();
-          resolve({ ecpm });
+          resolve({ ecpm, slotId: currentSlotId });
           
           currentResolve = null;
           currentReject = null;
@@ -408,7 +408,7 @@ export function useAdManager(config: AdConfig) {
     }
   };
 
-  const showH5Ad = (resolve: (value: { ecpm: number }) => void, reject: (reason?: any) => void) => {
+  const showH5Ad = (resolve: (value: { ecpm: number; slotId: string }) => void, reject: (reason?: any) => void) => {
     isAdLoading.value = true;
 
     try {
@@ -442,7 +442,7 @@ export function useAdManager(config: AdConfig) {
           isAdReady.value = false;
           isProcessing = false;
           if (ecpm > 0) {
-            resolve({ ecpm });
+            resolve({ ecpm, slotId: selectedSlotId });
           } else {
             showNoAdAvailable(reject);
           }
