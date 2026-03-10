@@ -658,9 +658,9 @@ const submitWithdraw = async () => {
             </div>
             <div class="h-2 bg-zinc-800/50 rounded-full overflow-hidden border border-white/5">
               <div 
-                class="h-full bg-linear-to-r from-purple-500 to-emerald-500 rounded-full transition-all duration-500 ease-out"
-                :style="{ width: todayTarget > 0 ? `${Math.min(100, (todayCoins / todayTarget) * 100)}%` : '0%' }"
-              />
+              class="h-full bg-gradient-to-r from-purple-500 to-emerald-500 rounded-full transition-all duration-500 ease-out"
+              :style="{ width: todayTarget > 0 ? `${Math.min(100, (todayCoins / todayTarget) * 100)}%` : '0%' }"
+            />
             </div>
             <div class="flex justify-between text-[8px] text-zinc-600">
               <span>{{ Math.floor(todayCoins).toLocaleString() }} 金币</span>
@@ -688,25 +688,25 @@ const submitWithdraw = async () => {
               :disabled="isClaimingBonus || todayCoins < todayTarget || todayTarget === 0"
               class="w-full h-full py-1.5 px-2 rounded-lg font-bold text-[9px] uppercase tracking-widest transition-all border flex flex-col items-center justify-center gap-0.5 relative overflow-hidden group"
               :class="[
-                isClaimingBonus || todayCoins < todayTarget || todayTarget === 0
-                  ? 'bg-zinc-800/50 border-zinc-700 text-zinc-600 cursor-not-allowed' 
-                  : 'bg-linear-to-br from-amber-400 via-orange-500 to-red-500 text-white border-amber-300/50 shadow-[0_0_20px_rgba(245,158,11,0.4),0_0_40px_rgba(245,158,11,0.2)] hover:shadow-[0_0_30px_rgba(245,158,11,0.6),0_0_60px_rgba(245,158,11,0.3)] hover:scale-[1.05] active:scale-[0.95]'
-              ]"
+                    isClaimingBonus || todayCoins < todayTarget || todayTarget === 0
+                      ? 'bg-zinc-800/50 border-zinc-700 text-zinc-600 cursor-not-allowed' 
+                      : 'bg-gradient-to-br from-amber-400 via-orange-500 to-red-500 text-white border-amber-300/50 shadow-[0_0_20px_rgba(245,158,11,0.4),0_0_40px_rgba(245,158,11,0.2)] hover:shadow-[0_0_30px_rgba(245,158,11,0.6),0_0_60px_rgba(245,158,11,0.3)] hover:scale-[1.05] active:scale-[0.95]'
+                  ]"
             >
               <!-- 动态背景光效 -->
               <div 
                 v-if="!isClaimingBonus && todayCoins >= todayTarget && todayTarget > 0"
-                class="absolute inset-0 bg-linear-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[shimmer_2s_infinite]"
+                class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[shimmer_2s_infinite]"
               />
               <!-- 脉冲光圈 -->
               <div 
                 v-if="!isClaimingBonus && todayCoins >= todayTarget && todayTarget > 0"
-                class="absolute inset-0 rounded-lg animate-pulse bg-linear-to-r from-amber-500/20 via-orange-500/30 to-red-500/20"
+                class="absolute inset-0 rounded-lg animate-pulse bg-gradient-to-r from-amber-500/20 via-orange-500/30 to-red-500/20"
               />
               <!-- 灰色脉冲光圈（未完成目标或未设置目标时） -->
               <div 
                 v-if="!isClaimingBonus && (todayCoins < todayTarget || todayTarget === 0)"
-                class="absolute inset-0 rounded-lg animate-pulse bg-linear-to-r from-zinc-500/10 via-zinc-600/20 to-zinc-500/10"
+                class="absolute inset-0 rounded-lg animate-pulse bg-gradient-to-r from-zinc-500/10 via-zinc-600/20 to-zinc-500/10"
               />
               <!-- 图标 -->
               <Coins class="w-3 h-3 relative z-10" :class="{ 'animate-spin': isClaimingBonus, 'animate-bounce': !isClaimingBonus && todayCoins >= todayTarget && todayTarget > 0 }" />
@@ -757,7 +757,7 @@ const submitWithdraw = async () => {
         <!-- 金币奖励弹窗 -->
         <transition name="reward-popup">
           <div v-if="showRewardPopup" class="fixed inset-0 flex items-center justify-center z-9999 pointer-events-none">
-            <div class="bg-linear-to-r from-amber-400 to-orange-500 text-white px-6 py-3 rounded-xl font-bold shadow-lg flex items-center gap-2 border border-white/30 animate-bounce pointer-events-auto">
+            <div class="bg-gradient-to-r from-amber-400 to-orange-500 text-white px-6 py-3 rounded-xl font-bold shadow-lg flex items-center gap-2 border border-white/30 animate-bounce pointer-events-auto">
               <Coins class="w-6 h-6 text-white" />
               <span class="text-xl">+{{ Math.floor(rewardAmount) }} 金币</span>
             </div>
