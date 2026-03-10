@@ -638,7 +638,7 @@ const submitWithdraw = async () => {
               <div class="absolute top-0 right-0 w-16 h-16 bg-amber-500/10 blur-2xl rounded-full -mr-8 -mt-8" />
               <div class="p-4">
                 <p class="text-zinc-500 text-[9px] uppercase tracking-wider mb-1">今日金币收益</p>
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-4">
                   <p class="text-lg font-bold text-amber-400 tracking-tight">{{ Math.floor(todayCoins).toLocaleString() }}</p>
                   <span class="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">{{ todayRecordCount }}条</span>
                 </div>
