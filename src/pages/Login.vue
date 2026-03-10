@@ -62,19 +62,19 @@ const onInput = (e: Event) => {
     <div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-500/10 blur-[120px] rounded-full" />
     <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full" />
 
-    <div class="w-full max-w-[400px] z-10">
-      <!-- 玻璃拟态卡片 -->
-      <div class="glass-card rounded-[32px] p-10 shadow-2xl">
-        <div class="text-center mb-10">
-          <h1 class="text-3xl font-bold tracking-tight mb-1 bg-linear-to-r from-emerald-400 to-emerald-600 bg-clip-text text-transparent">
+    <div class="w-full max-w-[320px] z-10 flex flex-col items-center justify-center min-h-[400px]">
+      <!-- 登录卡片 -->
+      <div class="bg-black/40 backdrop-blur-md rounded-2xl p-8 border border-white/10 w-full">
+        <div class="text-center mb-8">
+          <h1 class="text-3xl font-bold tracking-tight mb-2 text-emerald-400">
             广告变现系统
           </h1>
-          <p class="text-[10px] text-zinc-500 uppercase tracking-[0.4em] font-medium opacity-70">
+          <p class="text-[12px] text-zinc-500 uppercase tracking-[0.2em] font-medium">
             电子手工 · 勤劳致富
           </p>
         </div>
 
-        <form @submit="handleLogin" class="space-y-8">
+        <form @submit="handleLogin" class="space-y-6">
           <div class="space-y-2">
             <label class="block text-[11px] uppercase tracking-[0.15em] text-zinc-500 ml-1">
               员工工号
@@ -87,7 +87,7 @@ const onInput = (e: Event) => {
                 @input="onInput"
                 autofocus
                 placeholder="0000"
-                class="w-full bg-white/2 border border-white/8 text-white rounded-2xl px-6 py-4 text-2xl tracking-[0.5em] text-center outline-none transition-all duration-500 focus:bg-white/4 focus:border-emerald-500/40 focus:ring-1 focus:ring-emerald-500/20 focus:shadow-[0_8px_30px_rgb(16,185,129,0.05)] placeholder:text-zinc-800"
+                class="w-full bg-zinc-900/80 border border-zinc-800 text-white rounded-xl px-4 py-4 text-xl tracking-[0.3em] text-center outline-none transition-all duration-500 focus:border-emerald-500/50 placeholder:text-zinc-700"
               />
             </div>
             <p v-if="error" class="text-red-400 text-[11px] mt-2 ml-1">
@@ -98,14 +98,14 @@ const onInput = (e: Event) => {
           <button
             type="submit"
             :class="[
-              'w-full py-4 rounded-2xl font-semibold text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2',
+              'w-full py-4 rounded-xl font-semibold text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2',
               isLoading 
                 ? 'bg-zinc-700 text-white cursor-not-allowed' 
                 : empId.length === 4 
                 ? 'bg-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.3)]' 
-                : 'bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.1)]'
+                : 'bg-white text-black'
             ]"
-            :disabled="isLoading"
+            :disabled="isLoading || empId.length !== 4"
           >
             <div v-if="isLoading" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             {{ isLoading ? '登录中...' : '立即登录' }}
@@ -114,8 +114,8 @@ const onInput = (e: Event) => {
       </div>
 
       <!-- 底部备案信息 -->
-      <div class="mt-8 text-center">
-        <p class="text-[10px] text-zinc-600 uppercase tracking-[0.3em]">
+      <div class="mt-4 text-center">
+        <p class="text-[10px] text-zinc-600 uppercase tracking-[0.2em]">
           浙ICP备2026009642号-1
         </p>
       </div>
