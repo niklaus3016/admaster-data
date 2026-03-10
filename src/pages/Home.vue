@@ -210,8 +210,8 @@ const loadLoginStats = async () => {
 const loadWithdrawStatus = async () => {
   try {
     const response = await getWithdrawStatus();
-    if (response.success && response.data) {
-      withdrawEnabled.value = response.data.enabled;
+    if (response.success) {
+      withdrawEnabled.value = response.enabled;
     } else {
       withdrawEnabled.value = false;
     }
