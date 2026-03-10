@@ -564,7 +564,7 @@ const submitWithdraw = async () => {
           </div>
           
           <!-- 加载状态 -->
-          <div v-if="isLoading" class="grid grid-cols-2 space-x-3 space-y-3">
+          <div v-if="isLoading" class="grid grid-cols-2 gap-3">
             <div class="bg-white/3 border border-white/5 p-4 rounded-[1.25rem] backdrop-blur-md animate-pulse">
               <div class="h-3 bg-white/10 rounded w-1/2 mb-2"></div>
               <div class="h-6 bg-white/10 rounded w-3/4"></div>
@@ -584,51 +584,51 @@ const submitWithdraw = async () => {
           </div>
           
           <!-- 金币统计数据 -->
-          <div v-else class="grid grid-cols-2 space-x-3 space-y-3">
-            <div class="group relative glass-card rounded-[1.25rem] overflow-hidden transition-all hover:bg-white/5 h-32">
+          <div v-else class="grid grid-cols-2 gap-3">
+            <div class="group relative glass-card rounded-[1.25rem] overflow-hidden transition-all hover:bg-white/5">
               <div class="absolute top-0 right-0 w-16 h-16 bg-blue-500/10 blur-2xl rounded-full -mr-8 -mt-8" />
               <div class="p-4 flex justify-between items-start">
                 <div>
                   <p class="text-zinc-500 text-[9px] uppercase tracking-wider mb-1">上月累计金币</p>
                   <p class="text-lg font-light tracking-tight text-blue-400">{{ Math.floor(lastMonthGold).toLocaleString() }}</p>
                 </div>
-                <div class="flex flex-col">
+                <div class="flex flex-col gap-1.5">
                   <button 
                     @click="withdrawEnabled ? openWithdrawModal() : null"
                     :disabled="!withdrawEnabled"
-                    class="px-2 py-0.5 rounded-lg text-[8px] font-bold uppercase tracking-wider transition-all border flex items-center justify-center mb-1"
+                    class="px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all border flex items-center justify-center gap-1"
                     :class="withdrawEnabled 
                       ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border-blue-500/30 cursor-pointer' 
                       : 'bg-zinc-500/10 text-zinc-600 border-zinc-500/20 cursor-not-allowed'"
                   >
-                    <Wallet class="w-2.5 h-2.5 mr-1" />
+                    <Wallet class="w-3 h-3" />
                     提现
                   </button>
                   <button 
                     @click="openWithdrawRecordsModal"
-                    class="px-2 py-0.5 rounded-lg text-[8px] font-bold uppercase tracking-wider transition-all border flex items-center justify-center bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border-blue-500/30 cursor-pointer"
+                    class="px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all border flex items-center justify-center gap-1 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border-blue-500/30 cursor-pointer"
                   >
-                    <CreditCard class="w-2.5 h-2.5 mr-1" />
+                    <CreditCard class="w-3 h-3" />
                     记录
                   </button>
                 </div>
               </div>
             </div>
-            <div class="group relative bg-gradient-to-br from-emerald-500 to-teal-700 rounded-[1.25rem] shadow-xl shadow-emerald-500/10 overflow-hidden transition-all hover:scale-[1.02] h-32">
+            <div class="group relative bg-gradient-to-br from-emerald-500 to-teal-700 rounded-[1.25rem] shadow-xl shadow-emerald-500/10 overflow-hidden transition-all hover:scale-[1.02]">
               <div class="absolute top-0 right-0 w-16 h-16 bg-white/10 blur-2xl rounded-full -mr-8 -mt-8" />
               <div class="p-4">
                 <p class="text-emerald-100/60 text-[9px] uppercase tracking-wider mb-1">本月累计金币</p>
                 <p class="text-lg font-bold text-white tracking-tight">{{ Math.floor(currentMonthGold).toLocaleString() }}</p>
               </div>
             </div>
-            <div class="group relative glass-card rounded-[1.25rem] overflow-hidden transition-all hover:bg-white/5 h-32">
+            <div class="group relative glass-card rounded-[1.25rem] overflow-hidden transition-all hover:bg-white/5">
               <div class="absolute top-0 right-0 w-16 h-16 bg-purple-500/10 blur-2xl rounded-full -mr-8 -mt-8" />
               <div class="p-4">
                 <p class="text-zinc-500 text-[9px] uppercase tracking-wider mb-1">今日目标任务</p>
                 <p class="text-lg font-light tracking-tight text-purple-400">{{ todayTarget.toLocaleString() }}</p>
               </div>
             </div>
-            <div class="group relative glass-card rounded-[1.25rem] overflow-hidden transition-all hover:bg-white/5 h-32">
+            <div class="group relative glass-card rounded-[1.25rem] overflow-hidden transition-all hover:bg-white/5">
               <div class="absolute top-0 right-0 w-16 h-16 bg-amber-500/10 blur-2xl rounded-full -mr-8 -mt-8" />
               <div class="p-4">
                 <div 
@@ -638,8 +638,8 @@ const submitWithdraw = async () => {
                   {{ todayCoins >= todayTarget ? '已完成' : '未完成' }}
                 </div>
                 <p class="text-zinc-500 text-[9px] uppercase tracking-wider mb-1">今日金币收益</p>
-                <div class="flex items-center">
-                  <p class="text-lg font-bold text-amber-400 tracking-tight mr-2">{{ Math.floor(todayCoins).toLocaleString() }}</p>
+                <div class="flex items-center gap-2">
+                  <p class="text-lg font-bold text-amber-400 tracking-tight">{{ Math.floor(todayCoins).toLocaleString() }}</p>
                   <span class="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">{{ todayRecordCount }}条</span>
                 </div>
               </div>
