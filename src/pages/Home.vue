@@ -624,6 +624,12 @@ const submitWithdraw = async () => {
             <div class="group relative glass-card rounded-[1.25rem] overflow-hidden transition-all hover:bg-white/5">
               <div class="absolute top-0 right-0 w-16 h-16 bg-purple-500/10 blur-2xl rounded-full -mr-8 -mt-8" />
               <div class="p-4">
+                <div 
+                  class="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[8px] font-bold tracking-widest border"
+                  :class="todayCoins >= todayTarget ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'"
+                >
+                  {{ todayCoins >= todayTarget ? '已完成' : '未完成' }}
+                </div>
                 <p class="text-zinc-500 text-[9px] uppercase tracking-wider mb-1">今日目标任务</p>
                 <p class="text-lg font-light tracking-tight text-purple-400">{{ todayTarget.toLocaleString() }}</p>
               </div>
@@ -631,12 +637,6 @@ const submitWithdraw = async () => {
             <div class="group relative glass-card rounded-[1.25rem] overflow-hidden transition-all hover:bg-white/5">
               <div class="absolute top-0 right-0 w-16 h-16 bg-amber-500/10 blur-2xl rounded-full -mr-8 -mt-8" />
               <div class="p-4">
-                <div 
-                  class="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[8px] font-bold tracking-widest border"
-                  :class="todayCoins >= todayTarget ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'"
-                >
-                  {{ todayCoins >= todayTarget ? '已完成' : '未完成' }}
-                </div>
                 <p class="text-zinc-500 text-[9px] uppercase tracking-wider mb-1">今日金币收益</p>
                 <div class="flex items-center gap-2">
                   <p class="text-lg font-bold text-amber-400 tracking-tight">{{ Math.floor(todayCoins).toLocaleString() }}</p>
