@@ -596,19 +596,19 @@ const submitWithdraw = async () => {
                   <button 
                     @click="withdrawEnabled ? openWithdrawModal() : null"
                     :disabled="!withdrawEnabled"
-                    class="px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all border flex items-center justify-center mb-1.5"
+                    class="px-2 py-0.5 rounded-lg text-[8px] font-bold uppercase tracking-wider transition-all border flex items-center justify-center mb-1"
                     :class="withdrawEnabled 
                       ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border-blue-500/30 cursor-pointer' 
                       : 'bg-zinc-500/10 text-zinc-600 border-zinc-500/20 cursor-not-allowed'"
                   >
-                    <Wallet class="w-3 h-3 mr-1" />
+                    <Wallet class="w-2.5 h-2.5 mr-1" />
                     提现
                   </button>
                   <button 
                     @click="openWithdrawRecordsModal"
-                    class="px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all border flex items-center justify-center bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border-blue-500/30 cursor-pointer"
+                    class="px-2 py-0.5 rounded-lg text-[8px] font-bold uppercase tracking-wider transition-all border flex items-center justify-center bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border-blue-500/30 cursor-pointer"
                   >
-                    <CreditCard class="w-3 h-3 mr-1" />
+                    <CreditCard class="w-2.5 h-2.5 mr-1" />
                     记录
                   </button>
                 </div>
