@@ -223,7 +223,7 @@ export async function rewardGold(userId: string, employeeId: string, ecpm: numbe
  */
 export async function getGoldLogs(userId: string): Promise<ApiResponse<GoldLog[]>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/gold/log?userId=${userId}`);
+    const response = await fetch(`${API_BASE_URL}/api/gold/log?userId=${userId}&limit=10000`);
     return await response.json();
   } catch (error) {
     console.error('获取金币记录失败:', error);
