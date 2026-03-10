@@ -423,10 +423,44 @@ interface WithdrawStatus {
  */
 export async function getWithdrawStatus(): Promise<ApiResponse<WithdrawStatus>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/withdraw/status`);
+    const response = await fetch(`${API_BASE_URL}/api/settings/withdraw-status`);
     return await response.json();
   } catch (error) {
     console.error('获取提现状态失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+    };
+  }
+}
+
+// 活动记录相关接口
+interface ActivityRecord {
+  userId: string;
+  employeeId: string;
+  deviceId: string;
+  ip: string;
+}
+
+/**
+ * 记录用户活动
+ * @param userId 用户ID
+ * @param employeeId 员工号
+ * @param deviceId 设备ID
+ * @returns 活动记录结果
+ */
+export async function recordActivity(userId: string, employeeId: string, deviceId: string): Promise<ApiResponse<ActivityRecord>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/activity/record`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userId, employeeId, deviceId }),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('记录活动失败:', error);
     return {
       success: false,
       message: '网络错误，请稍后重试',

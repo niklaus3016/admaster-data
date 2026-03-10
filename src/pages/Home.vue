@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Coins, History, PlayCircle, LogOut, TrendingUp, Wallet, CreditCard } from 'lucide-vue-next';
-import { getUserInfo, rewardGold, getGoldLogs, recordLogin, getLoginStats, submitWithdrawRequest, getWithdrawStatus, getWithdrawRecords, claimDailyBonus, type WithdrawRecord } from '../api/apiService';
+import { getUserInfo, rewardGold, getGoldLogs, recordLogin, getLoginStats, submitWithdrawRequest, getWithdrawStatus, getWithdrawRecords, claimDailyBonus, recordActivity, type WithdrawRecord } from '../api/apiService';
 import { useAdManager } from '../composables/useAdManager';
 import { TTSPlugin } from '../plugins/TTSPlugin';
 import { Capacitor } from '@capacitor/core';
@@ -165,6 +165,29 @@ const isLoadingWithdrawRecords = ref(false);
 // 登录天数统计
 const loginDays = ref(0);
 
+// 获取或生成设备ID
+const getDeviceId = (): string => {
+  let deviceId = localStorage.getItem('deviceId');
+  if (!deviceId) {
+    deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem('deviceId', deviceId);
+  }
+  return deviceId;
+};
+
+// 记录用户活动
+const recordUserActivity = async () => {
+  if (!userId.value || !empId.value) return;
+  
+  try {
+    const deviceId = getDeviceId();
+    await recordActivity(userId.value, empId.value, deviceId);
+    console.log('活动记录成功');
+  } catch (err) {
+    console.error('记录活动失败:', err);
+  }
+};
+
 // 加载登录统计
 const loadLoginStats = async () => {
   if (!userId.value || !empId.value) return;
@@ -242,6 +265,9 @@ onMounted(async () => {
   await loadWithdrawStatus();
   await loadUserInfo();
   await loadGoldRecords();
+  
+  // 记录用户活动（进入首页）
+  await recordUserActivity();
 });
 
 // 加载用户金币信息
@@ -327,6 +353,9 @@ const handleWatchAd = async () => {
   error.value = '';
   
   try {
+    // 记录用户活动（观看广告）
+    await recordUserActivity();
+    
     // 调用广告管理逻辑
     const result = await showRewardVideo();
     
@@ -1107,5 +1136,28 @@ const submitWithdraw = async () => {
 
 .animate-bounce {
   animation: bounce 0.6s ease-in-out infinite;
+}
+
+/* WebView 兼容性处理 */
+@supports not (backdrop-filter: blur(12px)) {
+  .backdrop-blur-xl,
+  .backdrop-blur-md,
+  .backdrop-blur-sm {
+    background-color: rgba(0, 0, 0, 0.8) !important;
+  }
+}
+
+/* 降级样式 */
+.bg-white-3 {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.bg-white-2 {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+/* 圆角降级 */
+.rounded-4xl {
+  border-radius: 2rem;
 }
 </style>
