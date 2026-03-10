@@ -285,7 +285,7 @@ const loadUserInfo = async () => {
       currentMonthGold.value = Number(response.data.currentMonthGold) || 0;
       lastMonthGold.value = Number(response.data.lastMonthGold) || 0;
       todayTarget.value = Number(response.data.todayTarget) || 0;
-      bonusGold.value = Number(response.data.bonusGold) || 5000;
+      bonusGold.value = response.data.bonusGold !== undefined && response.data.bonusGold !== null ? Number(response.data.bonusGold) : 0;
       hasClaimedBonus.value = Boolean(response.data.hasClaimedBonus);
     } else {
       error.value = response.message || '获取金币信息失败';
@@ -310,14 +310,17 @@ const loadGoldRecords = async () => {
   todayRecordCount.value = 0;
 
   try {
-    const response = await getGoldLogs(userId.value);
+    // 获取足够多的记录用于计算今日统计（使用较大limit）
+    const response = await getGoldLogs(userId.value, 10000);
     if (response.success && response.data) {
       // 转换后端记录格式为前端格式（使用北京时间）
       const toBeijingTime = (date: Date) => {
         return new Date(date.getTime() + 8 * 60 * 60 * 1000);
       };
       
-      records.value = response.data.map((log: any) => {
+      // 只保留最近200条用于显示
+      const displayData = response.data.slice(0, 200);
+      records.value = displayData.map((log: any) => {
         // 后端返回的时间已经是北京时间，直接显示
         const recordTime = new Date(log.createTime);
         return {
@@ -330,7 +333,7 @@ const loadGoldRecords = async () => {
         };
       });
 
-      // 计算今日金币收益（使用本地日期）
+      // 计算今日金币收益（使用全部数据，确保统计准确）
       const getLocalDate = (date: Date) => {
         return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
       };
@@ -640,12 +643,12 @@ const submitWithdraw = async () => {
               <div class="p-4">
                 <div 
                   class="absolute top-4 right-4 px-2 py-0.5 rounded-full text-[8px] font-bold tracking-widest border"
-                  :class="todayCoins >= todayTarget ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'"
+                  :class="todayTarget > 0 ? (todayCoins >= todayTarget ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20') : 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'"
                 >
-                  {{ todayCoins >= todayTarget ? '已完成' : '未完成' }}
+                  {{ todayTarget > 0 ? (todayCoins >= todayTarget ? '已完成' : '未完成') : '未设置' }}
                 </div>
                 <p class="text-zinc-500 text-[9px] uppercase tracking-wider mb-1">今日目标任务</p>
-                <p class="text-lg font-light tracking-tight text-purple-400">{{ todayTarget.toLocaleString() }}</p>
+                <p class="text-lg font-light tracking-tight text-purple-400">{{ todayTarget > 0 ? todayTarget.toLocaleString() : '未设置' }}</p>
               </div>
             </div>
             <div class="group relative glass-card rounded-[1.25rem] overflow-hidden transition-all hover:bg-white/5">
@@ -879,10 +882,10 @@ const submitWithdraw = async () => {
               <div v-else-if="records.length === 0" class="py-20 text-center">
                 <p class="text-xs text-zinc-600 uppercase tracking-widest">暂无记录</p>
               </div>
-              <!-- 记录列表 - 只显示最近100条 -->
+              <!-- 记录列表 -->
               <div 
                 v-else
-                v-for="record in records.slice(0, 100)" 
+                v-for="record in records" 
                 :key="record.id" 
                 class="px-6 py-4 rounded-2xl glass-card flex justify-between items-center"
               >
@@ -895,9 +898,9 @@ const submitWithdraw = async () => {
                   <Coins class="w-3 h-3 text-amber-500/50" />
                 </div>
               </div>
-              <!-- 如果记录超过100条，显示提示 -->
-              <div v-if="records.length > 100" class="text-center py-4">
-                <p class="text-[10px] text-zinc-600">仅显示最近100条记录</p>
+              <!-- 如果记录达到200条，显示提示 -->
+              <div v-if="records.length >= 200" class="text-center py-4">
+                <p class="text-[10px] text-zinc-600">显示最近200条记录</p>
               </div>
             </div>
           </div>

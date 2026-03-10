@@ -220,11 +220,12 @@ export async function rewardGold(userId: string, employeeId: string, ecpm: numbe
 /**
  * 获取金币记录接口
  * @param userId 用户ID
+ * @param limit 限制数量，默认200
  * @returns 金币发放记录列表
  */
-export async function getGoldLogs(userId: string): Promise<ApiResponse<GoldLog[]>> {
+export async function getGoldLogs(userId: string, limit: number = 200): Promise<ApiResponse<GoldLog[]>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/gold/log?userId=${userId}&limit=10000`);
+    const response = await fetch(`${API_BASE_URL}/api/gold/log?userId=${userId}&limit=${limit}`);
     return await response.json();
   } catch (error) {
     console.error('获取金币记录失败:', error);
