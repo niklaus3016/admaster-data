@@ -834,10 +834,10 @@ const submitWithdraw = async () => {
 
     <!-- View All Records Modal -->
     <transition name="modal">
-      <div v-if="showAllRecords" class="fixed inset-0 z-100 flex items-end justify-center sm:items-center p-0 sm:p-6">
-        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" @click="showAllRecords = false" />
-        <div class="relative w-full max-w-md bg-[#0f0f11] border-t sm:border border-white/10 rounded-t-[3rem] sm:rounded-[3rem] overflow-hidden flex flex-col max-h-[85vh]">
-          <div class="px-8 py-6 border-b border-white/5 flex justify-between items-center sticky top-0 bg-[#0f0f11] z-10">
+      <div v-if="showAllRecords" class="fixed inset-0 z-9999 flex items-end justify-center sm:items-center p-0 sm:p-6 pointer-events-auto">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-md z-[9998]" @click="showAllRecords = false" />
+        <div class="relative w-full max-w-md bg-[#020205] border-t sm:border border-white/10 rounded-t-[3rem] sm:rounded-[3rem] overflow-hidden flex flex-col max-h-[85vh] z-[9999] shadow-2xl">
+          <div class="px-8 py-6 border-b border-white/5 flex justify-between items-center sticky top-0 bg-[#020205] z-10">
             <div class="flex items-center gap-3">
               <div class="w-8 h-8 bg-white/5 rounded-full flex items-center justify-center">
                 <History class="w-4 h-4 text-zinc-400" />
@@ -870,7 +870,7 @@ const submitWithdraw = async () => {
                 v-else
                 v-for="record in records" 
                 :key="record.id" 
-                class="px-6 py-4 rounded-2xl bg-white/2 border border-white/3 flex justify-between items-center"
+                class="px-6 py-4 rounded-2xl glass-card flex justify-between items-center"
               >
                 <div class="flex flex-col">
                   <span class="text-[11px] text-zinc-400 font-mono tracking-tighter">{{ record.time }}</span>
@@ -903,11 +903,11 @@ const submitWithdraw = async () => {
 
     <!-- 提现弹窗 -->
     <transition name="modal">
-      <div v-if="showWithdrawModal" class="fixed inset-0 z-100 flex items-end justify-center sm:items-center p-0 sm:p-6">
-        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" @click="closeWithdrawModal" />
-        <div class="relative w-full max-w-md bg-[#0f0f11] border-t sm:border border-white/10 rounded-t-[3rem] sm:rounded-[3rem] overflow-hidden flex flex-col max-h-[85vh]">
+      <div v-if="showWithdrawModal" class="fixed inset-0 z-9999 flex items-end justify-center sm:items-center p-0 sm:p-6 pointer-events-auto">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-md z-[9998]" @click="closeWithdrawModal" />
+        <div class="relative w-full max-w-md bg-[#020205] border-t sm:border border-white/10 rounded-t-[3rem] sm:rounded-[3rem] overflow-hidden flex flex-col max-h-[85vh] z-[9999] shadow-2xl">
           <!-- 弹窗头部 -->
-          <div class="px-8 py-6 border-b border-white/5 flex justify-between items-center sticky top-0 bg-[#0f0f11] z-10">
+          <div class="px-8 py-6 border-b border-white/5 flex justify-between items-center sticky top-0 bg-[#020205] z-10">
             <div class="flex items-center gap-3">
               <div class="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center border border-blue-500/30">
                 <Wallet class="w-4 h-4 text-blue-400" />
@@ -938,7 +938,7 @@ const submitWithdraw = async () => {
             <!-- 提现表单 -->
             <div v-else class="space-y-6">
               <!-- 提现金额 -->
-              <div class="bg-white/3 border border-white/5 rounded-2xl p-4">
+              <div class="glass-card rounded-2xl p-4">
                 <p class="text-zinc-500 text-[10px] uppercase tracking-wider mb-2">可提现金额</p>
                 <div class="flex items-baseline gap-1">
                   <span class="text-3xl font-bold text-blue-400">¥{{ withdrawAmount }}</span>
@@ -997,11 +997,11 @@ const submitWithdraw = async () => {
 
     <!-- 提现记录弹窗 -->
     <transition name="modal">
-      <div v-if="showWithdrawRecordsModal" class="fixed inset-0 z-100 flex items-end justify-center sm:items-center p-0 sm:p-6">
-        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" @click="closeWithdrawRecordsModal" />
-        <div class="relative w-full max-w-md bg-[#0f0f11] border-t sm:border border-white/10 rounded-t-[3rem] sm:rounded-[3rem] overflow-hidden flex flex-col max-h-[85vh]">
+      <div v-if="showWithdrawRecordsModal" class="fixed inset-0 z-9999 flex items-end justify-center sm:items-center p-0 sm:p-6 pointer-events-auto">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-md z-[9998]" @click="closeWithdrawRecordsModal" />
+        <div class="relative w-full max-w-md bg-[#020205] border-t sm:border border-white/10 rounded-t-[3rem] sm:rounded-[3rem] overflow-hidden flex flex-col max-h-[85vh] z-[9999] shadow-2xl">
           <!-- 弹窗头部 -->
-          <div class="px-8 py-6 border-b border-white/5 flex justify-between items-center sticky top-0 bg-[#0f0f11] z-10">
+          <div class="px-8 py-6 border-b border-white/5 flex justify-between items-center sticky top-0 bg-[#020205] z-10">
             <div class="flex items-center gap-3">
               <div class="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center border border-blue-500/30">
                 <CreditCard class="w-4 h-4 text-blue-400" />
@@ -1040,7 +1040,7 @@ const submitWithdraw = async () => {
               <div 
                 v-for="record in withdrawRecords" 
                 :key="record._id" 
-                class="bg-white/3 border border-white/5 rounded-2xl p-4 space-y-3"
+                class="glass-card rounded-2xl p-4 space-y-3"
               >
                 <!-- 头部：金额和状态 -->
                 <div class="flex justify-between items-start">
