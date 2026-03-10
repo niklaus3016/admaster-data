@@ -564,7 +564,7 @@ const submitWithdraw = async () => {
           </div>
           
           <!-- 加载状态 -->
-          <div v-if="isLoading" class="grid grid-cols-2 space-x-3">
+          <div v-if="isLoading" class="grid grid-cols-2 space-x-3 space-y-3">
             <div class="bg-white/3 border border-white/5 p-4 rounded-[1.25rem] backdrop-blur-md animate-pulse">
               <div class="h-3 bg-white/10 rounded w-1/2 mb-2"></div>
               <div class="h-6 bg-white/10 rounded w-3/4"></div>
@@ -584,7 +584,7 @@ const submitWithdraw = async () => {
           </div>
           
           <!-- 金币统计数据 -->
-          <div v-else class="grid grid-cols-2 space-x-3">
+          <div v-else class="grid grid-cols-2 space-x-3 space-y-3">
             <div class="group relative glass-card rounded-[1.25rem] overflow-hidden transition-all hover:bg-white/5">
               <div class="absolute top-0 right-0 w-16 h-16 bg-blue-500/10 blur-2xl rounded-full -mr-8 -mt-8" />
               <div class="p-4 flex justify-between items-start">
