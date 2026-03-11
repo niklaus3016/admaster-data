@@ -66,6 +66,43 @@ export function useAdManager(config: AdConfig) {
     return Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
   };
   
+  const getSlotTimeout = (slotId: string): number => {
+    const ecpmRanges: { [key: string]: [number, number] } = {
+      '19188698': [1400, 1500], // 保价1500
+      '19202078': [1200, 1400], // 保价1400
+      '19202080': [1000, 1200], // 保价1200
+      '19188424': [800, 1000],  // 保价1000
+      '19188704': [500, 800],    // 保价800
+      '19202085': [400, 500],    // 保价500
+      '19188706': [300, 400],    // 保价400
+      '19202092': [200, 300],    // 保价300
+      '19188709': [180, 200],    // 保价200
+      '19202094': [150, 180],    // 保价180
+      '19188421': [130, 150],    // 保价150
+      '19202097': [100, 130],    // 保价130
+      '19183768': [80, 100],     // 保价100
+      '19188420': [60, 80],      // 保价80
+      '19202099': [40, 60],      // 保价60
+      '19202100': [20, 40],      // 保价40
+      '19188427': [10, 20],       // 竞价
+      '19202101': [1, 10]         // 保价10
+    };
+    
+    const range = ecpmRanges[slotId];
+    if (!range) return 500; // 默认500ms
+    
+    const maxEcpm = range[1];
+    if (maxEcpm >= 1000) {
+      return 1000; // 最高价广告（1000-1500）：1000ms
+    } else if (maxEcpm >= 500) {
+      return 800;  // 次高价广告（500-1000）：800ms
+    } else if (maxEcpm >= 200) {
+      return 500;  // 中价广告（200-500）：500ms
+    } else {
+      return 300;  // 低价广告（10-200）：300ms
+    }
+  };
+  
   const getNextSlotId = (): string => {
     if (!config.slotIds?.length) throw new Error('广告位配置为空');
     const slotId = config.slotIds[currentSlotIndex];
@@ -390,13 +427,14 @@ export function useAdManager(config: AdConfig) {
           });
         
         // 单层超时
+        const timeoutDuration = getSlotTimeout(selectedSlotId);
         slotTimeoutId = setTimeout(() => {
           if (!checkSession() || currentAdSuccess || isResolved) return;
           
-          console.warn(`⏱️ 单层广告加载超时（${SLOT_TIMEOUT}ms）`);
+          console.warn(`⏱️ 单层广告加载超时（${timeoutDuration}ms）`);
           cleanupListeners();
           resolveOnce('failed');
-        }, SLOT_TIMEOUT);
+        }, timeoutDuration);
       });
     };
     
