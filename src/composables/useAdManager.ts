@@ -36,8 +36,16 @@ export function useAdManager(config: AdConfig) {
   let slotTimeoutId: any = null;
   let currentSessionId = 0;
   let isProcessing = false; // 是否正在处理广告，防止并发
-  const MAX_RETRY_ROUNDS = 1; // 轮询1遍即可
-  const SLOT_TIMEOUT = 3000;
+  // 广告位分组配置
+  const AD_GROUPS = {
+    hidden: ['19188698', '19202078'], // 隐藏的广告位
+    parallelGroup1: ['19202080', '19188424', '19188704'], // 第一组并行：1200、1000、800
+    parallelGroup2: ['19202085', '19188706', '19202092'], // 第二组并行：500、400、300
+    serial: ['19188709', '19202094', '19188421', '19202097', '19183768', '19188420', '19202099', '19202100', '19188427', '19202101'] // 串行处理的广告位
+  };
+  
+  // 并行请求超时时间（毫秒）
+  const PARALLEL_TIMEOUT = 3000;
   
   const generateSimulatedEcpm = (slotId: string): number => {
     const ecpmRanges: { [key: string]: [number, number] } = {
@@ -75,6 +83,154 @@ export function useAdManager(config: AdConfig) {
     currentSlotIndex = (currentSlotIndex + 1) % config.slotIds.length;
     triedSlots++;
     return slotId;
+  };
+  
+  // 并行请求广告组
+  const tryParallelAdGroup = async (slotIds: string[]): Promise<{ ecpm: number; slotId: string } | null> => {
+    console.log(`========== 开始并行请求广告组: ${slotIds.join(', ')} ==========`);
+    
+    const sessionId = currentSessionId;
+    const checkSession = () => sessionId === currentSessionId;
+    
+    const adPromises = slotIds.map(slotId => {
+      return new Promise<{ ecpm: number; slotId: string } | null>((resolve) => {
+        let isResolved = false;
+        let slotTimeoutId: any = null;
+        let currentAdSuccess = false;
+        
+        const resolveOnce = (result: { ecpm: number; slotId: string } | null) => {
+          if (!isResolved && checkSession()) {
+            isResolved = true;
+            cleanupSlotListeners();
+            if (slotTimeoutId) clearTimeout(slotTimeoutId);
+            resolve(result);
+          }
+        };
+        
+        const onRewardVerify = (result: any) => {
+          if (!checkSession() || currentAdSuccess || isResolved) return;
+          
+          console.log(`========== 广告奖励回调 (${slotId}) ==========`);
+          console.log('结果:', result);
+          
+          currentAdSuccess = true;
+          if (slotTimeoutId) clearTimeout(slotTimeoutId);
+          
+          let ecpm = result.ecpm || 0;
+          
+          if (slotId === '19188427') {
+            console.log('竞价位广告，使用模拟 ECPM');
+            ecpm = generateSimulatedEcpm(slotId);
+          } else if (ecpm === 0) {
+            console.log('保价位广告 ECPM 为 0，生成模拟 ECPM');
+            ecpm = generateSimulatedEcpm(slotId);
+          }
+          
+          console.log(`✅ 广告成功 (${slotId})，返回 ECPM:`, ecpm);
+          resolveOnce({ ecpm, slotId });
+        };
+        
+        const onAdFailed = (error: any) => {
+          if (!checkSession() || currentAdSuccess || isResolved) return;
+          console.warn(`⚠️ 广告加载失败 (${slotId}):`, error?.error || error);
+          resolveOnce(null);
+        };
+        
+        const onVideoDownloadSuccess = async () => {
+          if (!checkSession() || currentAdSuccess || isResolved) return;
+          
+          console.log(`✅ 视频下载成功 (${slotId})，准备显示广告`);
+          try {
+            if (slotTimeoutId) clearTimeout(slotTimeoutId);
+            
+            // 检查广告是否就绪
+            console.log(`🔍 检查广告就绪状态 (${slotId})...`);
+            try {
+              const readyStatus = await BaiduAd.isReady();
+              console.log(`📊 广告就绪状态 (${slotId}):`, readyStatus);
+              
+              if (!readyStatus.ready) {
+                console.warn(`⚠️ 广告未就绪 (${slotId})，尝试强制显示...`);
+              }
+            } catch (error) {
+              console.warn(`⚠️ 检查广告就绪状态失败 (${slotId}):`, error);
+            }
+            
+            console.log(`✅ 广告位加载成功且已就绪 (${slotId})，准备播放`);
+            await BaiduAd.showRewardVideoAd();
+            console.log(`✅ 广告显示命令已发送 (${slotId})`);
+          } catch (error) {
+            console.error(`❌ 显示广告失败 (${slotId}):`, error);
+            resolveOnce(null);
+          }
+        };
+        
+        const onVideoDownloadFailed = () => {
+          if (!checkSession() || currentAdSuccess || isResolved) return;
+          console.warn(`⚠️ 视频下载失败 (${slotId})`);
+          resolveOnce(null);
+        };
+        
+        const onAdClose = () => {
+          if (!checkSession()) return;
+          console.log(`✅ 广告关闭回调 (${slotId})`);
+          if (!currentAdSuccess) {
+            console.log(`广告关闭但未获得奖励 (${slotId})，标记为失败`);
+            resolveOnce(null);
+          }
+        };
+        
+        // 注册监听器
+        BaiduAd.addListener('onRewardVerify', onRewardVerify);
+        BaiduAd.addListener('onAdFailed', onAdFailed);
+        BaiduAd.addListener('onVideoDownloadSuccess', onVideoDownloadSuccess);
+        BaiduAd.addListener('onVideoDownloadFailed', onVideoDownloadFailed);
+        BaiduAd.addListener('onAdClose', onAdClose);
+        
+        // 清理监听器的函数
+        const cleanupSlotListeners = () => {
+          try {
+            BaiduAd.removeListener('onRewardVerify', onRewardVerify);
+            BaiduAd.removeListener('onAdFailed', onAdFailed);
+            BaiduAd.removeListener('onVideoDownloadSuccess', onVideoDownloadSuccess);
+            BaiduAd.removeListener('onVideoDownloadFailed', onVideoDownloadFailed);
+            BaiduAd.removeListener('onAdClose', onAdClose);
+          } catch (e) {
+            console.warn(`清理监听器失败 (${slotId}):`, e);
+          }
+        };
+        
+        // 加载广告
+        console.log(`尝试加载广告位: ${slotId}`);
+        BaiduAd.loadRewardVideoAd({ adId: slotId })
+          .then(() => console.log(`✅ 广告加载请求已发送 (${slotId})`))
+          .catch((err: any) => {
+            console.error(`❌ 加载广告请求失败 (${slotId}):`, err);
+            resolveOnce(null);
+          });
+        
+        // 广告位超时
+        slotTimeoutId = setTimeout(() => {
+          if (!checkSession() || currentAdSuccess || isResolved) return;
+          console.warn(`⏱️ 广告加载超时 (${slotId})`);
+          resolveOnce(null);
+        }, PARALLEL_TIMEOUT);
+      });
+    });
+    
+    // 等待所有并行请求完成
+    const results = await Promise.allSettled(adPromises);
+    
+    // 处理结果，找到第一个成功的广告
+    for (const result of results) {
+      if (result.status === 'fulfilled' && result.value) {
+        console.log(`🎉 并行请求成功，使用广告位: ${result.value.slotId}，ECPM: ${result.value.ecpm}`);
+        return result.value;
+      }
+    }
+    
+    console.log('❌ 并行请求组所有广告位均失败');
+    return null;
   };
   
   const resetAdState = () => {
@@ -214,225 +370,270 @@ export function useAdManager(config: AdConfig) {
     });
   };
 
-  const showNativeAd = async (resolve: (value: { ecpm: number; slotId: string }) => void, reject: (reason?: any) => void) => {
+  // 串行加载单个广告位
+  const tryLoadAd = async (): Promise<'success' | 'failed' | 'session_expired'> => {
     const sessionId = currentSessionId;
     let currentAdSuccess = false; // 当前广告是否成功
     
     const checkSession = () => sessionId === currentSessionId;
     
-    const tryLoadAd = async (): Promise<'success' | 'failed' | 'session_expired'> => {
-      if (!checkSession()) {
-        console.log('会话已过期，停止加载');
-        return 'session_expired';
-      }
+    if (!checkSession()) {
+      console.log('会话已过期，停止加载');
+      return 'session_expired';
+    }
+    
+    // 检查是否已尝试所有轮次
+    const maxSlots = config.slotIds.length;
+    if (triedSlots >= maxSlots) {
+      console.log('所有广告位都已尝试');
+      return 'failed';
+    }
+    
+    // 清理之前的监听器
+    cleanupListeners();
+    
+    const selectedSlotId = getNextSlotId();
+    console.log(`尝试加载广告位: ${selectedSlotId}`);
+    
+    return new Promise((resolveLoad) => {
+      let isResolved = false; // 标记当前加载是否已解决
       
-      // 检查是否已尝试所有轮次
-      const maxSlots = config.slotIds.length * MAX_RETRY_ROUNDS;
-      if (triedSlots >= maxSlots) {
-        console.log(`所有${MAX_RETRY_ROUNDS}轮广告位都已尝试`);
-        return 'failed';
-      }
+      const resolveOnce = (result: 'success' | 'failed') => {
+        if (!isResolved) {
+          isResolved = true;
+          resolveLoad(result);
+        }
+      };
       
-      // 清理之前的监听器
-      cleanupListeners();
-      
-      const selectedSlotId = getNextSlotId();
-      console.log(`尝试加载广告位: ${selectedSlotId}`);
-      
-      return new Promise((resolveLoad) => {
-        let isResolved = false; // 标记当前加载是否已解决
-        
-        const resolveOnce = (result: 'success' | 'failed') => {
-          if (!isResolved) {
-            isResolved = true;
-            resolveLoad(result);
-          }
-        };
-        
-        const onAdLoaded = () => {
-          if (!checkSession()) return;
-          console.log('✅ 广告加载成功回调');
-        };
+      const onAdLoaded = () => {
+        if (!checkSession()) return;
+        console.log('✅ 广告加载成功回调');
+      };
 
-        const onRewardVerify = (result: any) => {
-          if (!checkSession() || currentAdSuccess) return;
-          
-          console.log('========== 广告奖励回调 ==========');
-          console.log('结果:', result);
-          
-          currentAdSuccess = true;
-          if (slotTimeoutId) clearTimeout(slotTimeoutId);
-          
-          let ecpm = result.ecpm || 0;
-          const currentSlotId = config.slotIds[(currentSlotIndex - 1 + config.slotIds.length) % config.slotIds.length];
-          
-          if (currentSlotId === '19188427') {
-            console.log('竞价位广告，使用模拟 ECPM');
-            ecpm = generateSimulatedEcpm(currentSlotId);
-          } else if (ecpm === 0) {
-            console.log('保价位广告 ECPM 为 0，生成模拟 ECPM');
-            ecpm = generateSimulatedEcpm(currentSlotId);
+      const onRewardVerify = (result: any) => {
+        if (!checkSession() || currentAdSuccess) return;
+        
+        console.log('========== 广告奖励回调 ==========');
+        console.log('结果:', result);
+        
+        currentAdSuccess = true;
+        if (slotTimeoutId) clearTimeout(slotTimeoutId);
+        
+        let ecpm = result.ecpm || 0;
+        const currentSlotId = config.slotIds[(currentSlotIndex - 1 + config.slotIds.length) % config.slotIds.length];
+        
+        if (currentSlotId === '19188427') {
+          console.log('竞价位广告，使用模拟 ECPM');
+          ecpm = generateSimulatedEcpm(currentSlotId);
+        } else if (ecpm === 0) {
+          console.log('保价位广告 ECPM 为 0，生成模拟 ECPM');
+          ecpm = generateSimulatedEcpm(currentSlotId);
+        }
+        
+        isAdLoading.value = false;
+        isAdReady.value = false;
+        
+        console.log('✅ 广告成功，返回 ECPM:', ecpm, '广告位ID:', currentSlotId);
+        cleanupListeners();
+        currentResolve({ ecpm, slotId: currentSlotId });
+        
+        currentResolve = null;
+        currentReject = null;
+        isProcessing = false;
+        resolveOnce('success');
+      };
+      
+      const onAdFailed = (error: any) => {
+        if (!checkSession() || currentAdSuccess || isResolved) return;
+        
+        console.warn('⚠️ 广告加载失败:', error?.error || error);
+        lastError.value = '广告加载失败: ' + (error?.error || error || '未知错误');
+        
+        if (slotTimeoutId) clearTimeout(slotTimeoutId);
+        cleanupListeners();
+        resolveOnce('failed');
+      };
+
+      const onVideoDownloadSuccess = async () => {
+        if (!checkSession() || currentAdSuccess || isResolved) return;
+        
+        console.log('✅ 视频下载成功，准备显示广告');
+        try {
+          if (slotTimeoutId) {
+            clearTimeout(slotTimeoutId);
+            console.log('✅ 清除单层超时定时器');
           }
           
+          isAdReady.value = true;
           isAdLoading.value = false;
-          isAdReady.value = false;
           
-          console.log('✅ 广告成功，返回 ECPM:', ecpm, '广告位ID:', currentSlotId);
-          cleanupListeners();
-          resolve({ ecpm, slotId: currentSlotId });
+          // 检查广告是否就绪（未过期且缓存成功）
+          console.log('🔍 检查广告就绪状态...');
+          try {
+            const readyStatus = await BaiduAd.isReady();
+            console.log('📊 广告就绪状态:', readyStatus);
+            
+            if (!readyStatus.ready) {
+              console.warn('⚠️ 广告未就绪（可能已过期或未缓存完成）');
+              // 即使isReady返回false，也尝试显示广告，因为广告可能已经加载成功
+              console.log('🔄 尝试强制显示广告...');
+            }
+          } catch (error) {
+            console.warn('⚠️ 检查广告就绪状态失败:', error);
+            // 检查失败时也尝试显示广告
+          }
           
-          currentResolve = null;
-          currentReject = null;
-          isProcessing = false;
-          resolveOnce('success');
-        };
-        
-        const onAdFailed = (error: any) => {
-          if (!checkSession() || currentAdSuccess || isResolved) return;
-          
-          console.warn('⚠️ 广告加载失败:', error?.error || error);
-          lastError.value = '广告加载失败: ' + (error?.error || error || '未知错误');
-          
-          if (slotTimeoutId) clearTimeout(slotTimeoutId);
+          console.log('✅ 广告位加载成功且已就绪，准备播放');
+          await BaiduAd.showRewardVideoAd();
+          console.log('✅ 广告显示命令已发送');
+        } catch (error) {
+          console.error('❌ 显示广告失败:', error);
+          lastError.value = '显示广告失败: ' + (error?.message || error);
           cleanupListeners();
           resolveOnce('failed');
-        };
+        }
+      };
 
-        const onVideoDownloadSuccess = async () => {
-          if (!checkSession() || currentAdSuccess || isResolved) return;
-          
-          console.log('✅ 视频下载成功，准备显示广告');
-          try {
-            if (slotTimeoutId) {
-              clearTimeout(slotTimeoutId);
-              console.log('✅ 清除单层超时定时器');
-            }
-            
-            isAdReady.value = true;
-            isAdLoading.value = false;
-            
-            // 检查广告是否就绪（未过期且缓存成功）
-            console.log('🔍 检查广告就绪状态...');
-            try {
-              const readyStatus = await BaiduAd.isReady();
-              console.log('📊 广告就绪状态:', readyStatus);
-              
-              if (!readyStatus.ready) {
-                console.warn('⚠️ 广告未就绪（可能已过期或未缓存完成）');
-                // 即使isReady返回false，也尝试显示广告，因为广告可能已经加载成功
-                console.log('🔄 尝试强制显示广告...');
-              }
-            } catch (error) {
-              console.warn('⚠️ 检查广告就绪状态失败:', error);
-              // 检查失败时也尝试显示广告
-            }
-            
-            console.log('✅ 广告位加载成功且已就绪，准备播放');
-            await BaiduAd.showRewardVideoAd();
-            console.log('✅ 广告显示命令已发送');
-          } catch (error) {
-            console.error('❌ 显示广告失败:', error);
-            lastError.value = '显示广告失败: ' + (error?.message || error);
+      const onVideoDownloadFailed = () => {
+        if (!checkSession() || currentAdSuccess || isResolved) return;
+        
+        console.warn('⚠️ 视频下载失败');
+        lastError.value = '视频下载失败，可能是广告填充不足';
+        
+        if (slotTimeoutId) clearTimeout(slotTimeoutId);
+        cleanupListeners();
+        resolveOnce('failed');
+      };
+      
+      const onAdClose = () => {
+        if (!checkSession()) return;
+        
+        console.log('✅ 广告关闭回调');
+        if (slotTimeoutId) clearTimeout(slotTimeoutId);
+        isAdReady.value = false;
+        isAdLoading.value = false;
+        cleanupListeners();
+        
+        // 如果广告未成功（用户跳过或未获得奖励），标记为失败
+        if (!currentAdSuccess) {
+          console.log('广告关闭但未获得奖励，标记为失败');
+          resolveOnce('failed');
+        }
+      };
+      
+      adLoadedListener = onAdLoaded;
+      rewardVerifyListener = onRewardVerify;
+      adFailedListener = onAdFailed;
+      videoDownloadSuccessListener = onVideoDownloadSuccess;
+      videoDownloadFailedListener = onVideoDownloadFailed;
+      adCloseListener = onAdClose;
+      
+      BaiduAd.addListener('onAdLoaded', onAdLoaded);
+      BaiduAd.addListener('onRewardVerify', onRewardVerify);
+      BaiduAd.addListener('onAdFailed', onAdFailed);
+      BaiduAd.addListener('onVideoDownloadSuccess', onVideoDownloadSuccess);
+      BaiduAd.addListener('onVideoDownloadFailed', onVideoDownloadFailed);
+      BaiduAd.addListener('onAdClose', onAdClose);
+      
+      BaiduAd.loadRewardVideoAd({ adId: selectedSlotId })
+        .then(() => console.log('✅ 广告加载请求已发送'))
+        .catch((err: any) => {
+          console.error('❌ 加载广告请求失败:', err);
+          if (!isResolved) {
             cleanupListeners();
             resolveOnce('failed');
           }
-        };
-
-        const onVideoDownloadFailed = () => {
-          if (!checkSession() || currentAdSuccess || isResolved) return;
-          
-          console.warn('⚠️ 视频下载失败');
-          lastError.value = '视频下载失败，可能是广告填充不足';
-          
-          if (slotTimeoutId) clearTimeout(slotTimeoutId);
-          cleanupListeners();
-          resolveOnce('failed');
-        };
+        });
+      
+      // 单层超时
+      const SLOT_TIMEOUT = 3000;
+      slotTimeoutId = setTimeout(() => {
+        if (!checkSession() || currentAdSuccess || isResolved) return;
         
-        const onAdClose = () => {
-          if (!checkSession()) return;
-          
-          console.log('✅ 广告关闭回调');
-          if (slotTimeoutId) clearTimeout(slotTimeoutId);
-          isAdReady.value = false;
+        console.warn(`⏱️ 单层广告加载超时（${SLOT_TIMEOUT}ms）`);
+        cleanupListeners();
+        resolveOnce('failed');
+      }, SLOT_TIMEOUT);
+    });
+  };
+  
+  const showNativeAd = async (resolve: (value: { ecpm: number; slotId: string }) => void, reject: (reason?: any) => void) => {
+    const sessionId = currentSessionId;
+    
+    const checkSession = () => sessionId === currentSessionId;
+    
+    // 1. 尝试第一组并行广告：1200、1000、800
+    console.log('========== 开始第一组并行广告请求 ==========');
+    const parallelResult1 = await tryParallelAdGroup(AD_GROUPS.parallelGroup1);
+    if (parallelResult1 && checkSession()) {
+      isAdLoading.value = false;
+      isAdReady.value = false;
+      isProcessing = false;
+      resolve(parallelResult1);
+      return;
+    }
+    
+    // 2. 尝试第二组并行广告：500、400、300
+    console.log('========== 开始第二组并行广告请求 ==========');
+    const parallelResult2 = await tryParallelAdGroup(AD_GROUPS.parallelGroup2);
+    if (parallelResult2 && checkSession()) {
+      isAdLoading.value = false;
+      isAdReady.value = false;
+      isProcessing = false;
+      resolve(parallelResult2);
+      return;
+    }
+    
+    // 3. 并行请求失败，使用串行策略处理剩余广告位
+    console.log('========== 并行请求失败，开始串行处理剩余广告位 ==========');
+    
+    // 更新配置为串行广告位
+    const originalSlotIds = config.slotIds;
+    config.slotIds = AD_GROUPS.serial;
+    currentSlotIndex = 0;
+    triedSlots = 0;
+    
+    try {
+      // 串行轮询剩余广告位
+      isAdLoading.value = true;
+      
+      while (true) {
+        const result = await tryLoadAd();
+        
+        if (result === 'success') {
+          // 广告成功，退出循环
+          config.slotIds = originalSlotIds;
+          return;
+        }
+        
+        if (result === 'session_expired') {
+          // 会话过期，停止轮询
+          console.log('会话已过期，停止轮询');
           isAdLoading.value = false;
-          cleanupListeners();
-          
-          // 如果广告未成功（用户跳过或未获得奖励），标记为失败
-          if (!currentAdSuccess) {
-            console.log('广告关闭但未获得奖励，标记为失败');
-            resolveOnce('failed');
-          }
-        };
+          isAdReady.value = false;
+          isProcessing = false;
+          config.slotIds = originalSlotIds;
+          return;
+        }
         
-        adLoadedListener = onAdLoaded;
-        rewardVerifyListener = onRewardVerify;
-        adFailedListener = onAdFailed;
-        videoDownloadSuccessListener = onVideoDownloadSuccess;
-        videoDownloadFailedListener = onVideoDownloadFailed;
-        adCloseListener = onAdClose;
+        // 检查是否已尝试所有轮次
+        const maxSlots = config.slotIds.length;
+        if (triedSlots >= maxSlots) {
+          console.log('所有串行广告位都已尝试，暂无合适广告');
+          isAdLoading.value = false;
+          isAdReady.value = false;
+          isProcessing = false;
+          config.slotIds = originalSlotIds;
+          showNoAdAvailable(reject);
+          return;
+        }
         
-        BaiduAd.addListener('onAdLoaded', onAdLoaded);
-        BaiduAd.addListener('onRewardVerify', onRewardVerify);
-        BaiduAd.addListener('onAdFailed', onAdFailed);
-        BaiduAd.addListener('onVideoDownloadSuccess', onVideoDownloadSuccess);
-        BaiduAd.addListener('onVideoDownloadFailed', onVideoDownloadFailed);
-        BaiduAd.addListener('onAdClose', onAdClose);
-        
-        BaiduAd.loadRewardVideoAd({ adId: selectedSlotId })
-          .then(() => console.log('✅ 广告加载请求已发送'))
-          .catch((err: any) => {
-            console.error('❌ 加载广告请求失败:', err);
-            if (!isResolved) {
-              cleanupListeners();
-              resolveOnce('failed');
-            }
-          });
-        
-        // 单层超时
-        slotTimeoutId = setTimeout(() => {
-          if (!checkSession() || currentAdSuccess || isResolved) return;
-          
-          console.warn(`⏱️ 单层广告加载超时（${SLOT_TIMEOUT}ms）`);
-          cleanupListeners();
-          resolveOnce('failed');
-        }, SLOT_TIMEOUT);
-      });
-    };
-    
-    // 串行轮询广告位
-    isAdLoading.value = true;
-    
-    while (true) {
-      const result = await tryLoadAd();
-      
-      if (result === 'success') {
-        // 广告成功，退出循环
-        return;
+        // 继续尝试下一个广告位
+        console.log('当前广告位失败，尝试下一个...');
       }
-      
-      if (result === 'session_expired') {
-        // 会话过期，停止轮询
-        console.log('会话已过期，停止轮询');
-        isAdLoading.value = false;
-        isAdReady.value = false;
-        isProcessing = false;
-        return;
-      }
-      
-      // 检查是否已尝试所有轮次
-      const maxSlots = config.slotIds.length * MAX_RETRY_ROUNDS;
-      if (triedSlots >= maxSlots) {
-        console.log(`所有${MAX_RETRY_ROUNDS}轮广告位都已尝试，暂无合适广告`);
-        isAdLoading.value = false;
-        isAdReady.value = false;
-        isProcessing = false;
-        showNoAdAvailable(reject);
-        return;
-      }
-      
-      // 继续尝试下一个广告位
-      console.log('当前广告位失败，尝试下一个...');
+    } finally {
+      // 恢复原始配置
+      config.slotIds = originalSlotIds;
     }
   };
 
