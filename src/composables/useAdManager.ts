@@ -89,17 +89,17 @@ export function useAdManager(config: AdConfig) {
     };
     
     const range = ecpmRanges[slotId];
-    if (!range) return 500; // 默认500ms
+    if (!range) return 1500; // 默认1500ms
     
     const maxEcpm = range[1];
     if (maxEcpm >= 1000) {
-      return 1000; // 最高价广告（1000-1500）：1000ms
+      return 3000; // 最高价广告（1000-1500）：3000ms
     } else if (maxEcpm >= 500) {
-      return 800;  // 次高价广告（500-1000）：800ms
+      return 3000;  // 次高价广告（500-1000）：3000ms
     } else if (maxEcpm >= 200) {
-      return 500;  // 中价广告（200-500）：500ms
+      return 2000;  // 中价广告（200-500）：2000ms
     } else {
-      return 300;  // 低价广告（10-200）：300ms
+      return 1500;  // 低价广告（10-200）：1500ms
     }
   };
   
