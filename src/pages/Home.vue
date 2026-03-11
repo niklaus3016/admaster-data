@@ -331,11 +331,11 @@ const loadGoldRecords = async () => {
       
       // 转换并排序记录（按时间倒序，最新的在前面）
       records.value = displayData
-        .map((log: any) => {
+        .map((log: any, index: number) => {
           // 后端返回的时间已经是北京时间，直接显示
           const recordTime = new Date(log.createTime);
           return {
-            id: log._id,
+            id: log._id || `record-${index}-${Date.now()}`, // 确保ID唯一
             time: recordTime.toLocaleString('zh-CN', {
               year: 'numeric', month: '2-digit', day: '2-digit',
               hour: '2-digit', minute: '2-digit'
