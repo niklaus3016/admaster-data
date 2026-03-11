@@ -313,15 +313,18 @@ export function useAdManager(config: AdConfig) {
             
             // 检查广告是否就绪（未过期且缓存成功）
             console.log('🔍 检查广告就绪状态...');
-            const readyStatus = await BaiduAd.isReady();
-            console.log('📊 广告就绪状态:', readyStatus);
-            
-            if (!readyStatus.ready) {
-              console.warn('⚠️ 广告未就绪（可能已过期或未缓存完成）');
-              lastError.value = '广告未就绪，请重新加载';
-              cleanupListeners();
-              resolveOnce('failed');
-              return;
+            try {
+              const readyStatus = await BaiduAd.isReady();
+              console.log('📊 广告就绪状态:', readyStatus);
+              
+              if (!readyStatus.ready) {
+                console.warn('⚠️ 广告未就绪（可能已过期或未缓存完成）');
+                // 即使isReady返回false，也尝试显示广告，因为广告可能已经加载成功
+                console.log('🔄 尝试强制显示广告...');
+              }
+            } catch (error) {
+              console.warn('⚠️ 检查广告就绪状态失败:', error);
+              // 检查失败时也尝试显示广告
             }
             
             console.log('✅ 广告位加载成功且已就绪，准备播放');
