@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Coins, History, PlayCircle, LogOut, TrendingUp, Wallet, CreditCard } from 'lucide-vue-next';
-import { getUserInfo, rewardGold, getGoldLogs, recordLogin, getLoginStats, submitWithdrawRequest, getWithdrawStatus, getWithdrawRecords, claimDailyBonus, recordActivity, type WithdrawRecord } from '../api/apiService';
+import { getUserInfo, rewardGold, getGoldLogs, getTodayGoldStats, recordLogin, getLoginStats, submitWithdrawRequest, getWithdrawStatus, getWithdrawRecords, claimDailyBonus, recordActivity, type WithdrawRecord } from '../api/apiService';
 import { useAdManager } from '../composables/useAdManager';
 import { TTSPlugin } from '../plugins/TTSPlugin';
 import { Capacitor } from '@capacitor/core';
@@ -276,16 +276,18 @@ onMounted(async () => {
   await loadLoginStats();
   await loadWithdrawStatus();
   await loadUserInfo();
-  await loadGoldRecords();
+  await loadTodayGoldStats(); // 加载今日金币统计（全局）
+  await loadGoldRecords(); // 加载收益记录（当前设备）
 
   // 记录用户活动（进入首页）
   await recordUserActivity();
 
-  // 启动定时同步，每30秒同步一次数据看板（金币余额等）
-  // 收益记录保持设备独立，不参与同步
+  // 启动定时同步，每30秒同步一次数据看板（金币余额、今日金币等全局数据）
+  // 只有最近收益记录保持设备独立，不参与同步
   syncInterval = setInterval(async () => {
     console.log('🔄 定时同步数据看板...');
     await loadUserInfo(); // 同步金币余额等全局数据
+    await loadTodayGoldStats(); // 同步今日金币统计（全局）
   }, 30000);
 
   // 监听页面可见性变化，页面重新可见时同步数据
@@ -297,6 +299,7 @@ const handleVisibilityChange = async () => {
   if (document.visibilityState === 'visible') {
     console.log('👁️ 页面重新可见，同步数据看板...');
     await loadUserInfo(); // 同步金币余额等全局数据
+    await loadTodayGoldStats(); // 同步今日金币统计（全局）
   }
 };
 
@@ -337,51 +340,75 @@ const loadUserInfo = async () => {
   }
 };
 
-// 加载金币记录
+// 加载今日金币统计（全局，所有设备）
+const loadTodayGoldStats = async () => {
+  if (!userId.value) {
+    console.log('❌ 加载今日金币统计失败：userId为空');
+    return;
+  }
+
+  try {
+    console.log('🔄 开始加载今日金币统计（全局）...');
+    const response = await getTodayGoldStats(userId.value);
+    
+    if (response.success && response.data) {
+      todayCoins.value = Number(response.data.todayCoins) || 0;
+      todayRecordCount.value = Number(response.data.todayRecordCount) || 0;
+      console.log('💰 今日金币统计（全局）:', {
+        coins: todayCoins.value,
+        records: todayRecordCount.value
+      });
+    } else {
+      console.warn('⚠️ 获取今日金币统计失败:', response.message);
+    }
+  } catch (err) {
+    console.error('❌ 加载今日金币统计失败:', err);
+  }
+};
+
+// 加载金币记录（仅当前设备，用于最近收益列表）
 const loadGoldRecords = async () => {
   if (!userId.value) {
     console.log('❌ 加载金币记录失败：userId为空');
     return;
   }
 
-  console.log('🔄 开始加载金币记录...');
+  console.log('🔄 开始加载金币记录（当前设备）...');
   isLoadingRecords.value = true;
-  
+
   // 重置数据，避免显示旧数据
   records.value = [];
-  todayCoins.value = 0;
-  todayRecordCount.value = 0;
 
   try {
     console.log('📡 发送API请求获取金币记录...');
     console.log('   userId:', userId.value);
     console.log('   deviceId:', getDeviceId());
     console.log('   limit:', 10000);
-    
+
     // 获取当前设备的金币记录（使用较大limit）
     const deviceId = getDeviceId();
     const response = await getGoldLogs(userId.value, deviceId, 10000);
-    
+
     console.log('✅ API请求完成，响应:', {
       success: response.success,
       message: response.message,
       dataLength: response.data ? response.data.length : 0
     });
-    
+
     if (response.success && response.data && Array.isArray(response.data)) {
       console.log('📊 开始处理数据，原始数据量:', response.data.length);
-      
+
       // 只保留最近200条用于显示
       const displayData = response.data.slice(0, 200);
       console.log('📋 显示数据量:', displayData.length);
-      
+
       // 转换并排序记录（按时间倒序，最新的在前面）
       records.value = displayData
         .map((log: any, index: number) => {
           // 安全处理时间字段
           const createTime = log.createTime || Date.now();
           const recordTime = new Date(createTime);
-          
+
           const record = {
             id: log._id || `record-${index}-${Date.now()}`, // 确保ID唯一
             time: recordTime.toLocaleString('zh-CN', {
@@ -391,7 +418,7 @@ const loadGoldRecords = async () => {
             amount: Number(log.gold) || 0, // 确保金额为数字且有默认值
             timestamp: recordTime.getTime() // 用于排序
           };
-          
+
           // 每10条记录打印一次，避免日志过多
           if (index % 10 === 0) {
             console.log(`   处理记录 ${index + 1}:`, {
@@ -400,7 +427,7 @@ const loadGoldRecords = async () => {
               amount: record.amount
             });
           }
-          
+
           return record;
         })
         .sort((a, b) => b.timestamp - a.timestamp) // 按时间倒序排序
@@ -411,32 +438,6 @@ const loadGoldRecords = async () => {
         }));
 
       console.log('🔧 排序完成，最终记录数:', records.value.length);
-
-      // 计算今日金币收益（使用全部数据，确保统计准确）
-      const getLocalDate = (date: Date) => {
-        return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
-      };
-      
-      const today = getLocalDate(new Date());
-      console.log('📅 今日日期:', today);
-      
-      const todayRecords = response.data.filter((log: any) => {
-        try {
-          const logDate = getLocalDate(new Date(log.createTime || Date.now()));
-          return logDate === today;
-        } catch (error) {
-          console.warn('⚠️ 日期处理错误:', error);
-          return false;
-        }
-      });
-      
-      todayCoins.value = todayRecords.reduce((sum: number, log: any) => sum + (Number(log.gold) || 0), 0);
-      todayRecordCount.value = todayRecords.length;
-      
-      console.log('💰 今日统计:', {
-        coins: todayCoins.value,
-        records: todayRecordCount.value
-      });
     } else {
       console.warn('⚠️ API响应数据异常:', response);
     }
@@ -477,7 +478,8 @@ const handleWatchAd = async () => {
         currentMonthGold.value = rewardResponse.data.currentMonthGold;
         // 显示金币奖励动画和语音
         showRewardAnimation(earned);
-        // 重新加载金币记录（会自动计算今日金币）
+        // 重新加载今日金币统计（全局）和收益记录（当前设备）
+        await loadTodayGoldStats();
         await loadGoldRecords();
       } else {
         console.error('金币数量无效:', earned);
@@ -508,6 +510,8 @@ const handleClaimBonus = async () => {
       hasClaimedBonus.value = true;
       // 显示金币奖励动画和语音
       showRewardAnimation(earned);
+      // 重新加载今日金币统计（全局）和收益记录（当前设备）
+      await loadTodayGoldStats();
       await loadGoldRecords();
     } else {
       error.value = response.message || '领取失败';

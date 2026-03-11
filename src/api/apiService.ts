@@ -279,6 +279,59 @@ export async function getGoldLogs(userId: string, deviceId: string, limit: numbe
   }
 }
 
+// 今日金币统计接口
+interface TodayGoldStats {
+  todayCoins: number;      // 今日金币总数
+  todayRecordCount: number; // 今日记录数
+}
+
+/**
+ * 获取今日金币统计（全局，所有设备）
+ * @param userId 用户ID
+ * @returns 今日金币统计
+ */
+export async function getTodayGoldStats(userId: string): Promise<ApiResponse<TodayGoldStats>> {
+  try {
+    console.log('🔧 API - getTodayGoldStats 开始');
+    console.log('   URL:', `${API_BASE_URL}/api/gold/today-stats?userId=${userId}`);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.warn('⚠️ API请求超时，正在中止...');
+      controller.abort();
+    }, 10000);
+
+    const response = await fetch(`${API_BASE_URL}/api/gold/today-stats?userId=${userId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache'
+      },
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('✅ API - getTodayGoldStats 完成');
+    return data;
+  } catch (error) {
+    console.error('❌ API - getTodayGoldStats 失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: {
+        todayCoins: 0,
+        todayRecordCount: 0
+      }
+    };
+  }
+}
+
 /**
  * 添加员工接口（用于测试）
  * @param name 员工姓名
