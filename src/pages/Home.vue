@@ -865,7 +865,7 @@ const submitWithdraw = async () => {
         <div class="flex items-center justify-between px-2">
           <div class="flex items-center">
             <History class="w-3 h-3 text-zinc-500 mr-2" />
-            <h2 class="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-medium">最近收益</h2>
+            <h2 class="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-medium">最近收益（近50条）</h2>
           </div>
           <!-- 暂时隐藏查看全部按钮 -->
           <!-- <button 
@@ -876,7 +876,7 @@ const submitWithdraw = async () => {
           </button> -->
         </div>
         <div class="glass-card rounded-[2rem] overflow-hidden">
-          <div class="divide-y divide-white/5 max-h-[250px] overflow-y-auto no-scrollbar">
+          <div class="divide-y divide-white/5 max-h-[400px] overflow-y-auto no-scrollbar">
             <!-- 加载状态 -->
             <div v-if="isLoadingRecords" class="py-16 text-center">
               <div class="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 animate-spin">
@@ -894,7 +894,7 @@ const submitWithdraw = async () => {
             <!-- 记录列表 -->
             <div 
               v-else
-              v-for="record in records.slice(0, 20)" 
+              v-for="record in records.slice(0, 50)" 
               :key="record.id" 
               class="px-8 py-5 flex justify-between items-center hover:bg-white/2 transition-colors group"
             >
