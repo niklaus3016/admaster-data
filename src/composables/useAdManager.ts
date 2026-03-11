@@ -266,8 +266,11 @@ export function useAdManager(config: AdConfig) {
           let ecpm = result.ecpm || 0;
           const currentSlotId = config.slotIds[(currentSlotIndex - 1 + config.slotIds.length) % config.slotIds.length];
           
-          if (ecpm === 0) {
-            console.log('ECPM为0，生成模拟 ECPM');
+          if (currentSlotId === '19188427') {
+            console.log('竞价位广告，使用模拟 ECPM');
+            ecpm = generateSimulatedEcpm(currentSlotId);
+          } else if (ecpm === 0) {
+            console.log('保价位广告 ECPM 为 0，生成模拟 ECPM');
             ecpm = generateSimulatedEcpm(currentSlotId);
           }
           
@@ -477,8 +480,11 @@ export function useAdManager(config: AdConfig) {
           console.log('获得 H5 广告奖励:', reward);
           let ecpm = reward?.ecpm || reward?.amount || 0;
           
-          if (ecpm === 0) {
-            console.log('H5 广告 ECPM 为 0，生成模拟 ECPM');
+          if (selectedSlotId === '19188427') {
+            console.log('H5 竞价位广告，使用模拟 ECPM');
+            ecpm = generateSimulatedEcpm(selectedSlotId);
+          } else if (ecpm === 0) {
+            console.log('H5 保价位广告 ECPM 为 0，生成模拟 ECPM');
             ecpm = generateSimulatedEcpm(selectedSlotId);
           }
           
