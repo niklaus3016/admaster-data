@@ -48,9 +48,9 @@ export function useAdManager(config: AdConfig) {
   // 并行请求超时时间（毫秒）
   const PARALLEL_TIMEOUT = 3000;
   // 组间延迟时间（毫秒）
-  const GROUP_DELAY = 1000;
+  const GROUP_DELAY = 500;
   // 五组内广告位间隔时间（毫秒）
-  const GROUP5_SLOT_DELAY = 1000;
+  const GROUP5_SLOT_DELAY = 500;
   
   const delay = (ms: number): Promise<void> => {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -59,10 +59,10 @@ export function useAdManager(config: AdConfig) {
   const generateSimulatedEcpm = (slotId: string): number => {
     const ecpmRanges: { [key: string]: [number, number] } = {
       '19188698': [1400, 1500], // 保价1500
-      '19202078': [1200, 1400], // 保价1400
+      '19202078': [1300, 1400], // 保价1400
       '19202080': [1000, 1200], // 保价1200
-      '19188424': [800, 1000],  // 保价1000
-      '19188704': [500, 800],    // 保价800
+      '19188424': [900, 1000],  // 保价1000
+      '19188704': [700, 800],    // 保价800
       '19202085': [400, 500],    // 保价500
       '19188706': [300, 400],    // 保价400
       '19202092': [200, 300],    // 保价300
@@ -74,8 +74,8 @@ export function useAdManager(config: AdConfig) {
       '19188420': [60, 80],      // 保价80
       '19202099': [40, 60],      // 保价60
       '19202100': [20, 40],      // 保价40
-      '19188427': [10, 20],       // 竞价
-      '19202101': [1, 10]         // 保价10
+      '19188427': [20, 40],       // 竞价
+      '19202101': [10, 20]         // 保价10
     };
     
     const range = ecpmRanges[slotId];
