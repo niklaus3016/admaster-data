@@ -867,12 +867,13 @@ const submitWithdraw = async () => {
             <History class="w-3 h-3 text-zinc-500 mr-2" />
             <h2 class="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-medium">最近收益</h2>
           </div>
-          <button 
+          <!-- 暂时隐藏查看全部按钮 -->
+          <!-- <button 
             @click="showAllRecords = true"
             class="px-3 py-1 rounded-full bg-white/5 text-[9px] text-emerald-500 uppercase tracking-widest hover:bg-white/10 transition-all font-bold border border-emerald-500/20"
           >
             查看全部
-          </button>
+          </button> -->
         </div>
         <div class="glass-card rounded-[2rem] overflow-hidden">
           <div class="divide-y divide-white/5 max-h-[250px] overflow-y-auto no-scrollbar">
