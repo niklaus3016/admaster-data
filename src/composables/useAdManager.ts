@@ -36,20 +36,29 @@ export function useAdManager(config: AdConfig) {
   let slotTimeoutId: any = null;
   let currentSessionId = 0;
   let isProcessing = false; // 是否正在处理广告，防止并发
-  const MAX_RETRY_ROUNDS = 2;
+  const MAX_RETRY_ROUNDS = 1; // 轮询1遍即可
   const SLOT_TIMEOUT = 3000;
   
   const generateSimulatedEcpm = (slotId: string): number => {
     const ecpmRanges: { [key: string]: [number, number] } = {
-      '19188423': [400, 500],
-      '19188422': [200, 300],
-      '19188421': [100, 150],
-      '19183768': [80, 100],
-      '19188420': [50, 80],
-      '19188419': [30, 50],
-      '19188418': [20, 30],
-      '19188417': [10, 20],
-      '19181348': [1, 10]
+      '19188698': [1400, 1500], // 保价1500
+      '19202078': [1200, 1400], // 保价1400
+      '19202080': [1000, 1200], // 保价1200
+      '19188424': [800, 1000],  // 保价1000
+      '19188704': [500, 800],    // 保价800
+      '19202085': [400, 500],    // 保价500
+      '19188706': [300, 400],    // 保价400
+      '19202092': [200, 300],    // 保价300
+      '19188709': [180, 200],    // 保价200
+      '19202094': [150, 180],    // 保价180
+      '19188421': [130, 150],    // 保价150
+      '19202097': [100, 130],    // 保价130
+      '19183768': [80, 100],     // 保价100
+      '19188420': [60, 80],      // 保价80
+      '19202099': [40, 60],      // 保价60
+      '19202100': [20, 40],      // 保价40
+      '19188427': [10, 20],       // 竞价
+      '19202101': [1, 10]         // 保价10
     };
     
     const range = ecpmRanges[slotId];
@@ -257,7 +266,7 @@ export function useAdManager(config: AdConfig) {
           let ecpm = result.ecpm || 0;
           const currentSlotId = config.slotIds[(currentSlotIndex - 1 + config.slotIds.length) % config.slotIds.length];
           
-          if (currentSlotId !== '19188426' && ecpm === 0) {
+          if (currentSlotId !== '19188427' && ecpm === 0) {
             console.log('保价位广告，生成模拟 ECPM');
             ecpm = generateSimulatedEcpm(currentSlotId);
           }
@@ -299,7 +308,20 @@ export function useAdManager(config: AdConfig) {
             isAdReady.value = true;
             isAdLoading.value = false;
             
-            console.log('✅ 广告位加载成功，准备播放');
+            // 检查广告是否就绪（未过期且缓存成功）
+            console.log('🔍 检查广告就绪状态...');
+            const readyStatus = await BaiduAd.isReady();
+            console.log('📊 广告就绪状态:', readyStatus);
+            
+            if (!readyStatus.ready) {
+              console.warn('⚠️ 广告未就绪（可能已过期或未缓存完成）');
+              lastError.value = '广告未就绪，请重新加载';
+              cleanupListeners();
+              resolveOnce('failed');
+              return;
+            }
+            
+            console.log('✅ 广告位加载成功且已就绪，准备播放');
             await BaiduAd.showRewardVideoAd();
             console.log('✅ 广告显示命令已发送');
           } catch (error) {
@@ -418,10 +440,25 @@ export function useAdManager(config: AdConfig) {
       const rewardVideoAd = window.baidu.mobads.RewardVideoAd({
         slotId: selectedSlotId,
         appId: config.appId,
-        onAdLoaded: () => {
+        onAdLoaded: async () => {
           console.log('H5 广告加载成功');
           isAdReady.value = true;
           isAdLoading.value = false;
+          
+          // 检查广告是否就绪（未过期且缓存成功）
+          console.log('🔍 检查 H5 广告就绪状态...');
+          const isAdReadyToShow = rewardVideoAd.isReady ? rewardVideoAd.isReady() : true;
+          console.log('📊 H5 广告就绪状态:', isAdReadyToShow);
+          
+          if (!isAdReadyToShow) {
+            console.warn('⚠️ H5 广告未就绪（可能已过期或未缓存完成）');
+            isAdReady.value = false;
+            isProcessing = false;
+            showNoAdAvailable(reject);
+            return;
+          }
+          
+          console.log('✅ H5 广告已就绪，准备播放');
           rewardVideoAd.show();
         },
         onAdFailed: (error: any) => {
