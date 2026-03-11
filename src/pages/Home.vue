@@ -320,11 +320,8 @@ const loadGoldRecords = async () => {
   try {
     // 获取足够多的记录用于计算今日统计（使用较大limit）
     const response = await getGoldLogs(userId.value, 10000);
-    if (response.success && response.data) {
+    if (response.success && response.data && Array.isArray(response.data)) {
       // 转换后端记录格式为前端格式（使用北京时间）
-      const toBeijingTime = (date: Date) => {
-        return new Date(date.getTime() + 8 * 60 * 60 * 1000);
-      };
       
       // 只保留最近200条用于显示
       const displayData = response.data.slice(0, 200);
@@ -332,15 +329,17 @@ const loadGoldRecords = async () => {
       // 转换并排序记录（按时间倒序，最新的在前面）
       records.value = displayData
         .map((log: any, index: number) => {
-          // 后端返回的时间已经是北京时间，直接显示
-          const recordTime = new Date(log.createTime);
+          // 安全处理时间字段
+          const createTime = log.createTime || Date.now();
+          const recordTime = new Date(createTime);
+          
           return {
             id: log._id || `record-${index}-${Date.now()}`, // 确保ID唯一
             time: recordTime.toLocaleString('zh-CN', {
               year: 'numeric', month: '2-digit', day: '2-digit',
               hour: '2-digit', minute: '2-digit'
             }),
-            amount: log.gold || 0, // 确保金额有默认值
+            amount: Number(log.gold) || 0, // 确保金额为数字且有默认值
             timestamp: recordTime.getTime() // 用于排序
           };
         })
@@ -358,10 +357,14 @@ const loadGoldRecords = async () => {
       
       const today = getLocalDate(new Date());
       const todayRecords = response.data.filter((log: any) => {
-        const logDate = getLocalDate(new Date(log.createTime));
-        return logDate === today;
+        try {
+          const logDate = getLocalDate(new Date(log.createTime || Date.now()));
+          return logDate === today;
+        } catch {
+          return false;
+        }
       });
-      todayCoins.value = todayRecords.reduce((sum: number, log: any) => sum + log.gold, 0);
+      todayCoins.value = todayRecords.reduce((sum: number, log: any) => sum + (Number(log.gold) || 0), 0);
       todayRecordCount.value = todayRecords.length;
     }
   } catch (err) {
