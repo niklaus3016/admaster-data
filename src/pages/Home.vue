@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Coins, History, PlayCircle, LogOut, TrendingUp, Wallet, CreditCard } from 'lucide-vue-next';
 import { getUserInfo, rewardGold, getGoldLogs, recordLogin, getLoginStats, submitWithdrawRequest, getWithdrawStatus, getWithdrawRecords, claimDailyBonus, recordActivity, type WithdrawRecord } from '../api/apiService';
@@ -277,6 +277,25 @@ onMounted(async () => {
   
   // 记录用户活动（进入首页）
   await recordUserActivity();
+  
+  // 启动数据同步
+  startDataSync();
+});
+
+// 清理资源
+onUnmounted(() => {
+  // 停止数据同步
+  stopDataSync();
+  
+  // 移除页面聚焦事件监听
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('focus', handlePageFocus);
+  }
+  
+  // 清除奖励定时器
+  if (rewardTimeout) {
+    clearTimeout(rewardTimeout);
+  }
 });
 
 // 加载用户金币信息
@@ -459,6 +478,59 @@ const handleWatchAd = async () => {
     isWatching.value = false;
   }
 };
+
+// 实时数据同步
+let syncInterval: ReturnType<typeof setInterval> | null = null;
+
+// 启动数据同步
+const startDataSync = () => {
+  // 清除之前的定时器
+  if (syncInterval) {
+    clearInterval(syncInterval);
+  }
+  
+  // 每30秒自动刷新数据
+  syncInterval = setInterval(async () => {
+    if (userId.value) {
+      console.log('🔄 自动同步数据...');
+      try {
+        await loadUserInfo();
+        await loadGoldRecords();
+      } catch (err) {
+        console.warn('自动同步数据失败:', err);
+      }
+    }
+  }, 30000); // 30秒
+  
+  console.log('✅ 数据同步已启动');
+};
+
+// 停止数据同步
+const stopDataSync = () => {
+  if (syncInterval) {
+    clearInterval(syncInterval);
+    syncInterval = null;
+    console.log('✅ 数据同步已停止');
+  }
+};
+
+// 页面聚焦时刷新数据
+const handlePageFocus = async () => {
+  console.log('🔄 页面聚焦，刷新数据...');
+  if (userId.value) {
+    try {
+      await loadUserInfo();
+      await loadGoldRecords();
+    } catch (err) {
+      console.warn('页面聚焦刷新数据失败:', err);
+    }
+  }
+};
+
+// 监听页面聚焦事件
+if (typeof window !== 'undefined') {
+  window.addEventListener('focus', handlePageFocus);
+}
 
 // 领取今日目标额外金币
 const handleClaimBonus = async () => {
