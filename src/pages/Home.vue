@@ -308,8 +308,12 @@ const loadUserInfo = async () => {
 
 // 加载金币记录
 const loadGoldRecords = async () => {
-  if (!userId.value) return;
+  if (!userId.value) {
+    console.log('❌ 加载金币记录失败：userId为空');
+    return;
+  }
 
+  console.log('🔄 开始加载金币记录...');
   isLoadingRecords.value = true;
   
   // 重置数据，避免显示旧数据
@@ -318,13 +322,25 @@ const loadGoldRecords = async () => {
   todayRecordCount.value = 0;
 
   try {
+    console.log('📡 发送API请求获取金币记录...');
+    console.log('   userId:', userId.value);
+    console.log('   limit:', 10000);
+    
     // 获取足够多的记录用于计算今日统计（使用较大limit）
     const response = await getGoldLogs(userId.value, 10000);
+    
+    console.log('✅ API请求完成，响应:', {
+      success: response.success,
+      message: response.message,
+      dataLength: response.data ? response.data.length : 0
+    });
+    
     if (response.success && response.data && Array.isArray(response.data)) {
-      // 转换后端记录格式为前端格式（使用北京时间）
+      console.log('📊 开始处理数据，原始数据量:', response.data.length);
       
       // 只保留最近200条用于显示
       const displayData = response.data.slice(0, 200);
+      console.log('📋 显示数据量:', displayData.length);
       
       // 转换并排序记录（按时间倒序，最新的在前面）
       records.value = displayData
@@ -333,7 +349,7 @@ const loadGoldRecords = async () => {
           const createTime = log.createTime || Date.now();
           const recordTime = new Date(createTime);
           
-          return {
+          const record = {
             id: log._id || `record-${index}-${Date.now()}`, // 确保ID唯一
             time: recordTime.toLocaleString('zh-CN', {
               year: 'numeric', month: '2-digit', day: '2-digit',
@@ -342,6 +358,17 @@ const loadGoldRecords = async () => {
             amount: Number(log.gold) || 0, // 确保金额为数字且有默认值
             timestamp: recordTime.getTime() // 用于排序
           };
+          
+          // 每10条记录打印一次，避免日志过多
+          if (index % 10 === 0) {
+            console.log(`   处理记录 ${index + 1}:`, {
+              id: record.id,
+              time: record.time,
+              amount: record.amount
+            });
+          }
+          
+          return record;
         })
         .sort((a, b) => b.timestamp - a.timestamp) // 按时间倒序排序
         .map((record) => ({
@@ -350,26 +377,40 @@ const loadGoldRecords = async () => {
           amount: record.amount
         }));
 
+      console.log('🔧 排序完成，最终记录数:', records.value.length);
+
       // 计算今日金币收益（使用全部数据，确保统计准确）
       const getLocalDate = (date: Date) => {
         return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
       };
       
       const today = getLocalDate(new Date());
+      console.log('📅 今日日期:', today);
+      
       const todayRecords = response.data.filter((log: any) => {
         try {
           const logDate = getLocalDate(new Date(log.createTime || Date.now()));
           return logDate === today;
-        } catch {
+        } catch (error) {
+          console.warn('⚠️ 日期处理错误:', error);
           return false;
         }
       });
+      
       todayCoins.value = todayRecords.reduce((sum: number, log: any) => sum + (Number(log.gold) || 0), 0);
       todayRecordCount.value = todayRecords.length;
+      
+      console.log('💰 今日统计:', {
+        coins: todayCoins.value,
+        records: todayRecordCount.value
+      });
+    } else {
+      console.warn('⚠️ API响应数据异常:', response);
     }
   } catch (err) {
-    console.error('获取金币记录失败:', err);
+    console.error('❌ 获取金币记录失败:', err);
   } finally {
+    console.log('✅ 加载金币记录完成');
     isLoadingRecords.value = false;
   }
 };

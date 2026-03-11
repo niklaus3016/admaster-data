@@ -225,10 +225,17 @@ export async function rewardGold(userId: string, employeeId: string, ecpm: numbe
  */
 export async function getGoldLogs(userId: string, limit: number = 200): Promise<ApiResponse<GoldLog[]>> {
   try {
+    console.log('🔧 API - getGoldLogs 开始');
+    console.log('   URL:', `${API_BASE_URL}/api/gold/log?userId=${userId}&limit=${limit}`);
+    
     // 添加超时机制
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+    const timeoutId = setTimeout(() => {
+      console.warn('⚠️ API请求超时，正在中止...');
+      controller.abort();
+    }, 10000); // 10秒超时
     
+    console.log('   发送请求...');
     const response = await fetch(`${API_BASE_URL}/api/gold/log?userId=${userId}&limit=${limit}`, {
       method: 'GET',
       headers: {
@@ -240,14 +247,27 @@ export async function getGoldLogs(userId: string, limit: number = 200): Promise<
     
     clearTimeout(timeoutId);
     
+    console.log('   收到响应:', {
+      status: response.status,
+      statusText: response.statusText
+    });
+    
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     
+    console.log('   解析响应数据...');
     const data = await response.json();
+    console.log('   响应数据:', {
+      success: data.success,
+      message: data.message,
+      dataLength: data.data ? data.data.length : 0
+    });
+    
+    console.log('✅ API - getGoldLogs 完成');
     return data;
   } catch (error) {
-    console.error('获取金币记录失败:', error);
+    console.error('❌ API - getGoldLogs 失败:', error);
     return {
       success: false,
       message: '网络错误，请稍后重试',
