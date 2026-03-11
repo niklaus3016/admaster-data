@@ -38,15 +38,24 @@ export function useAdManager(config: AdConfig) {
   let isProcessing = false; // 是否正在处理广告，防止并发
   // 广告位分组配置
   const AD_GROUPS = {
-    hidden: ['19188698', '19202080'], // 隐藏的广告位
-    parallelGroup1: ['19202078', '19188424', '19188704'], // 第一组并行：1400、1000、800
-    parallelGroup2: ['19202085', '19188706', '19202092'], // 第二组并行：500、400、300
-    serial: ['19188709', '19202094', '19188421', '19202097', '19183768', '19188420', '19202099', '19202100', '19188427', '19202101'] // 串行处理的广告位
+    group1: ['19188698', '19202078', '19188424'], // 一组（并行）：1500、1400、1000
+    group2: ['19188704', '19202085', '19188706'], // 二组（并行）：800、500、400
+    group3: ['19202092', '19188709', '19202094'], // 三组（并行）：300、200、180
+    group4: ['19188421', '19202097', '19183768'], // 四组（并行）：150、130、100
+    group5: ['19188420', '19202099', '19188427', '19202101'] // 五组（串行）：80、60、竞价、20
   };
   
   // 并行请求超时时间（毫秒）
   const PARALLEL_TIMEOUT = 3000;
+  // 组间延迟时间（毫秒）
+  const GROUP_DELAY = 1000;
+  // 五组内广告位间隔时间（毫秒）
+  const GROUP5_SLOT_DELAY = 1000;
   
+  const delay = (ms: number): Promise<void> => {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  };
+
   const generateSimulatedEcpm = (slotId: string): number => {
     const ecpmRanges: { [key: string]: [number, number] } = {
       '19188698': [1400, 1500], // 保价1500
@@ -73,6 +82,151 @@ export function useAdManager(config: AdConfig) {
     if (!range) return 0;
     return Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
   };
+
+  // 并行请求广告组
+  const tryParallelAdGroup = async (slotIds: string[]): Promise<{ ecpm: number; slotId: string } | null> => {
+    console.log(`========== 开始并行请求广告组: ${slotIds.join(', ')} ==========`);
+    
+    const sessionId = currentSessionId;
+    const checkSession = () => sessionId === currentSessionId;
+    
+    const adPromises = slotIds.map(slotId => {
+      return new Promise<{ ecpm: number; slotId: string } | null>((resolve) => {
+        let isResolved = false;
+        let slotTimeoutId: any = null;
+        let currentAdSuccess = false;
+        
+        const resolveOnce = (result: { ecpm: number; slotId: string } | null) => {
+          if (!isResolved && checkSession()) {
+            isResolved = true;
+            cleanupSlotListeners();
+            if (slotTimeoutId) clearTimeout(slotTimeoutId);
+            resolve(result);
+          }
+        };
+        
+        const onRewardVerify = (result: any) => {
+          if (!checkSession() || currentAdSuccess || isResolved) return;
+          
+          console.log(`========== 广告奖励回调 (${slotId}) ==========`);
+          console.log('结果:', result);
+          
+          currentAdSuccess = true;
+          if (slotTimeoutId) clearTimeout(slotTimeoutId);
+          
+          let ecpm = result.ecpm || 0;
+          
+          if (slotId === '19188427') {
+            console.log('竞价位广告，使用模拟 ECPM');
+            ecpm = generateSimulatedEcpm(slotId);
+          } else if (ecpm === 0) {
+            console.log('保价位广告 ECPM 为 0，生成模拟 ECPM');
+            ecpm = generateSimulatedEcpm(slotId);
+          }
+          
+          console.log(`✅ 广告成功 (${slotId})，返回 ECPM:`, ecpm);
+          resolveOnce({ ecpm, slotId });
+        };
+        
+        const onAdFailed = (error: any) => {
+          if (!checkSession() || currentAdSuccess || isResolved) return;
+          console.warn(`⚠️ 广告加载失败 (${slotId}):`, error?.error || error);
+          resolveOnce(null);
+        };
+        
+        const onVideoDownloadSuccess = async () => {
+          if (!checkSession() || currentAdSuccess || isResolved) return;
+          
+          console.log(`✅ 视频下载成功 (${slotId})，准备显示广告`);
+          try {
+            if (slotTimeoutId) clearTimeout(slotTimeoutId);
+            
+            // 检查广告是否就绪
+            console.log(`🔍 检查广告就绪状态 (${slotId})...`);
+            try {
+              const readyStatus = await BaiduAd.isReady();
+              console.log(`📊 广告就绪状态 (${slotId}):`, readyStatus);
+              
+              if (!readyStatus.ready) {
+                console.warn(`⚠️ 广告未就绪 (${slotId})，尝试强制显示...`);
+              }
+            } catch (error) {
+              console.warn(`⚠️ 检查广告就绪状态失败 (${slotId}):`, error);
+            }
+            
+            console.log(`✅ 广告位加载成功且已就绪 (${slotId})，准备播放`);
+            await BaiduAd.showRewardVideoAd();
+            console.log(`✅ 广告显示命令已发送 (${slotId})`);
+          } catch (error) {
+            console.error(`❌ 显示广告失败 (${slotId}):`, error);
+            resolveOnce(null);
+          }
+        };
+        
+        const onVideoDownloadFailed = () => {
+          if (!checkSession() || currentAdSuccess || isResolved) return;
+          console.warn(`⚠️ 视频下载失败 (${slotId})`);
+          resolveOnce(null);
+        };
+        
+        const onAdClose = () => {
+          if (!checkSession()) return;
+          console.log(`✅ 广告关闭回调 (${slotId})`);
+          if (!currentAdSuccess) {
+            console.log(`广告关闭但未获得奖励 (${slotId})，标记为失败`);
+            resolveOnce(null);
+          }
+        };
+        
+        // 注册监听器
+        BaiduAd.addListener('onRewardVerify', onRewardVerify);
+        BaiduAd.addListener('onAdFailed', onAdFailed);
+        BaiduAd.addListener('onVideoDownloadSuccess', onVideoDownloadSuccess);
+        BaiduAd.addListener('onVideoDownloadFailed', onVideoDownloadFailed);
+        BaiduAd.addListener('onAdClose', onAdClose);
+        
+        // 清理监听器的函数
+        const cleanupSlotListeners = () => {
+          try {
+            BaiduAd.removeListener('onRewardVerify', onRewardVerify);
+            BaiduAd.removeListener('onAdFailed', onAdFailed);
+            BaiduAd.removeListener('onVideoDownloadSuccess', onVideoDownloadSuccess);
+            BaiduAd.removeListener('onVideoDownloadFailed', onVideoDownloadFailed);
+            BaiduAd.removeListener('onAdClose', onAdClose);
+          } catch (e) {
+            console.warn(`清理监听器失败 (${slotId}):`, e);
+          }
+        };
+        
+        // 加载广告
+        BaiduAd.loadRewardVideoAd({ adId: slotId })
+          .then(() => console.log(`✅ 广告加载请求已发送 (${slotId})`))
+          .catch((err: any) => {
+            console.error(`❌ 加载广告请求失败 (${slotId}):`, err);
+            resolveOnce(null);
+          });
+        
+        // 广告位超时
+        slotTimeoutId = setTimeout(() => {
+          if (!checkSession() || currentAdSuccess || isResolved) return;
+          console.warn(`⏱️ 广告加载超时 (${slotId})`);
+          resolveOnce(null);
+        }, PARALLEL_TIMEOUT);
+      });
+    });
+    
+    // 等待所有并行请求完成，返回第一个成功的结果
+    const results = await Promise.all(adPromises);
+    for (const result of results) {
+      if (result && checkSession()) {
+        console.log(`🎉 并行请求成功，使用广告位: ${result.slotId}，ECPM: ${result.ecpm}`);
+        return result;
+      }
+    }
+    
+    console.log('❌ 并行请求组所有广告位均失败');
+    return null;
+  };
   
   const getNextSlotId = (): string => {
     if (!config.slotIds?.length) throw new Error('广告位配置为空');
@@ -85,17 +239,25 @@ export function useAdManager(config: AdConfig) {
     return slotId;
   };
   
-  // 串行请求广告位（替代并行策略）
-  const trySerialAdGroup = async (slotIds: string[]): Promise<{ ecpm: number; slotId: string } | null> => {
+  // 串行请求广告组
+  const trySerialAdGroup = async (slotIds: string[], slotDelay: number = 0): Promise<{ ecpm: number; slotId: string } | null> => {
     console.log(`========== 开始串行请求广告组: ${slotIds.join(', ')} ==========`);
     
     const sessionId = currentSessionId;
     const checkSession = () => sessionId === currentSessionId;
     
-    for (const slotId of slotIds) {
+    for (let i = 0; i < slotIds.length; i++) {
+      const slotId = slotIds[i];
+      
       if (!checkSession()) {
         console.log('会话已过期，停止加载');
         return null;
+      }
+      
+      // 广告位间延迟（除了第一个）
+      if (i > 0 && slotDelay > 0) {
+        console.log(`等待 ${slotDelay}ms 后尝试下一个广告位...`);
+        await delay(slotDelay);
       }
       
       console.log(`尝试加载广告位: ${slotId}`);
@@ -562,82 +724,87 @@ export function useAdManager(config: AdConfig) {
   
   const showNativeAd = async (resolve: (value: { ecpm: number; slotId: string }) => void, reject: (reason?: any) => void) => {
     const sessionId = currentSessionId;
-    
     const checkSession = () => sessionId === currentSessionId;
     
-    // 1. 尝试第一组串行广告：1400、1000、800
-    console.log('========== 开始第一组串行广告请求 ==========');
-    const serialResult1 = await trySerialAdGroup(AD_GROUPS.parallelGroup1);
-    if (serialResult1 && checkSession()) {
+    // 1. 第一组并行请求
+    let result = await tryParallelAdGroup(AD_GROUPS.group1);
+    if (result && checkSession()) {
       isAdLoading.value = false;
       isAdReady.value = false;
       isProcessing = false;
-      resolve(serialResult1);
+      resolve(result);
       return;
     }
     
-    // 2. 尝试第二组串行广告：500、400、300
-    console.log('========== 开始第二组串行广告请求 ==========');
-    const serialResult2 = await trySerialAdGroup(AD_GROUPS.parallelGroup2);
-    if (serialResult2 && checkSession()) {
+    // 组间延迟
+    if (checkSession()) {
+      console.log(`等待 ${GROUP_DELAY}ms 后尝试下一组...`);
+      await delay(GROUP_DELAY);
+    }
+    
+    // 2. 第二组并行请求
+    result = await tryParallelAdGroup(AD_GROUPS.group2);
+    if (result && checkSession()) {
       isAdLoading.value = false;
       isAdReady.value = false;
       isProcessing = false;
-      resolve(serialResult2);
+      resolve(result);
       return;
     }
     
-    // 3. 前两组串行请求失败，继续串行处理剩余广告位
-    console.log('========== 前两组串行请求失败，继续串行处理剩余广告位 ==========');
-    
-    // 更新配置为串行广告位
-    const originalSlotIds = config.slotIds;
-    config.slotIds = AD_GROUPS.serial;
-    currentSlotIndex = 0;
-    triedSlots = 0;
-    
-    try {
-      // 串行轮询剩余广告位
-      isAdLoading.value = true;
-      
-      while (true) {
-        const result = await tryLoadAd();
-        
-        if (result === 'success') {
-          // 广告成功，退出循环
-          config.slotIds = originalSlotIds;
-          return;
-        }
-        
-        if (result === 'session_expired') {
-          // 会话过期，停止轮询
-          console.log('会话已过期，停止轮询');
-          isAdLoading.value = false;
-          isAdReady.value = false;
-          isProcessing = false;
-          config.slotIds = originalSlotIds;
-          return;
-        }
-        
-        // 检查是否已尝试所有轮次
-        const maxSlots = config.slotIds.length;
-        if (triedSlots >= maxSlots) {
-          console.log('所有串行广告位都已尝试，暂无合适广告');
-          isAdLoading.value = false;
-          isAdReady.value = false;
-          isProcessing = false;
-          config.slotIds = originalSlotIds;
-          showNoAdAvailable(reject);
-          return;
-        }
-        
-        // 继续尝试下一个广告位
-        console.log('当前广告位失败，尝试下一个...');
-      }
-    } finally {
-      // 恢复原始配置
-      config.slotIds = originalSlotIds;
+    // 组间延迟
+    if (checkSession()) {
+      console.log(`等待 ${GROUP_DELAY}ms 后尝试下一组...`);
+      await delay(GROUP_DELAY);
     }
+    
+    // 3. 第三组并行请求
+    result = await tryParallelAdGroup(AD_GROUPS.group3);
+    if (result && checkSession()) {
+      isAdLoading.value = false;
+      isAdReady.value = false;
+      isProcessing = false;
+      resolve(result);
+      return;
+    }
+    
+    // 组间延迟
+    if (checkSession()) {
+      console.log(`等待 ${GROUP_DELAY}ms 后尝试下一组...`);
+      await delay(GROUP_DELAY);
+    }
+    
+    // 4. 第四组并行请求
+    result = await tryParallelAdGroup(AD_GROUPS.group4);
+    if (result && checkSession()) {
+      isAdLoading.value = false;
+      isAdReady.value = false;
+      isProcessing = false;
+      resolve(result);
+      return;
+    }
+    
+    // 组间延迟
+    if (checkSession()) {
+      console.log(`等待 ${GROUP_DELAY}ms 后尝试下一组...`);
+      await delay(GROUP_DELAY);
+    }
+    
+    // 5. 第五组串行请求
+    result = await trySerialAdGroup(AD_GROUPS.group5, GROUP5_SLOT_DELAY);
+    if (result && checkSession()) {
+      isAdLoading.value = false;
+      isAdReady.value = false;
+      isProcessing = false;
+      resolve(result);
+      return;
+    }
+    
+    // 所有广告位尝试失败
+    isAdLoading.value = false;
+    isAdReady.value = false;
+    isProcessing = false;
+    showNoAdAvailable(reject);
   };
 
   const showH5Ad = (resolve: (value: { ecpm: number; slotId: string }) => void, reject: (reason?: any) => void) => {
