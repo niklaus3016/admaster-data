@@ -915,8 +915,8 @@ const submitWithdraw = async () => {
     <transition name="modal">
       <div v-if="showAllRecords" class="fixed inset-0 z-[9999] flex items-end justify-center sm:items-center p-0 sm:p-6 pointer-events-auto">
         <div class="absolute inset-0 bg-black/80 backdrop-blur-md z-[9998] pointer-events-auto" @click="showAllRecords = false" />
-        <div class="relative w-full max-w-md bg-[#020205] border-t sm:border border-white/10 rounded-t-[3rem] sm:rounded-[3rem] overflow-hidden flex flex-col max-h-[85vh] z-[9999] shadow-2xl">
-          <div class="px-8 py-6 border-b border-white/5 flex justify-between items-center sticky top-0 bg-[#020205] z-10">
+        <div class="relative w-full max-w-md bg-[#020205] border-t sm:border border-white/10 rounded-t-[3rem] sm:rounded-[3rem] overflow-hidden flex flex-col h-[90vh] max-h-[600px] z-[9999] shadow-2xl">
+          <div class="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-[#020205] z-10">
             <div class="flex items-center">
               <div class="w-8 h-8 bg-white/5 rounded-full flex items-center justify-center mr-3">
                 <History class="w-4 h-4 text-zinc-400" />
@@ -949,7 +949,7 @@ const submitWithdraw = async () => {
                 v-else
                 v-for="record in records" 
                 :key="record.id" 
-                class="px-6 py-4 rounded-2xl glass-card flex justify-between items-center"
+                class="px-6 py-4 rounded-2xl glass-card flex justify-between items-center min-h-[60px]"
               >
                 <div class="flex flex-col">
                   <span class="text-[11px] text-zinc-400 font-mono tracking-tighter">{{ record.time }}</span>
