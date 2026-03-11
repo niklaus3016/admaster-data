@@ -79,10 +79,15 @@ export function useAdManager(config: AdConfig) {
       '19188657': [20, 40],       // 竞价
       '19202101': [10, 20]         // 保价10
     };
-    
+
     const range = ecpmRanges[slotId];
     if (!range) return 0;
     return Math.floor(Math.random() * (range[1] - range[0] + 1)) + range[0];
+  };
+
+  const isBiddingSlot = (slotId: string): boolean => {
+    const biddingSlots = ['19188427', '19188656', '19188657'];
+    return biddingSlots.includes(slotId);
   };
 
   // 并行请求广告组
@@ -117,8 +122,8 @@ export function useAdManager(config: AdConfig) {
           if (slotTimeoutId) clearTimeout(slotTimeoutId);
           
           let ecpm = result.ecpm || 0;
-          
-          if (slotId === '19188427') {
+
+          if (isBiddingSlot(slotId)) {
             console.log('竞价位广告，使用模拟 ECPM');
             ecpm = generateSimulatedEcpm(slotId);
           } else if (ecpm === 0) {
@@ -288,8 +293,8 @@ export function useAdManager(config: AdConfig) {
           if (slotTimeoutId) clearTimeout(slotTimeoutId);
           
           let ecpm = result.ecpm || 0;
-          
-          if (slotId === '19188427') {
+
+          if (isBiddingSlot(slotId)) {
             console.log('竞价位广告，使用模拟 ECPM');
             ecpm = generateSimulatedEcpm(slotId);
           } else if (ecpm === 0) {
@@ -588,8 +593,8 @@ export function useAdManager(config: AdConfig) {
         
         let ecpm = result.ecpm || 0;
         const currentSlotId = config.slotIds[(currentSlotIndex - 1 + config.slotIds.length) % config.slotIds.length];
-        
-        if (currentSlotId === '19188427') {
+
+        if (isBiddingSlot(currentSlotId)) {
           console.log('竞价位广告，使用模拟 ECPM');
           ecpm = generateSimulatedEcpm(currentSlotId);
         } else if (ecpm === 0) {
