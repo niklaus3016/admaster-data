@@ -328,18 +328,28 @@ const loadGoldRecords = async () => {
       
       // 只保留最近200条用于显示
       const displayData = response.data.slice(0, 200);
-      records.value = displayData.map((log: any) => {
-        // 后端返回的时间已经是北京时间，直接显示
-        const recordTime = new Date(log.createTime);
-        return {
-          id: log._id,
-          time: recordTime.toLocaleString('zh-CN', {
-            year: 'numeric', month: '2-digit', day: '2-digit',
-            hour: '2-digit', minute: '2-digit'
-          }),
-          amount: log.gold
-        };
-      });
+      
+      // 转换并排序记录（按时间倒序，最新的在前面）
+      records.value = displayData
+        .map((log: any) => {
+          // 后端返回的时间已经是北京时间，直接显示
+          const recordTime = new Date(log.createTime);
+          return {
+            id: log._id,
+            time: recordTime.toLocaleString('zh-CN', {
+              year: 'numeric', month: '2-digit', day: '2-digit',
+              hour: '2-digit', minute: '2-digit'
+            }),
+            amount: log.gold,
+            timestamp: recordTime.getTime() // 用于排序
+          };
+        })
+        .sort((a, b) => b.timestamp - a.timestamp) // 按时间倒序排序
+        .map((record) => ({
+          id: record.id,
+          time: record.time,
+          amount: record.amount
+        }));
 
       // 计算今日金币收益（使用全部数据，确保统计准确）
       const getLocalDate = (date: Date) => {
