@@ -286,7 +286,7 @@ onMounted(async () => {
   // 只有最近收益记录保持设备独立，不参与同步
   syncInterval = setInterval(async () => {
     console.log('🔄 定时同步数据看板...');
-    await loadUserInfo(); // 同步金币余额等全局数据
+    await loadUserInfo(false); // 定时同步时不显示加载状态
     await loadTodayGoldStats(); // 同步今日金币统计（全局）
   }, 30000);
 
@@ -298,7 +298,7 @@ onMounted(async () => {
 const handleVisibilityChange = async () => {
   if (document.visibilityState === 'visible') {
     console.log('👁️ 页面重新可见，同步数据看板...');
-    await loadUserInfo(); // 同步金币余额等全局数据
+    await loadUserInfo(false); // 页面聚焦时不显示加载状态
     await loadTodayGoldStats(); // 同步今日金币统计（全局）
   }
 };
@@ -314,9 +314,11 @@ onUnmounted(() => {
 });
 
 // 加载用户金币信息
-const loadUserInfo = async () => {
+const loadUserInfo = async (showLoading: boolean = true) => {
   if (!empId.value || !userId.value) return;  
-  isLoading.value = true;
+  if (showLoading) {
+    isLoading.value = true;
+  }
   error.value = '';
   
   try {
@@ -336,7 +338,9 @@ const loadUserInfo = async () => {
     console.error('获取金币信息失败:', err);
     error.value = '网络错误，请稍后重试';
   } finally {
-    isLoading.value = false;
+    if (showLoading) {
+      isLoading.value = false;
+    }
   }
 };
 
