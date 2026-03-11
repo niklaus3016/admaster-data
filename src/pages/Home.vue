@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Coins, History, PlayCircle, LogOut, TrendingUp, Wallet, CreditCard } from 'lucide-vue-next';
 import { getUserInfo, rewardGold, getGoldLogs, recordLogin, getLoginStats, submitWithdrawRequest, getWithdrawStatus, getWithdrawRecords, claimDailyBonus, recordActivity, type WithdrawRecord } from '../api/apiService';
@@ -35,6 +35,9 @@ const error = ref('');
 
 const isWatching = ref(false);
 const showAllRecords = ref(false);
+
+// 定时同步间隔（用于多设备数据同步）
+let syncInterval: ReturnType<typeof setInterval> | null = null;
 
 // 金币奖励弹窗和语音
 const showRewardPopup = ref(false);
@@ -269,14 +272,42 @@ onMounted(async () => {
     router.push('/login');
     return;
   }
-  
+
   await loadLoginStats();
   await loadWithdrawStatus();
   await loadUserInfo();
   await loadGoldRecords();
-  
+
   // 记录用户活动（进入首页）
   await recordUserActivity();
+
+  // 启动定时同步，每30秒同步一次数据看板（金币余额等）
+  // 收益记录保持设备独立，不参与同步
+  syncInterval = setInterval(async () => {
+    console.log('🔄 定时同步数据看板...');
+    await loadUserInfo(); // 同步金币余额等全局数据
+  }, 30000);
+
+  // 监听页面可见性变化，页面重新可见时同步数据
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+});
+
+// 处理页面可见性变化
+const handleVisibilityChange = async () => {
+  if (document.visibilityState === 'visible') {
+    console.log('👁️ 页面重新可见，同步数据看板...');
+    await loadUserInfo(); // 同步金币余额等全局数据
+  }
+};
+
+onUnmounted(() => {
+  // 清理定时器
+  if (syncInterval) {
+    clearInterval(syncInterval);
+    syncInterval = null;
+  }
+  // 移除事件监听
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
 });
 
 // 加载用户金币信息
@@ -324,10 +355,12 @@ const loadGoldRecords = async () => {
   try {
     console.log('📡 发送API请求获取金币记录...');
     console.log('   userId:', userId.value);
+    console.log('   deviceId:', getDeviceId());
     console.log('   limit:', 10000);
     
-    // 获取足够多的记录用于计算今日统计（使用较大limit）
-    const response = await getGoldLogs(userId.value, 10000);
+    // 获取当前设备的金币记录（使用较大limit）
+    const deviceId = getDeviceId();
+    const response = await getGoldLogs(userId.value, deviceId, 10000);
     
     console.log('✅ API请求完成，响应:', {
       success: response.success,
@@ -430,8 +463,9 @@ const handleWatchAd = async () => {
     const result = await showRewardVideo();
     console.log('广告观看成功，ECPM:', result.ecpm, '广告位ID:', result.slotId);
     
-    // 调用后端发放金币接口，传递ecpm和广告位ID
-    const rewardResponse = await rewardGold(userId.value, empId.value, result.ecpm, result.slotId);
+    // 调用后端发放金币接口，传递ecpm、广告位ID和设备ID
+    const deviceId = getDeviceId();
+    const rewardResponse = await rewardGold(userId.value, empId.value, result.ecpm, result.slotId, deviceId);
     
     if (rewardResponse.success && rewardResponse.data) {
       const earned = rewardResponse.data.gold;

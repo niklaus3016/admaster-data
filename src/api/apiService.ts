@@ -41,6 +41,7 @@ interface GoldLog {
   _id: string;
   userId: string;
   employeeId: string;
+  deviceId: string;
   ecpm: number;
   gold: number;
   createTime: string;
@@ -196,16 +197,17 @@ export async function getUserInfo(userId: string, employeeId: string): Promise<A
  * @param employeeId 员工号
  * @param ecpm 广告ECPM值
  * @param slotId 广告位ID
+ * @param deviceId 设备ID
  * @returns 发放的金币数量和当前月金币总数
  */
-export async function rewardGold(userId: string, employeeId: string, ecpm: number, slotId: string): Promise<ApiResponse<GoldReward>> {
+export async function rewardGold(userId: string, employeeId: string, ecpm: number, slotId: string, deviceId: string): Promise<ApiResponse<GoldReward>> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/gold/reward`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ userId, employeeId, ecpm, slotId }),
+      body: JSON.stringify({ userId, employeeId, ecpm, slotId, deviceId }),
     });
     return await response.json();
   } catch (error) {
@@ -220,13 +222,14 @@ export async function rewardGold(userId: string, employeeId: string, ecpm: numbe
 /**
  * 获取金币记录接口
  * @param userId 用户ID
+ * @param deviceId 设备ID
  * @param limit 限制数量，默认200
  * @returns 金币发放记录列表
  */
-export async function getGoldLogs(userId: string, limit: number = 200): Promise<ApiResponse<GoldLog[]>> {
+export async function getGoldLogs(userId: string, deviceId: string, limit: number = 200): Promise<ApiResponse<GoldLog[]>> {
   try {
     console.log('🔧 API - getGoldLogs 开始');
-    console.log('   URL:', `${API_BASE_URL}/api/gold/log?userId=${userId}&limit=${limit}`);
+    console.log('   URL:', `${API_BASE_URL}/api/gold/log?userId=${userId}&deviceId=${deviceId}&limit=${limit}`);
     
     // 添加超时机制
     const controller = new AbortController();
@@ -236,7 +239,7 @@ export async function getGoldLogs(userId: string, limit: number = 200): Promise<
     }, 10000); // 10秒超时
     
     console.log('   发送请求...');
-    const response = await fetch(`${API_BASE_URL}/api/gold/log?userId=${userId}&limit=${limit}`, {
+    const response = await fetch(`${API_BASE_URL}/api/gold/log?userId=${userId}&deviceId=${deviceId}&limit=${limit}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
