@@ -85,15 +85,22 @@ export function useAdManager(config: AdConfig) {
     return slotId;
   };
   
-  // 并行请求广告组
-  const tryParallelAdGroup = async (slotIds: string[]): Promise<{ ecpm: number; slotId: string } | null> => {
-    console.log(`========== 开始并行请求广告组: ${slotIds.join(', ')} ==========`);
+  // 串行请求广告位（替代并行策略）
+  const trySerialAdGroup = async (slotIds: string[]): Promise<{ ecpm: number; slotId: string } | null> => {
+    console.log(`========== 开始串行请求广告组: ${slotIds.join(', ')} ==========`);
     
     const sessionId = currentSessionId;
     const checkSession = () => sessionId === currentSessionId;
     
-    const adPromises = slotIds.map(slotId => {
-      return new Promise<{ ecpm: number; slotId: string } | null>((resolve) => {
+    for (const slotId of slotIds) {
+      if (!checkSession()) {
+        console.log('会话已过期，停止加载');
+        return null;
+      }
+      
+      console.log(`尝试加载广告位: ${slotId}`);
+      
+      const result = await new Promise<{ ecpm: number; slotId: string } | null>((resolve) => {
         let isResolved = false;
         let slotTimeoutId: any = null;
         let currentAdSuccess = false;
@@ -201,7 +208,6 @@ export function useAdManager(config: AdConfig) {
         };
         
         // 加载广告
-        console.log(`尝试加载广告位: ${slotId}`);
         BaiduAd.loadRewardVideoAd({ adId: slotId })
           .then(() => console.log(`✅ 广告加载请求已发送 (${slotId})`))
           .catch((err: any) => {
@@ -216,20 +222,17 @@ export function useAdManager(config: AdConfig) {
           resolveOnce(null);
         }, PARALLEL_TIMEOUT);
       });
-    });
-    
-    // 等待所有并行请求完成
-    const results = await Promise.allSettled(adPromises);
-    
-    // 处理结果，找到第一个成功的广告
-    for (const result of results) {
-      if (result.status === 'fulfilled' && result.value) {
-        console.log(`🎉 并行请求成功，使用广告位: ${result.value.slotId}，ECPM: ${result.value.ecpm}`);
-        return result.value;
+      
+      // 如果当前广告位成功，立即返回
+      if (result) {
+        console.log(`🎉 串行请求成功，使用广告位: ${result.slotId}，ECPM: ${result.ecpm}`);
+        return result;
       }
+      
+      console.log(`广告位 ${slotId} 失败，尝试下一个...`);
     }
     
-    console.log('❌ 并行请求组所有广告位均失败');
+    console.log('❌ 串行请求组所有广告位均失败');
     return null;
   };
   
@@ -562,30 +565,30 @@ export function useAdManager(config: AdConfig) {
     
     const checkSession = () => sessionId === currentSessionId;
     
-    // 1. 尝试第一组并行广告：1200、1000、800
-    console.log('========== 开始第一组并行广告请求 ==========');
-    const parallelResult1 = await tryParallelAdGroup(AD_GROUPS.parallelGroup1);
-    if (parallelResult1 && checkSession()) {
+    // 1. 尝试第一组串行广告：1400、1000、800
+    console.log('========== 开始第一组串行广告请求 ==========');
+    const serialResult1 = await trySerialAdGroup(AD_GROUPS.parallelGroup1);
+    if (serialResult1 && checkSession()) {
       isAdLoading.value = false;
       isAdReady.value = false;
       isProcessing = false;
-      resolve(parallelResult1);
+      resolve(serialResult1);
       return;
     }
     
-    // 2. 尝试第二组并行广告：500、400、300
-    console.log('========== 开始第二组并行广告请求 ==========');
-    const parallelResult2 = await tryParallelAdGroup(AD_GROUPS.parallelGroup2);
-    if (parallelResult2 && checkSession()) {
+    // 2. 尝试第二组串行广告：500、400、300
+    console.log('========== 开始第二组串行广告请求 ==========');
+    const serialResult2 = await trySerialAdGroup(AD_GROUPS.parallelGroup2);
+    if (serialResult2 && checkSession()) {
       isAdLoading.value = false;
       isAdReady.value = false;
       isProcessing = false;
-      resolve(parallelResult2);
+      resolve(serialResult2);
       return;
     }
     
-    // 3. 并行请求失败，使用串行策略处理剩余广告位
-    console.log('========== 并行请求失败，开始串行处理剩余广告位 ==========');
+    // 3. 前两组串行请求失败，继续串行处理剩余广告位
+    console.log('========== 前两组串行请求失败，继续串行处理剩余广告位 ==========');
     
     // 更新配置为串行广告位
     const originalSlotIds = config.slotIds;
