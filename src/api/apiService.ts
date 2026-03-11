@@ -225,13 +225,33 @@ export async function rewardGold(userId: string, employeeId: string, ecpm: numbe
  */
 export async function getGoldLogs(userId: string, limit: number = 200): Promise<ApiResponse<GoldLog[]>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/gold/log?userId=${userId}&limit=${limit}`);
-    return await response.json();
+    // 添加超时机制
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+    
+    const response = await fetch(`${API_BASE_URL}/api/gold/log?userId=${userId}&limit=${limit}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache'
+      },
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data;
   } catch (error) {
     console.error('获取金币记录失败:', error);
     return {
       success: false,
       message: '网络错误，请稍后重试',
+      data: [] // 返回空数组，确保前端有默认值
     };
   }
 }
