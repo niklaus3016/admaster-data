@@ -340,7 +340,7 @@ const loadGoldRecords = async () => {
               year: 'numeric', month: '2-digit', day: '2-digit',
               hour: '2-digit', minute: '2-digit'
             }),
-            amount: log.gold,
+            amount: log.gold || 0, // 确保金额有默认值
             timestamp: recordTime.getTime() // 用于排序
           };
         })
