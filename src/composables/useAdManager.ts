@@ -151,7 +151,8 @@ export function useAdManager(config: AdConfig) {
           console.log(`✅ 广告成功 (${slotId})，返回 ECPM:`, ecpm);
           
           // 在奖励回调后开始预加载下一个广告（必须在resolveOnce之前）
-          console.log('🎁 测试：广告奖励回调后，这行日志应该出现');
+          console.log('🎁 广告奖励回调后，开始预加载下一个广告');
+          preloadNextAd();
           
           resolveOnce({ ecpm, slotId });
         };
