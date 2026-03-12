@@ -749,6 +749,11 @@ export function useAdManager(config: AdConfig) {
       resolveOnce({ ecpm, slotId });
     };
     
+    const onAdShow = () => {
+      console.log(`📺 预加载广告页面已打开 (${slotId})，开始下一次预加载`);
+      preloadNextAd();
+    };
+    
     const onAdClose = () => {
       console.log(`✅ 预加载广告关闭回调 (${slotId})`);
       if (!currentAdSuccess) {
@@ -761,6 +766,7 @@ export function useAdManager(config: AdConfig) {
       try {
         BaiduAd.removeListener('onRewardVerify', onRewardVerify);
         BaiduAd.removeListener('onAdClose', onAdClose);
+        BaiduAd.removeListener('onAdShow', onAdShow);
       } catch (e) {
         console.warn(`清理预加载广告监听器失败 (${slotId}):`, e);
       }
@@ -769,14 +775,11 @@ export function useAdManager(config: AdConfig) {
     // 注册监听器
     BaiduAd.addListener('onRewardVerify', onRewardVerify);
     BaiduAd.addListener('onAdClose', onAdClose);
+    BaiduAd.addListener('onAdShow', onAdShow);
     
     try {
-      // 广告显示前就开始下一次预加载，利用用户观看广告的时间预加载
-      console.log('🎁 准备显示广告，立即开始下一次预加载');
-      preloadNextAd();
-      
-      // 显示广告（不await，让它异步执行）
-      BaiduAd.showRewardVideoAd();
+      // 显示广告
+      await BaiduAd.showRewardVideoAd();
       console.log(`✅ 预加载广告显示命令已发送 (${slotId})`);
     } catch (error) {
       console.error(`❌ 显示预加载广告失败 (${slotId}):`, error);
