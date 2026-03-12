@@ -264,7 +264,7 @@ const adConfig = {
   ], // 按优先级从高到低排列
 };
 
-const { showRewardVideo } = useAdManager(adConfig);
+const { showRewardVideo, triggerPreloadAfterDelay } = useAdManager(adConfig);
 
 // 初始化数据
 onMounted(async () => {
@@ -463,6 +463,9 @@ const handleWatchAd = async () => {
   try {
     // 记录用户活动（观看广告）
     await recordUserActivity();
+    
+    // 在调用广告的同时，异步触发预加载（用户跳转到广告页面2秒后开始预加载）
+    triggerPreloadAfterDelay();
     
     // 调用广告管理逻辑
     const result = await showRewardVideo();

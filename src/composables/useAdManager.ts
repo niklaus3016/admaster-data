@@ -190,10 +190,7 @@ export function useAdManager(config: AdConfig) {
             console.log(`✅ 广告显示命令已发送 (${slotId})`);
             
             // 用户跳转到广告页面后，等待2秒开始预加载下一个广告
-            setTimeout(() => {
-              console.log('⏰ 用户跳转到广告页面2秒后，开始预加载下一个广告');
-              preloadNextAd();
-            }, 2000);
+            triggerPreloadAfterDelay();
           } catch (error) {
             console.error(`❌ 显示广告失败 (${slotId}):`, error);
             resolveOnce(null);
@@ -280,6 +277,15 @@ export function useAdManager(config: AdConfig) {
     currentSlotIndex = (currentSlotIndex + 1) % config.slotIds.length;
     triedSlots++;
     return slotId;
+  };
+  
+  // 触发预加载（延迟2秒）
+  const triggerPreloadAfterDelay = () => {
+    console.log('🎯 触发预加载，将在2秒后开始');
+    setTimeout(() => {
+      console.log('⏰ 用户跳转到广告页面2秒后，开始预加载下一个广告');
+      preloadNextAd();
+    }, 2000);
   };
   
   // 预加载下一个广告
@@ -708,10 +714,7 @@ export function useAdManager(config: AdConfig) {
       console.log(`✅ 预加载广告显示命令已发送 (${slotId})`);
       
       // 用户跳转到广告页面后，等待2秒开始预加载下一个广告
-      setTimeout(() => {
-        console.log('⏰ 用户跳转到广告页面2秒后，开始预加载下一个广告');
-        preloadNextAd();
-      }, 2000);
+      triggerPreloadAfterDelay();
     } catch (error) {
       console.error(`❌ 显示预加载广告失败 (${slotId}):`, error);
       cleanupSlotListeners();
@@ -1137,6 +1140,7 @@ export function useAdManager(config: AdConfig) {
     preloadAd,
     showRewardVideo,
     initializeAdSdk,
-    preloadNextAd
+    preloadNextAd,
+    triggerPreloadAfterDelay
   };
 }
