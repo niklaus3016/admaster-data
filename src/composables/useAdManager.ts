@@ -154,6 +154,10 @@ export function useAdManager(config: AdConfig) {
           if (!checkSession() || currentAdSuccess || isResolved) return;
           
           console.log(`✅ 视频下载成功 (${slotId})，准备显示广告`);
+          
+          // 立即设置广告显示标志，防止用户跳过后继续尝试其他广告位
+          hasShownAd = true;
+          
           try {
             if (slotTimeoutId) clearTimeout(slotTimeoutId);
             
@@ -171,8 +175,6 @@ export function useAdManager(config: AdConfig) {
             }
             
             console.log(`✅ 广告位加载成功且已就绪 (${slotId})，准备播放`);
-            // 设置广告显示标志，防止用户跳过后继续尝试其他广告位
-            hasShownAd = true;
             await BaiduAd.showRewardVideoAd();
             console.log(`✅ 广告显示命令已发送 (${slotId})`);
           } catch (error) {
