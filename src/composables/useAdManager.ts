@@ -36,6 +36,7 @@ export function useAdManager(config: AdConfig) {
   let slotTimeoutId: any = null;
   let currentSessionId = 0;
   let isProcessing = false; // 是否正在处理广告，防止并发
+  let hasShownAd = false; // 是否已经显示过广告（用于防止用户跳过后继续尝试其他广告位）
   
   // 广告位分组配置
   const AD_GROUPS = {
@@ -170,6 +171,8 @@ export function useAdManager(config: AdConfig) {
             }
             
             console.log(`✅ 广告位加载成功且已就绪 (${slotId})，准备播放`);
+            // 设置广告显示标志，防止用户跳过后继续尝试其他广告位
+            hasShownAd = true;
             await BaiduAd.showRewardVideoAd();
             console.log(`✅ 广告显示命令已发送 (${slotId})`);
           } catch (error) {
@@ -265,6 +268,12 @@ export function useAdManager(config: AdConfig) {
       const slotId = slotIds[i];
       const slotIndex = i + 1; // 序号从1开始
       const totalSlots = slotIds.length;
+      
+      // 检查是否已经显示过广告（用户跳过后停止尝试其他广告位）
+      if (hasShownAd) {
+        console.log('🛑 已显示过广告，停止尝试其他广告位');
+        return null;
+      }
       
       if (!checkSession()) {
         console.log('会话已过期，停止加载');
@@ -420,6 +429,7 @@ export function useAdManager(config: AdConfig) {
     triedSlots = 0;
     isAdLoading.value = false;
     isAdReady.value = false;
+    hasShownAd = false; // 重置广告显示标志
     currentSessionId++;
     console.log(`🆕 新会话开始，会话ID: ${currentSessionId}`);
   };
