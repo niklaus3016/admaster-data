@@ -706,9 +706,6 @@ export function useAdManager(config: AdConfig) {
         cleanupSlotListeners();
         if (result) {
           resolve(result);
-          // 广告被使用后，立即开始下一次预加载
-          console.log('🎁 广告被使用，开始下一次预加载');
-          preloadNextAd();
         } else {
           reject(new Error('广告显示失败'));
         }
@@ -762,6 +759,10 @@ export function useAdManager(config: AdConfig) {
       // 显示广告
       await BaiduAd.showRewardVideoAd();
       console.log(`✅ 预加载广告显示命令已发送 (${slotId})`);
+      
+      // 广告显示后立即开始下一次预加载
+      console.log('🎁 广告显示，开始下一次预加载');
+      preloadNextAd();
     } catch (error) {
       console.error(`❌ 显示预加载广告失败 (${slotId}):`, error);
       cleanupSlotListeners();
