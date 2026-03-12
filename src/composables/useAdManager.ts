@@ -190,6 +190,12 @@ export function useAdManager(config: AdConfig) {
         const onAdClose = () => {
           if (!checkSession()) return;
           console.log(`✅ 广告关闭回调 (${slotId})`);
+          // 如果已经显示过广告（用户跳过），停止尝试其他广告位
+          if (hasShownAd) {
+            console.log(`🛑 已显示过广告，停止尝试其他广告位 (${slotId})`);
+            resolveOnce(null);
+            return;
+          }
           if (!currentAdSuccess) {
             console.log(`广告关闭但未获得奖励 (${slotId})，标记为失败`);
             resolveOnce(null);
