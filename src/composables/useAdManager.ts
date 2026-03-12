@@ -451,6 +451,10 @@ export function useAdManager(config: AdConfig) {
   
   // 预加载下一个广告
   const preloadNextAd = async () => {
+    console.log('========== preloadNextAd 被调用 ==========');
+    console.log('isPreloading:', isPreloading);
+    console.log('preloadedAd:', preloadedAd);
+    
     if (isPreloading || preloadedAd) {
       console.log('已有预加载任务或预加载广告，跳过预加载');
       return;
