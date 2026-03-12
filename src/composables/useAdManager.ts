@@ -36,21 +36,29 @@ export function useAdManager(config: AdConfig) {
   let slotTimeoutId: any = null;
   let currentSessionId = 0;
   let isProcessing = false; // 是否正在处理广告，防止并发
+  
   // 广告位分组配置
   const AD_GROUPS = {
-    group1: ['19188698', '19202078', '19188424'], // 一组（并行）：1500、1400、1000
-    group2: ['19188704', '19202085', '19188706'], // 二组（并行）：800、500、400
-    group3: ['19202092', '19188709', '19202094'], // 三组（并行）：300、200、180
-    group4: ['19188421', '19202097', '19183768'], // 四组（并行）：150、130、100
-    group5: ['19188420', '19202099', '19188656', '19188657', '19188427', '19202101'] // 五组（串行）：80、60、竞价、竞价、竞价、20
+    // 前4组并行请求已注释，改为全部串行
+    // group1: ['19188698', '19202078', '19188424'], // 一组（并行）：1500、1400、1000
+    // group2: ['19188704', '19202085', '19188706'], // 二组（并行）：800、500、400
+    // group3: ['19202092', '19188709', '19202094'], // 三组（并行）：300、200、180
+    // group4: ['19188421', '19202097', '19183768'], // 四组（并行）：150、130、100
+    group5: [
+      '19188698', '19202078', '19188424', // 1500、1400、1000
+      '19188704', '19202085', '19188706', // 800、500、400
+      '19202092', '19188709', '19202094', // 300、200、180
+      '19188421', '19202097', '19183768', // 150、130、100
+      '19188420', '19202099', '19188656', '19188657', '19188427', '19202101' // 80、60、竞价、竞价、竞价、10
+    ] // 全部串行：共18个广告位
   };
   
   // 并行请求超时时间（毫秒）
   const PARALLEL_TIMEOUT = 3000;
   // 组间延迟时间（毫秒）
   const GROUP_DELAY = 500;
-  // 五组内广告位间隔时间（毫秒）
-  const GROUP5_SLOT_DELAY = 500;
+  // 广告位间隔时间（毫秒）
+  const GROUP5_SLOT_DELAY = 200;
   
   const delay = (ms: number): Promise<void> => {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -248,13 +256,15 @@ export function useAdManager(config: AdConfig) {
   
   // 串行请求广告组
   const trySerialAdGroup = async (slotIds: string[], slotDelay: number = 0): Promise<{ ecpm: number; slotId: string } | null> => {
-    console.log(`========== 开始串行请求广告组: ${slotIds.join(', ')} ==========`);
+    console.log(`========== 开始串行请求广告组（共${slotIds.length}个广告位） ==========`);
     
     const sessionId = currentSessionId;
     const checkSession = () => sessionId === currentSessionId;
     
     for (let i = 0; i < slotIds.length; i++) {
       const slotId = slotIds[i];
+      const slotIndex = i + 1; // 序号从1开始
+      const totalSlots = slotIds.length;
       
       if (!checkSession()) {
         console.log('会话已过期，停止加载');
@@ -267,7 +277,7 @@ export function useAdManager(config: AdConfig) {
         await delay(slotDelay);
       }
       
-      console.log(`尝试加载广告位: ${slotId}`);
+      console.log(`尝试加载广告位 [${slotIndex}/${totalSlots}]: ${slotId}`);
       
       const result = await new Promise<{ ecpm: number; slotId: string } | null>((resolve) => {
         let isResolved = false;
@@ -733,72 +743,73 @@ export function useAdManager(config: AdConfig) {
     const sessionId = currentSessionId;
     const checkSession = () => sessionId === currentSessionId;
     
-    // 1. 第一组并行请求
-    let result = await tryParallelAdGroup(AD_GROUPS.group1);
-    if (result && checkSession()) {
-      isAdLoading.value = false;
-      isAdReady.value = false;
-      isProcessing = false;
-      resolve(result);
-      return;
-    }
+    // 前4组并行请求已注释，改为全部串行
+    // // 1. 第一组并行请求
+    // let result = await tryParallelAdGroup(AD_GROUPS.group1);
+    // if (result && checkSession()) {
+    //   isAdLoading.value = false;
+    //   isAdReady.value = false;
+    //   isProcessing = false;
+    //   resolve(result);
+    //   return;
+    // }
     
-    // 组间延迟
-    if (checkSession()) {
-      console.log(`等待 ${GROUP_DELAY}ms 后尝试下一组...`);
-      await delay(GROUP_DELAY);
-    }
+    // // 组间延迟
+    // if (checkSession()) {
+    //   console.log(`等待 ${GROUP_DELAY}ms 后尝试下一组...`);
+    //   await delay(GROUP_DELAY);
+    // }
     
-    // 2. 第二组并行请求
-    result = await tryParallelAdGroup(AD_GROUPS.group2);
-    if (result && checkSession()) {
-      isAdLoading.value = false;
-      isAdReady.value = false;
-      isProcessing = false;
-      resolve(result);
-      return;
-    }
+    // // 2. 第二组并行请求
+    // result = await tryParallelAdGroup(AD_GROUPS.group2);
+    // if (result && checkSession()) {
+    //   isAdLoading.value = false;
+    //   isAdReady.value = false;
+    //   isProcessing = false;
+    //   resolve(result);
+    //   return;
+    // }
     
-    // 组间延迟
-    if (checkSession()) {
-      console.log(`等待 ${GROUP_DELAY}ms 后尝试下一组...`);
-      await delay(GROUP_DELAY);
-    }
+    // // 组间延迟
+    // if (checkSession()) {
+    //   console.log(`等待 ${GROUP_DELAY}ms 后尝试下一组...`);
+    //   await delay(GROUP_DELAY);
+    // }
     
-    // 3. 第三组并行请求
-    result = await tryParallelAdGroup(AD_GROUPS.group3);
-    if (result && checkSession()) {
-      isAdLoading.value = false;
-      isAdReady.value = false;
-      isProcessing = false;
-      resolve(result);
-      return;
-    }
+    // // 3. 第三组并行请求
+    // result = await tryParallelAdGroup(AD_GROUPS.group3);
+    // if (result && checkSession()) {
+    //   isAdLoading.value = false;
+    //   isAdReady.value = false;
+    //   isProcessing = false;
+    //   resolve(result);
+    //   return;
+    // }
     
-    // 组间延迟
-    if (checkSession()) {
-      console.log(`等待 ${GROUP_DELAY}ms 后尝试下一组...`);
-      await delay(GROUP_DELAY);
-    }
+    // // 组间延迟
+    // if (checkSession()) {
+    //   console.log(`等待 ${GROUP_DELAY}ms 后尝试下一组...`);
+    //   await delay(GROUP_DELAY);
+    // }
     
-    // 4. 第四组并行请求
-    result = await tryParallelAdGroup(AD_GROUPS.group4);
-    if (result && checkSession()) {
-      isAdLoading.value = false;
-      isAdReady.value = false;
-      isProcessing = false;
-      resolve(result);
-      return;
-    }
+    // // 4. 第四组并行请求
+    // result = await tryParallelAdGroup(AD_GROUPS.group4);
+    // if (result && checkSession()) {
+    //   isAdLoading.value = false;
+    //   isAdReady.value = false;
+    //   isProcessing = false;
+    //   resolve(result);
+    //   return;
+    // }
     
-    // 组间延迟
-    if (checkSession()) {
-      console.log(`等待 ${GROUP_DELAY}ms 后尝试下一组...`);
-      await delay(GROUP_DELAY);
-    }
+    // // 组间延迟
+    // if (checkSession()) {
+    //   console.log(`等待 ${GROUP_DELAY}ms 后尝试下一组...`);
+    //   await delay(GROUP_DELAY);
+    // }
     
-    // 5. 第五组串行请求
-    result = await trySerialAdGroup(AD_GROUPS.group5, GROUP5_SLOT_DELAY);
+    // 全部串行请求
+    let result = await trySerialAdGroup(AD_GROUPS.group5, GROUP5_SLOT_DELAY);
     if (result && checkSession()) {
       isAdLoading.value = false;
       isAdReady.value = false;
