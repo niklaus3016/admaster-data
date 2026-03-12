@@ -188,6 +188,12 @@ export function useAdManager(config: AdConfig) {
             // 显示广告
             BaiduAd.showRewardVideoAd();
             console.log(`✅ 广告显示命令已发送 (${slotId})`);
+            
+            // 用户跳转到广告页面后，等待2秒开始预加载下一个广告
+            setTimeout(() => {
+              console.log('⏰ 用户跳转到广告页面2秒后，开始预加载下一个广告');
+              preloadNextAd();
+            }, 2000);
           } catch (error) {
             console.error(`❌ 显示广告失败 (${slotId}):`, error);
             resolveOnce(null);
@@ -701,8 +707,11 @@ export function useAdManager(config: AdConfig) {
       await BaiduAd.showRewardVideoAd();
       console.log(`✅ 预加载广告显示命令已发送 (${slotId})`);
       
-      // 立即开始预加载下一个广告
-      preloadNextAd();
+      // 用户跳转到广告页面后，等待2秒开始预加载下一个广告
+      setTimeout(() => {
+        console.log('⏰ 用户跳转到广告页面2秒后，开始预加载下一个广告');
+        preloadNextAd();
+      }, 2000);
     } catch (error) {
       console.error(`❌ 显示预加载广告失败 (${slotId}):`, error);
       cleanupSlotListeners();

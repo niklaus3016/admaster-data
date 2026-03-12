@@ -264,7 +264,7 @@ const adConfig = {
   ], // 按优先级从高到低排列
 };
 
-const { showRewardVideo, preloadNextAd } = useAdManager(adConfig);
+const { showRewardVideo } = useAdManager(adConfig);
 
 // 初始化数据
 onMounted(async () => {
@@ -467,10 +467,6 @@ const handleWatchAd = async () => {
     // 调用广告管理逻辑
     const result = await showRewardVideo();
     console.log('广告观看成功，ECPM:', result.ecpm, '广告位ID:', result.slotId);
-    
-    // 开始预加载下一个广告
-    console.log('🎁 开始预加载下一个广告');
-    preloadNextAd();
     
     // 调用后端发放金币接口，传递ecpm、广告位ID和设备ID
     const deviceId = getDeviceId();
