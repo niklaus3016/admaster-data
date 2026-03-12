@@ -20,12 +20,10 @@ export default defineConfig(({mode}) => {
       hmr: process.env.DISABLE_HMR !== 'true',
     },
     build: {
-      minify: 'terser',
-      terserOptions: {
-        compress: {
-          drop_console: false,
-        },
-      },
+      minify: 'esbuild',
+    },
+    esbuild: {
+      drop: [],
     },
   };
 });
