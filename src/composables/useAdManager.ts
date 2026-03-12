@@ -45,6 +45,7 @@ export function useAdManager(config: AdConfig) {
     loadedAt: number;
   } | null = null;
   let isPreloading = false; // 是否正在预加载
+  let preloadingPromise: Promise<void> | null = null; // 预加载Promise，用于等待预加载完成
   
   // 广告位分组配置
   const AD_GROUPS = {
@@ -286,18 +287,28 @@ export function useAdManager(config: AdConfig) {
   };
   
   // 预加载下一个广告
-  const preloadNextAd = async () => {
+  const preloadNextAd = async (): Promise<void> => {
     console.log('========== preloadNextAd 被调用 ==========');
     console.log('isPreloading:', isPreloading);
     console.log('preloadedAd:', preloadedAd);
     
-    if (isPreloading || preloadedAd) {
-      console.log('已有预加载任务或预加载广告，跳过预加载');
+    // 如果已经在预加载，返回现有的Promise
+    if (isPreloading && preloadingPromise) {
+      console.log('已有预加载任务进行中，等待完成...');
+      return preloadingPromise;
+    }
+    
+    // 如果已经有预加载的广告，直接返回
+    if (preloadedAd) {
+      console.log('已有预加载广告，跳过预加载');
       return;
     }
     
     isPreloading = true;
     console.log('🔄 开始预加载下一个广告...');
+    
+    // 创建新的预加载Promise
+    preloadingPromise = (async () => {
     
     const slotIds = AD_GROUPS.group5;
     
@@ -400,7 +411,11 @@ export function useAdManager(config: AdConfig) {
     }
     
     isPreloading = false;
+    preloadingPromise = null;
     console.log('预加载任务结束');
+    })();
+    
+    return preloadingPromise;
   };
   
   // 串行请求广告组
@@ -801,7 +816,25 @@ export function useAdManager(config: AdConfig) {
         }
       }
       
-      // 没有预加载的广告，开始预加载
+      // 如果正在预加载，等待预加载完成
+      if (isPreloading && preloadingPromise) {
+        console.log('⏳ 正在等待预加载完成...');
+        await preloadingPromise;
+        
+        // 等待完成后，检查是否有预加载的广告
+        if (preloadedAd && preloadedAd.isReady) {
+          console.log('🚀 预加载完成，准备使用');
+          try {
+            await showPreloadedAd(resolve, reject);
+            isProcessing = false;
+            return;
+          } catch (error) {
+            console.log('预加载广告显示失败');
+          }
+        }
+      }
+      
+      // 没有预加载的广告，也没有正在进行的预加载，开始新的预加载
       console.log('🔄 没有预加载的广告，开始预加载...');
       await preloadNextAd();
       
