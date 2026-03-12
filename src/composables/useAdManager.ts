@@ -312,25 +312,75 @@ export function useAdManager(config: AdConfig) {
       console.log(`尝试预加载广告位 [${slotIndex}/${totalSlots}]: ${slotId}`);
       
       try {
-        // 调用loadRewardVideoAd()加载广告
-        await BaiduAd.loadRewardVideoAd({ adId: slotId });
+        // 使用Promise包装预加载逻辑，通过回调确定广告是否就绪
+        const preloadPromise = new Promise<boolean>((resolve) => {
+          let isResolved = false;
+          
+          const onVideoDownloadSuccess = () => {
+            if (!isResolved) {
+              isResolved = true;
+              console.log(`✅ 预加载广告位 ${slotId} 视频下载成功`);
+              cleanupListeners();
+              resolve(true);
+            }
+          };
+          
+          const onVideoDownloadFailed = () => {
+            if (!isResolved) {
+              isResolved = true;
+              console.log(`❌ 预加载广告位 ${slotId} 视频下载失败`);
+              cleanupListeners();
+              resolve(false);
+            }
+          };
+          
+          const onAdFailed = (error: any) => {
+            if (!isResolved) {
+              isResolved = true;
+              console.log(`❌ 预加载广告位 ${slotId} 加载失败:`, error);
+              cleanupListeners();
+              resolve(false);
+            }
+          };
+          
+          const cleanupListeners = () => {
+            try {
+              BaiduAd.removeListener('onVideoDownloadSuccess', onVideoDownloadSuccess);
+              BaiduAd.removeListener('onVideoDownloadFailed', onVideoDownloadFailed);
+              BaiduAd.removeListener('onAdFailed', onAdFailed);
+            } catch (e) {
+              console.warn(`清理预加载监听器失败 (${slotId}):`, e);
+            }
+          };
+          
+          // 注册监听器
+          BaiduAd.addListener('onVideoDownloadSuccess', onVideoDownloadSuccess);
+          BaiduAd.addListener('onVideoDownloadFailed', onVideoDownloadFailed);
+          BaiduAd.addListener('onAdFailed', onAdFailed);
+          
+          // 设置超时（3秒）
+          setTimeout(() => {
+            if (!isResolved) {
+              isResolved = true;
+              console.log(`⏱️ 预加载广告位 ${slotId} 超时`);
+              cleanupListeners();
+              resolve(false);
+            }
+          }, 3000);
+          
+          // 调用loadRewardVideoAd()加载广告
+          BaiduAd.loadRewardVideoAd({ adId: slotId }).catch((error) => {
+            if (!isResolved) {
+              isResolved = true;
+              console.log(`❌ 预加载广告位 ${slotId} 加载请求失败:`, error);
+              cleanupListeners();
+              resolve(false);
+            }
+          });
+        });
         
-        // 等待广告加载（最多等待3秒）
-        let isReady = false;
-        for (let j = 0; j < 6; j++) {
-          await delay(500); // 每次等待500ms
-          
-          // 检查广告是否就绪
-          const readyStatus = await BaiduAd.isReady();
-          
-          if (readyStatus.ready) {
-            isReady = true;
-            console.log(`✅ 预加载广告位 ${slotId} 匹配成功，已就绪`);
-            break;
-          } else {
-            console.log(`⏳ 预加载广告位 ${slotId} 未就绪，继续等待... (${j+1}/6)`);
-          }
-        }
+        // 等待预加载结果
+        const isReady = await preloadPromise;
         
         // 判断是否匹配成功
         if (isReady) {
