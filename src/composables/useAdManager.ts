@@ -184,24 +184,15 @@ export function useAdManager(config: AdConfig) {
             
             console.log(`✅ 广告位加载成功且已就绪 (${slotId})，准备播放`);
             
-            // 显示广告（不使用await，因为showRewardVideoAd可能不是异步操作）
-            try {
-              console.log('准备调用 BaiduAd.showRewardVideoAd()');
-              BaiduAd.showRewardVideoAd();
-              console.log(`✅ 广告显示命令已发送 (${slotId})`);
-            } catch (showError) {
-              console.error(`❌ BaiduAd.showRewardVideoAd() 调用失败 (${slotId}):`, showError);
-            }
+            // 显示广告
+            BaiduAd.showRewardVideoAd();
+            console.log(`✅ 广告显示命令已发送 (${slotId})`);
             
-            // 立即开始预加载下一个广告
-            try {
-              console.log('准备调用 preloadNextAd()');
-              console.log('typeof preloadNextAd:', typeof preloadNextAd);
+            // 立即开始预加载下一个广告（延迟500ms，避免与当前广告冲突）
+            setTimeout(() => {
+              console.log('⏰ 延迟500ms后开始预加载下一个广告');
               preloadNextAd();
-              console.log('preloadNextAd() 调用完成');
-            } catch (preloadError) {
-              console.error('❌ preloadNextAd() 调用失败:', preloadError);
-            }
+            }, 500);
           } catch (error) {
             console.error(`❌ 显示广告失败 (${slotId}):`, error);
             resolveOnce(null);
