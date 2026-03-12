@@ -188,9 +188,6 @@ export function useAdManager(config: AdConfig) {
             // 显示广告
             BaiduAd.showRewardVideoAd();
             console.log(`✅ 广告显示命令已发送 (${slotId})`);
-            
-            // 用户跳转到广告页面后，等待2秒开始预加载下一个广告
-            triggerPreloadAfterDelay();
           } catch (error) {
             console.error(`❌ 显示广告失败 (${slotId}):`, error);
             resolveOnce(null);
@@ -709,6 +706,9 @@ export function useAdManager(config: AdConfig) {
         cleanupSlotListeners();
         if (result) {
           resolve(result);
+          // 广告被使用后，立即开始下一次预加载
+          console.log('🎁 广告被使用，开始下一次预加载');
+          preloadNextAd();
         } else {
           reject(new Error('广告显示失败'));
         }
@@ -762,9 +762,6 @@ export function useAdManager(config: AdConfig) {
       // 显示广告
       await BaiduAd.showRewardVideoAd();
       console.log(`✅ 预加载广告显示命令已发送 (${slotId})`);
-      
-      // 用户跳转到广告页面后，等待2秒开始预加载下一个广告
-      triggerPreloadAfterDelay();
     } catch (error) {
       console.error(`❌ 显示预加载广告失败 (${slotId}):`, error);
       cleanupSlotListeners();
@@ -798,24 +795,33 @@ export function useAdManager(config: AdConfig) {
           isProcessing = false;
           return;
         } catch (error) {
-          console.log('预加载广告显示失败，开始正常加载');
-          // 继续正常加载流程
+          console.log('预加载广告显示失败，开始新的预加载');
+          // 继续预加载流程
         }
       }
       
-      try {
-        if (isNativeApp()) {
-          console.log('使用百度原生广告插件');
-          await showNativeAd(resolve, reject);
-        } else if (!isAdSdkReady.value || !window.baidu?.mobads) {
-          console.warn('百度 H5 广告 SDK 未就绪');
-          showNoAdAvailable(reject);
-        } else {
-          await showH5Ad(resolve, reject);
+      // 没有预加载的广告，开始预加载
+      console.log('🔄 没有预加载的广告，开始预加载...');
+      await preloadNextAd();
+      
+      // 预加载完成后，检查是否有预加载的广告
+      if (preloadedAd && preloadedAd.isReady) {
+        console.log('🚀 预加载成功，准备使用');
+        try {
+          await showPreloadedAd(resolve, reject);
+          isProcessing = false;
+          return;
+        } catch (error) {
+          console.log('预加载广告显示失败');
+          isProcessing = false;
+          reject(new Error('广告显示失败'));
+          return;
         }
-      } catch (error) {
-        console.error('显示广告失败:', error);
-        showNoAdAvailable(reject);
+      } else {
+        console.log('❌ 预加载失败，没有可用的广告');
+        isProcessing = false;
+        reject(new Error('没有可用的广告'));
+        return;
       }
     });
   };

@@ -266,6 +266,11 @@ const adConfig = {
 
 const { showRewardVideo, triggerPreloadAfterDelay } = useAdManager(adConfig);
 
+// 引用 triggerPreloadAfterDelay 防止被 Vite 删除
+if (triggerPreloadAfterDelay) {
+  console.log('预加载函数已就绪');
+}
+
 // 初始化数据
 onMounted(async () => {
   if (!empId.value || !userId.value) {
@@ -463,9 +468,6 @@ const handleWatchAd = async () => {
   try {
     // 记录用户活动（观看广告）
     await recordUserActivity();
-    
-    // 在调用广告的同时，异步触发预加载（用户跳转到广告页面2秒后开始预加载）
-    triggerPreloadAfterDelay();
     
     // 调用广告管理逻辑
     const result = await showRewardVideo();
