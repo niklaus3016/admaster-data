@@ -150,6 +150,10 @@ export function useAdManager(config: AdConfig) {
           
           console.log(`✅ 广告成功 (${slotId})，返回 ECPM:`, ecpm);
           resolveOnce({ ecpm, slotId });
+          
+          // 在奖励回调后开始预加载下一个广告
+          console.log('🎁 广告奖励回调后，开始预加载下一个广告');
+          preloadNextAd();
         };
         
         const onAdFailed = (error: any) => {
@@ -187,12 +191,6 @@ export function useAdManager(config: AdConfig) {
             // 显示广告
             BaiduAd.showRewardVideoAd();
             console.log(`✅ 广告显示命令已发送 (${slotId})`);
-            
-            // 立即开始预加载下一个广告（延迟500ms，避免与当前广告冲突）
-            setTimeout(() => {
-              console.log('⏰ 延迟500ms后开始预加载下一个广告');
-              preloadNextAd();
-            }, 500);
           } catch (error) {
             console.error(`❌ 显示广告失败 (${slotId}):`, error);
             resolveOnce(null);
