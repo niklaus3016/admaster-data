@@ -183,7 +183,9 @@ export function useAdManager(config: AdConfig) {
             }
             
             console.log(`✅ 广告位加载成功且已就绪 (${slotId})，准备播放`);
-            await BaiduAd.showRewardVideoAd();
+            
+            // 显示广告（不使用await，因为showRewardVideoAd可能不是异步操作）
+            BaiduAd.showRewardVideoAd();
             console.log(`✅ 广告显示命令已发送 (${slotId})`);
             
             // 立即开始预加载下一个广告
