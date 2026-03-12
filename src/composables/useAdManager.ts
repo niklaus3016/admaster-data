@@ -417,6 +417,12 @@ export function useAdManager(config: AdConfig) {
         return result;
       }
       
+      // 检查是否已经显示过广告（用户跳过后停止尝试其他广告位）
+      if (hasShownAd) {
+        console.log('🛑 已显示过广告，停止尝试其他广告位');
+        return null;
+      }
+      
       console.log(`广告位 ${slotId} 失败，尝试下一个...`);
     }
     
