@@ -771,13 +771,13 @@ export function useAdManager(config: AdConfig) {
     BaiduAd.addListener('onAdClose', onAdClose);
     
     try {
-      // 显示广告
-      await BaiduAd.showRewardVideoAd();
-      console.log(`✅ 预加载广告显示命令已发送 (${slotId})`);
-      
-      // 广告显示后立即开始下一次预加载
-      console.log('🎁 广告显示，开始下一次预加载');
+      // 广告显示前就开始下一次预加载，利用用户观看广告的时间预加载
+      console.log('🎁 准备显示广告，立即开始下一次预加载');
       preloadNextAd();
+      
+      // 显示广告（不await，让它异步执行）
+      BaiduAd.showRewardVideoAd();
+      console.log(`✅ 预加载广告显示命令已发送 (${slotId})`);
     } catch (error) {
       console.error(`❌ 显示预加载广告失败 (${slotId}):`, error);
       cleanupSlotListeners();
