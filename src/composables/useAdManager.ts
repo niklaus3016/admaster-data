@@ -667,21 +667,6 @@ export function useAdManager(config: AdConfig) {
       
       let ecpm = result.ecpm || 0;
       
-      const isBiddingSlot = (slotId: string) => {
-        return ['19188656', '19188657', '19188427'].includes(slotId);
-      };
-      
-      const generateSimulatedEcpm = (slotId: string) => {
-        const ecpmMap: { [key: string]: number } = {
-          '19188698': 1500, '19202078': 1400, '19188424': 1000,
-          '19188704': 800, '19202085': 500, '19188706': 400,
-          '19202092': 300, '19188709': 200, '19202094': 180,
-          '19188421': 150, '19202097': 130, '19183768': 100,
-          '19188420': 80, '19202099': 60, '19202101': 10
-        };
-        return ecpmMap[slotId] || 50;
-      };
-      
       if (isBiddingSlot(slotId)) {
         console.log('竞价位广告，使用模拟 ECPM');
         ecpm = generateSimulatedEcpm(slotId);
