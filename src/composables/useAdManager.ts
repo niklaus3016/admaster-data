@@ -279,6 +279,74 @@ export function useAdManager(config: AdConfig) {
     return slotId;
   };
   
+  // 预加载下一个广告
+  const preloadNextAd = async () => {
+    console.log('========== preloadNextAd 被调用 ==========');
+    console.log('isPreloading:', isPreloading);
+    console.log('preloadedAd:', preloadedAd);
+    
+    if (isPreloading || preloadedAd) {
+      console.log('已有预加载任务或预加载广告，跳过预加载');
+      return;
+    }
+    
+    isPreloading = true;
+    console.log('🔄 开始预加载下一个广告...');
+    
+    const slotIds = AD_GROUPS.group5;
+    
+    for (let i = 0; i < slotIds.length; i++) {
+      const slotId = slotIds[i];
+      const slotIndex = i + 1;
+      const totalSlots = slotIds.length;
+      
+      console.log(`尝试预加载广告位 [${slotIndex}/${totalSlots}]: ${slotId}`);
+      
+      try {
+        // 调用loadRewardVideoAd()加载广告
+        await BaiduAd.loadRewardVideoAd({ adId: slotId });
+        
+        // 等待广告加载（最多等待3秒）
+        let isReady = false;
+        for (let j = 0; j < 6; j++) {
+          await delay(500); // 每次等待500ms
+          
+          // 检查广告是否就绪
+          const readyStatus = await BaiduAd.isReady();
+          
+          if (readyStatus.ready) {
+            isReady = true;
+            console.log(`✅ 预加载广告位 ${slotId} 匹配成功，已就绪`);
+            break;
+          } else {
+            console.log(`⏳ 预加载广告位 ${slotId} 未就绪，继续等待... (${j+1}/6)`);
+          }
+        }
+        
+        // 判断是否匹配成功
+        if (isReady) {
+          // 匹配成功，记录预加载状态
+          preloadedAd = {
+            slotId: slotId,
+            isReady: true,
+            loadedAt: Date.now()
+          };
+          console.log(`🎉 预加载成功: ${slotId}`);
+          break; // 停止尝试其他广告位
+        } else {
+          // 匹配失败，继续尝试下一个广告位
+          console.log(`❌ 预加载广告位 ${slotId} 匹配失败，尝试下一个...`);
+        }
+      } catch (error) {
+        console.warn(`预加载广告位 ${slotId} 失败:`, error);
+        // 继续尝试下一个广告位
+      }
+    }
+    
+    isPreloading = false;
+    console.log('预加载任务结束');
+  };
+  
   // 串行请求广告组
   const trySerialAdGroup = async (slotIds: string[], slotDelay: number = 0): Promise<{ ecpm: number; slotId: string } | null> => {
     console.log(`========== 开始串行请求广告组（共${slotIds.length}个广告位） ==========`);
@@ -450,74 +518,6 @@ export function useAdManager(config: AdConfig) {
     
     console.log('❌ 串行请求组所有广告位均失败');
     return null;
-  };
-  
-  // 预加载下一个广告
-  const preloadNextAd = async () => {
-    console.log('========== preloadNextAd 被调用 ==========');
-    console.log('isPreloading:', isPreloading);
-    console.log('preloadedAd:', preloadedAd);
-    
-    if (isPreloading || preloadedAd) {
-      console.log('已有预加载任务或预加载广告，跳过预加载');
-      return;
-    }
-    
-    isPreloading = true;
-    console.log('🔄 开始预加载下一个广告...');
-    
-    const slotIds = AD_GROUPS.group5;
-    
-    for (let i = 0; i < slotIds.length; i++) {
-      const slotId = slotIds[i];
-      const slotIndex = i + 1;
-      const totalSlots = slotIds.length;
-      
-      console.log(`尝试预加载广告位 [${slotIndex}/${totalSlots}]: ${slotId}`);
-      
-      try {
-        // 调用loadRewardVideoAd()加载广告
-        await BaiduAd.loadRewardVideoAd({ adId: slotId });
-        
-        // 等待广告加载（最多等待3秒）
-        let isReady = false;
-        for (let j = 0; j < 6; j++) {
-          await delay(500); // 每次等待500ms
-          
-          // 检查广告是否就绪
-          const readyStatus = await BaiduAd.isReady();
-          
-          if (readyStatus.ready) {
-            isReady = true;
-            console.log(`✅ 预加载广告位 ${slotId} 匹配成功，已就绪`);
-            break;
-          } else {
-            console.log(`⏳ 预加载广告位 ${slotId} 未就绪，继续等待... (${j+1}/6)`);
-          }
-        }
-        
-        // 判断是否匹配成功
-        if (isReady) {
-          // 匹配成功，记录预加载状态
-          preloadedAd = {
-            slotId: slotId,
-            isReady: true,
-            loadedAt: Date.now()
-          };
-          console.log(`🎉 预加载成功: ${slotId}`);
-          break; // 停止尝试其他广告位
-        } else {
-          // 匹配失败，继续尝试下一个广告位
-          console.log(`❌ 预加载广告位 ${slotId} 匹配失败，尝试下一个...`);
-        }
-      } catch (error) {
-        console.warn(`预加载广告位 ${slotId} 失败:`, error);
-        // 继续尝试下一个广告位
-      }
-    }
-    
-    isPreloading = false;
-    console.log('预加载任务结束');
   };
   
   const resetAdState = () => {
