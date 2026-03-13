@@ -138,15 +138,9 @@ export function useAdManager(config: AdConfig) {
           currentAdSuccess = true;
           if (slotTimeoutId) clearTimeout(slotTimeoutId);
           
-          let ecpm = result.ecpm || 0;
-
-          if (isBiddingSlot(slotId)) {
-            console.log('竞价位广告，使用模拟 ECPM');
-            ecpm = generateSimulatedEcpm(slotId);
-          } else if (ecpm === 0) {
-            console.log('保价位广告 ECPM 为 0，生成模拟 ECPM');
-            ecpm = generateSimulatedEcpm(slotId);
-          }
+          // 所有广告位都使用模拟 ECPM 值
+          console.log('使用模拟 ECPM 值');
+          const ecpm = generateSimulatedEcpm(slotId);
           
           console.log(`✅ 广告成功 (${slotId})，返回 ECPM:`, ecpm);
           
@@ -476,15 +470,9 @@ export function useAdManager(config: AdConfig) {
           currentAdSuccess = true;
           if (slotTimeoutId) clearTimeout(slotTimeoutId);
           
-          let ecpm = result.ecpm || 0;
-
-          if (isBiddingSlot(slotId)) {
-            console.log('竞价位广告，使用模拟 ECPM');
-            ecpm = generateSimulatedEcpm(slotId);
-          } else if (ecpm === 0) {
-            console.log('保价位广告 ECPM 为 0，生成模拟 ECPM');
-            ecpm = generateSimulatedEcpm(slotId);
-          }
+          // 所有广告位都使用模拟 ECPM 值
+          console.log('使用模拟 ECPM 值');
+          const ecpm = generateSimulatedEcpm(slotId);
           
           console.log(`✅ 广告成功 (${slotId})，返回 ECPM:`, ecpm);
           resolveOnce({ ecpm, slotId });
@@ -739,15 +727,9 @@ export function useAdManager(config: AdConfig) {
       
       currentAdSuccess = true;
       
-      let ecpm = result.ecpm || 0;
-      
-      if (isBiddingSlot(slotId)) {
-        console.log('竞价位广告，使用模拟 ECPM');
-        ecpm = generateSimulatedEcpm(slotId);
-      } else if (ecpm === 0) {
-        console.log('保价位广告 ECPM 为 0，生成模拟 ECPM');
-        ecpm = generateSimulatedEcpm(slotId);
-      }
+      // 所有广告位都使用模拟 ECPM 值
+      console.log('使用模拟 ECPM 值');
+      const ecpm = generateSimulatedEcpm(slotId);
       
       console.log(`✅ 预加载广告成功 (${slotId})，返回 ECPM:`, ecpm);
       resolveOnce({ ecpm, slotId });
