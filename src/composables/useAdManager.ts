@@ -277,7 +277,76 @@ export function useAdManager(config: AdConfig) {
     }, 1000);
   };
   
-  // 预加载下一个广告
+  // 预加载单个广告位
+  const preloadSingleSlot = (slotId: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      let isResolved = false;
+      
+      const onVideoDownloadSuccess = () => {
+        if (!isResolved) {
+          isResolved = true;
+          console.log(`✅ 预加载成功: ${slotId}`);
+          cleanupListeners();
+          resolve(true);
+        }
+      };
+      
+      const onVideoDownloadFailed = () => {
+        if (!isResolved) {
+          isResolved = true;
+          console.log(`❌ 预加载失败: ${slotId} (视频下载失败)`);
+          cleanupListeners();
+          resolve(false);
+        }
+      };
+      
+      const onAdFailed = (error: any) => {
+        if (!isResolved) {
+          isResolved = true;
+          console.log(`❌ 预加载失败: ${slotId} (广告加载失败)`, error);
+          cleanupListeners();
+          resolve(false);
+        }
+      };
+      
+      const cleanupListeners = () => {
+        try {
+          BaiduAd.removeListener('onVideoDownloadSuccess', onVideoDownloadSuccess);
+          BaiduAd.removeListener('onVideoDownloadFailed', onVideoDownloadFailed);
+          BaiduAd.removeListener('onAdFailed', onAdFailed);
+        } catch (e) {
+          // 忽略清理错误
+        }
+      };
+      
+      // 注册监听器
+      BaiduAd.addListener('onVideoDownloadSuccess', onVideoDownloadSuccess);
+      BaiduAd.addListener('onVideoDownloadFailed', onVideoDownloadFailed);
+      BaiduAd.addListener('onAdFailed', onAdFailed);
+      
+      // 设置超时（3秒）
+      setTimeout(() => {
+        if (!isResolved) {
+          isResolved = true;
+          console.log(`⏱️ 预加载超时: ${slotId}`);
+          cleanupListeners();
+          resolve(false);
+        }
+      }, 3000);
+      
+      // 调用loadRewardVideoAd()加载广告
+      BaiduAd.loadRewardVideoAd({ adId: slotId }).catch((error) => {
+        if (!isResolved) {
+          isResolved = true;
+          console.log(`❌ 预加载请求失败: ${slotId}`, error);
+          cleanupListeners();
+          resolve(false);
+        }
+      });
+    });
+  };
+
+  // 预加载下一个广告（混合策略：前12个并行，后6个串行）
   const preloadNextAd = async (): Promise<void> => {
     // 如果已经在预加载，返回现有的Promise
     if (isPreloading && preloadingPromise) {
@@ -291,119 +360,99 @@ export function useAdManager(config: AdConfig) {
     }
     
     isPreloading = true;
-    console.log('🚀 开始预加载任务');
+    console.log('🚀 开始预加载任务（混合策略）');
     
     // 创建新的预加载Promise
     preloadingPromise = (async () => {
-    
-    const slotIds = AD_GROUPS.group5;
-    let foundAd = false;
-    
-    // 强制轮询所有广告位，除非找到成功的广告
-    for (let i = 0; i < slotIds.length; i++) {
-      const slotId = slotIds[i];
-      const slotIndex = i + 1;
-      const totalSlots = slotIds.length;
+      const startTime = Date.now();
+      const TOTAL_TIMEOUT = 30000; // 总超时30秒
       
-      // 广告位之间延迟300ms（除了第一个）
-      if (i > 0) {
-        await new Promise(resolve => setTimeout(resolve, 300));
+      const slotIds = AD_GROUPS.group5;
+      let foundAd = false;
+      
+      // 前12个广告位，每3个并行请求
+      const parallelSlots = slotIds.slice(0, 12);
+      const parallelGroups = [];
+      for (let i = 0; i < parallelSlots.length; i += 3) {
+        parallelGroups.push(parallelSlots.slice(i, i + 3));
       }
       
-      console.log(`🔄 预加载轮询 [${slotIndex}/${totalSlots}]: ${slotId}`);
+      console.log(`📊 并行阶段：${parallelGroups.length}组，每组3个广告位`);
       
-      try {
-        // 使用Promise包装预加载逻辑，通过回调确定广告是否就绪
-        const preloadPromise = new Promise<boolean>((resolve) => {
-          let isResolved = false;
-          
-          const onVideoDownloadSuccess = () => {
-            if (!isResolved) {
-              isResolved = true;
-              console.log(`✅ 预加载成功: ${slotId}`);
-              cleanupListeners();
-              resolve(true);
-            }
-          };
-          
-          const onVideoDownloadFailed = () => {
-            if (!isResolved) {
-              isResolved = true;
-              console.log(`❌ 预加载失败: ${slotId} (视频下载失败)`);
-              cleanupListeners();
-              resolve(false);
-            }
-          };
-          
-          const onAdFailed = (error: any) => {
-            if (!isResolved) {
-              isResolved = true;
-              console.log(`❌ 预加载失败: ${slotId} (广告加载失败)`, error);
-              cleanupListeners();
-              resolve(false);
-            }
-          };
-          
-          const cleanupListeners = () => {
-            try {
-              BaiduAd.removeListener('onVideoDownloadSuccess', onVideoDownloadSuccess);
-              BaiduAd.removeListener('onVideoDownloadFailed', onVideoDownloadFailed);
-              BaiduAd.removeListener('onAdFailed', onAdFailed);
-            } catch (e) {
-              // 忽略清理错误
-            }
-          };
-          
-          // 注册监听器
-          BaiduAd.addListener('onVideoDownloadSuccess', onVideoDownloadSuccess);
-          BaiduAd.addListener('onVideoDownloadFailed', onVideoDownloadFailed);
-          BaiduAd.addListener('onAdFailed', onAdFailed);
-          
-          // 设置超时（3秒）
-          setTimeout(() => {
-            if (!isResolved) {
-              isResolved = true;
-              console.log(`⏱️ 预加载超时: ${slotId}`);
-              cleanupListeners();
-              resolve(false);
-            }
-          }, 3000);
-          
-          // 调用loadRewardVideoAd()加载广告
-          BaiduAd.loadRewardVideoAd({ adId: slotId }).catch((error) => {
-            if (!isResolved) {
-              isResolved = true;
-              console.log(`❌ 预加载请求失败: ${slotId}`, error);
-              cleanupListeners();
-              resolve(false);
-            }
-          });
-        });
-        
-        // 等待预加载结果
-        const isReady = await preloadPromise;
-        
-        // 判断是否匹配成功
-        if (isReady) {
-          // 匹配成功，记录预加载状态
-          preloadedAd = {
-            slotId: slotId,
-            isReady: true,
-            loadedAt: Date.now()
-          };
-          console.log(`🎉 预加载成功: ${slotId}`);
-          foundAd = true;
-          break; // 找到成功的广告，停止轮询
+      for (let groupIndex = 0; groupIndex < parallelGroups.length; groupIndex++) {
+        // 检查总超时
+        if (Date.now() - startTime > TOTAL_TIMEOUT) {
+          console.log('⏱️ 预加载总超时（30秒），终止任务');
+          break;
         }
-      } catch (error) {
-        console.error(`❌ 预加载异常: ${slotId}`, error);
-        // 继续尝试下一个广告位，不中断循环
+        
+        const group = parallelGroups[groupIndex];
+        console.log(`🔄 并行组 [${groupIndex + 1}/${parallelGroups.length}]: ${group.join(', ')}`);
+        
+        // 并行请求3个广告位
+        const results = await Promise.all(group.map(slotId => preloadSingleSlot(slotId)));
+        
+        // 检查是否有成功的
+        for (let i = 0; i < results.length; i++) {
+          if (results[i]) {
+            preloadedAd = {
+              slotId: group[i],
+              isReady: true,
+              loadedAt: Date.now()
+            };
+            console.log(`🎉 并行预加载成功: ${group[i]}`);
+            foundAd = true;
+            break;
+          }
+        }
+        
+        if (foundAd) break;
+        
+        // 组间延迟300ms
+        if (groupIndex < parallelGroups.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
       }
-    }
-    
-    isPreloading = false;
-    preloadingPromise = null;
-    console.log(`📋 预加载任务结束，${foundAd ? '成功' : '未找到广告'}`);
+      
+      // 如果并行阶段未找到广告，继续串行阶段（后6个广告位）
+      if (!foundAd) {
+        const serialSlots = slotIds.slice(12);
+        console.log(`📊 串行阶段：${serialSlots.length}个广告位`);
+        
+        for (let i = 0; i < serialSlots.length; i++) {
+          // 检查总超时
+          if (Date.now() - startTime > TOTAL_TIMEOUT) {
+            console.log('⏱️ 预加载总超时（30秒），终止任务');
+            break;
+          }
+          
+          const slotId = serialSlots[i];
+          console.log(`🔄 串行轮询 [${i + 1}/${serialSlots.length}]: ${slotId}`);
+          
+          const isReady = await preloadSingleSlot(slotId);
+          
+          if (isReady) {
+            preloadedAd = {
+              slotId: slotId,
+              isReady: true,
+              loadedAt: Date.now()
+            };
+            console.log(`🎉 串行预加载成功: ${slotId}`);
+            foundAd = true;
+            break;
+          }
+          
+          // 广告位之间延迟300ms
+          if (i < serialSlots.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
+        }
+      }
+      
+      isPreloading = false;
+      preloadingPromise = null;
+      const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+      console.log(`📋 预加载任务结束，${foundAd ? '成功' : '未找到广告'}，耗时${totalTime}秒`);
     })();
     
     return preloadingPromise;
