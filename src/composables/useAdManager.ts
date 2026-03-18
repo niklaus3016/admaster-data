@@ -305,9 +305,9 @@ export function useAdManager(config: AdConfig) {
       const slotIndex = i + 1;
       const totalSlots = slotIds.length;
       
-      // 广告位之间延迟1500ms（除了第一个）
+      // 广告位之间延迟300ms（除了第一个）
       if (i > 0) {
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
       
       console.log(`🔄 预加载轮询 [${slotIndex}/${totalSlots}]: ${slotId}`);
@@ -359,7 +359,7 @@ export function useAdManager(config: AdConfig) {
           BaiduAd.addListener('onVideoDownloadFailed', onVideoDownloadFailed);
           BaiduAd.addListener('onAdFailed', onAdFailed);
           
-          // 设置超时（1.5秒）
+          // 设置超时（3秒）
           setTimeout(() => {
             if (!isResolved) {
               isResolved = true;
@@ -367,7 +367,7 @@ export function useAdManager(config: AdConfig) {
               cleanupListeners();
               resolve(false);
             }
-          }, 1500);
+          }, 3000);
           
           // 调用loadRewardVideoAd()加载广告
           BaiduAd.loadRewardVideoAd({ adId: slotId }).catch((error) => {
