@@ -270,13 +270,13 @@ export function useAdManager(config: AdConfig) {
     return slotId;
   };
   
-  // 触发预加载（延迟2秒）
+  // 触发预加载（延迟1秒）
   const triggerPreloadAfterDelay = () => {
-    console.log('🎯 触发预加载，将在2秒后开始');
+    console.log('🎯 触发预加载，将在1秒后开始');
     setTimeout(() => {
-      console.log('⏰ 用户跳转到广告页面2秒后，开始预加载下一个广告');
+      console.log('⏰ 用户跳转到广告页面1秒后，开始预加载下一个广告');
       preloadNextAd();
-    }, 2000);
+    }, 1000);
   };
   
   // 预加载下一个广告
@@ -310,9 +310,9 @@ export function useAdManager(config: AdConfig) {
       const slotIndex = i + 1;
       const totalSlots = slotIds.length;
       
-      // 广告位之间延迟200ms（除了第一个）
+      // 广告位之间延迟1500ms（除了第一个）
       if (i > 0) {
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise(resolve => setTimeout(resolve, 1500));
       }
       
       console.log(`尝试预加载广告位 [${slotIndex}/${totalSlots}]: ${slotId}`);
@@ -364,7 +364,7 @@ export function useAdManager(config: AdConfig) {
           BaiduAd.addListener('onVideoDownloadFailed', onVideoDownloadFailed);
           BaiduAd.addListener('onAdFailed', onAdFailed);
           
-          // 设置超时（2秒）
+          // 设置超时（1.5秒）
           setTimeout(() => {
             if (!isResolved) {
               isResolved = true;
@@ -372,7 +372,7 @@ export function useAdManager(config: AdConfig) {
               cleanupListeners();
               resolve(false);
             }
-          }, 2000);
+          }, 1500);
           
           // 调用loadRewardVideoAd()加载广告
           BaiduAd.loadRewardVideoAd({ adId: slotId }).catch((error) => {
