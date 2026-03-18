@@ -316,6 +316,7 @@ export function useAdManager(config: AdConfig) {
           const onVideoDownloadSuccess = () => {
             if (!isResolved) {
               isResolved = true;
+              console.log(`✅ 预加载成功: ${slotId}`);
               cleanupListeners();
               resolve(true);
             }
@@ -324,6 +325,7 @@ export function useAdManager(config: AdConfig) {
           const onVideoDownloadFailed = () => {
             if (!isResolved) {
               isResolved = true;
+              console.log(`❌ 预加载失败: ${slotId} (视频下载失败)`);
               cleanupListeners();
               resolve(false);
             }
@@ -332,6 +334,7 @@ export function useAdManager(config: AdConfig) {
           const onAdFailed = (error: any) => {
             if (!isResolved) {
               isResolved = true;
+              console.log(`❌ 预加载失败: ${slotId} (广告加载失败)`, error);
               cleanupListeners();
               resolve(false);
             }
@@ -356,6 +359,7 @@ export function useAdManager(config: AdConfig) {
           setTimeout(() => {
             if (!isResolved) {
               isResolved = true;
+              console.log(`⏱️ 预加载超时: ${slotId}`);
               cleanupListeners();
               resolve(false);
             }
@@ -365,6 +369,7 @@ export function useAdManager(config: AdConfig) {
           BaiduAd.loadRewardVideoAd({ adId: slotId }).catch((error) => {
             if (!isResolved) {
               isResolved = true;
+              console.log(`❌ 预加载请求失败: ${slotId}`, error);
               cleanupListeners();
               resolve(false);
             }
@@ -386,12 +391,14 @@ export function useAdManager(config: AdConfig) {
           break; // 停止尝试其他广告位
         }
       } catch (error) {
+        console.error(`❌ 预加载异常: ${slotId}`, error);
         // 继续尝试下一个广告位
       }
     }
     
     isPreloading = false;
     preloadingPromise = null;
+    console.log('📋 预加载任务结束');
     })();
     
     return preloadingPromise;
