@@ -272,33 +272,24 @@ export function useAdManager(config: AdConfig) {
   
   // 触发预加载（延迟1秒）
   const triggerPreloadAfterDelay = () => {
-    console.log('🎯 触发预加载，将在1秒后开始');
     setTimeout(() => {
-      console.log('⏰ 用户跳转到广告页面1秒后，开始预加载下一个广告');
       preloadNextAd();
     }, 1000);
   };
   
   // 预加载下一个广告
   const preloadNextAd = async (): Promise<void> => {
-    console.log('========== preloadNextAd 被调用 ==========');
-    console.log('isPreloading:', isPreloading);
-    console.log('preloadedAd:', preloadedAd);
-    
     // 如果已经在预加载，返回现有的Promise
     if (isPreloading && preloadingPromise) {
-      console.log('已有预加载任务进行中，等待完成...');
       return preloadingPromise;
     }
     
     // 如果已经有预加载的广告，直接返回
     if (preloadedAd) {
-      console.log('已有预加载广告，跳过预加载');
       return;
     }
     
     isPreloading = true;
-    console.log('🔄 开始预加载下一个广告...');
     
     // 创建新的预加载Promise
     preloadingPromise = (async () => {
@@ -307,15 +298,11 @@ export function useAdManager(config: AdConfig) {
     
     for (let i = 0; i < slotIds.length; i++) {
       const slotId = slotIds[i];
-      const slotIndex = i + 1;
-      const totalSlots = slotIds.length;
       
       // 广告位之间延迟1500ms（除了第一个）
       if (i > 0) {
         await new Promise(resolve => setTimeout(resolve, 1500));
       }
-      
-      console.log(`尝试预加载广告位 [${slotIndex}/${totalSlots}]: ${slotId}`);
       
       try {
         // 使用Promise包装预加载逻辑，通过回调确定广告是否就绪
@@ -325,7 +312,6 @@ export function useAdManager(config: AdConfig) {
           const onVideoDownloadSuccess = () => {
             if (!isResolved) {
               isResolved = true;
-              console.log(`✅ 预加载广告位 ${slotId} 视频下载成功`);
               cleanupListeners();
               resolve(true);
             }
@@ -334,7 +320,6 @@ export function useAdManager(config: AdConfig) {
           const onVideoDownloadFailed = () => {
             if (!isResolved) {
               isResolved = true;
-              console.log(`❌ 预加载广告位 ${slotId} 视频下载失败`);
               cleanupListeners();
               resolve(false);
             }
@@ -343,7 +328,6 @@ export function useAdManager(config: AdConfig) {
           const onAdFailed = (error: any) => {
             if (!isResolved) {
               isResolved = true;
-              console.log(`❌ 预加载广告位 ${slotId} 加载失败:`, error);
               cleanupListeners();
               resolve(false);
             }
@@ -355,7 +339,7 @@ export function useAdManager(config: AdConfig) {
               BaiduAd.removeListener('onVideoDownloadFailed', onVideoDownloadFailed);
               BaiduAd.removeListener('onAdFailed', onAdFailed);
             } catch (e) {
-              console.warn(`清理预加载监听器失败 (${slotId}):`, e);
+              // 忽略清理错误
             }
           };
           
@@ -368,7 +352,6 @@ export function useAdManager(config: AdConfig) {
           setTimeout(() => {
             if (!isResolved) {
               isResolved = true;
-              console.log(`⏱️ 预加载广告位 ${slotId} 超时`);
               cleanupListeners();
               resolve(false);
             }
@@ -378,7 +361,6 @@ export function useAdManager(config: AdConfig) {
           BaiduAd.loadRewardVideoAd({ adId: slotId }).catch((error) => {
             if (!isResolved) {
               isResolved = true;
-              console.log(`❌ 预加载广告位 ${slotId} 加载请求失败:`, error);
               cleanupListeners();
               resolve(false);
             }
@@ -398,19 +380,14 @@ export function useAdManager(config: AdConfig) {
           };
           console.log(`🎉 预加载成功: ${slotId}`);
           break; // 停止尝试其他广告位
-        } else {
-          // 匹配失败，继续尝试下一个广告位
-          console.log(`❌ 预加载广告位 ${slotId} 匹配失败，尝试下一个...`);
         }
       } catch (error) {
-        console.warn(`预加载广告位 ${slotId} 失败:`, error);
         // 继续尝试下一个广告位
       }
     }
     
     isPreloading = false;
     preloadingPromise = null;
-    console.log('预加载任务结束');
     })();
     
     return preloadingPromise;
