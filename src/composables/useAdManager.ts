@@ -719,6 +719,7 @@ export function useAdManager(config: AdConfig) {
     
     const onAdClose = () => {
       console.log(`✅ 预加载广告关闭回调 (${slotId})`);
+      cleanupSlotListeners();
       if (!currentAdSuccess) {
         console.log(`预加载广告关闭但未获得奖励 (${slotId})，标记为失败`);
         resolveOnce(null);
