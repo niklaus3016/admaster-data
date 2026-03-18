@@ -298,11 +298,15 @@ export function useAdManager(config: AdConfig) {
     
     for (let i = 0; i < slotIds.length; i++) {
       const slotId = slotIds[i];
+      const slotIndex = i + 1;
+      const totalSlots = slotIds.length;
       
       // 广告位之间延迟1500ms（除了第一个）
       if (i > 0) {
         await new Promise(resolve => setTimeout(resolve, 1500));
       }
+      
+      console.log(`🔄 预加载轮询 [${slotIndex}/${totalSlots}]: ${slotId}`);
       
       try {
         // 使用Promise包装预加载逻辑，通过回调确定广告是否就绪
