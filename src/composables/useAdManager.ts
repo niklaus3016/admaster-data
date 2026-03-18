@@ -286,16 +286,20 @@ export function useAdManager(config: AdConfig) {
     
     // 如果已经有预加载的广告，直接返回
     if (preloadedAd) {
+      console.log('📋 已有预加载广告，跳过预加载');
       return;
     }
     
     isPreloading = true;
+    console.log('🚀 开始预加载任务');
     
     // 创建新的预加载Promise
     preloadingPromise = (async () => {
     
     const slotIds = AD_GROUPS.group5;
+    let foundAd = false;
     
+    // 强制轮询所有广告位，除非找到成功的广告
     for (let i = 0; i < slotIds.length; i++) {
       const slotId = slotIds[i];
       const slotIndex = i + 1;
@@ -388,17 +392,18 @@ export function useAdManager(config: AdConfig) {
             loadedAt: Date.now()
           };
           console.log(`🎉 预加载成功: ${slotId}`);
-          break; // 停止尝试其他广告位
+          foundAd = true;
+          break; // 找到成功的广告，停止轮询
         }
       } catch (error) {
         console.error(`❌ 预加载异常: ${slotId}`, error);
-        // 继续尝试下一个广告位
+        // 继续尝试下一个广告位，不中断循环
       }
     }
     
     isPreloading = false;
     preloadingPromise = null;
-    console.log('📋 预加载任务结束');
+    console.log(`📋 预加载任务结束，${foundAd ? '成功' : '未找到广告'}`);
     })();
     
     return preloadingPromise;
