@@ -1019,6 +1019,9 @@ export function useAdManager(config: AdConfig) {
         try {
           await showPreloadedAd(resolve, reject);
           isProcessing = false;
+          // 使用预加载成功，开始完整的预加载任务为下次做准备
+          console.log('📋 预加载广告使用成功，开始完整预加载任务');
+          preloadNextAd();
           return;
         } catch (error) {
           console.log('预加载广告显示失败');
@@ -1027,7 +1030,47 @@ export function useAdManager(config: AdConfig) {
           return;
         }
       } else {
-        console.log('❌ 预加载失败，没有可用的广告');
+        console.log('❌ 预加载失败，直接请求最后3个广告位');
+        // 预加载失败，直接请求最后3个广告位串行
+        const lastThreeSlots = AD_GROUPS.group5.slice(12);
+        console.log('🔄 直接请求最后3个广告位:', lastThreeSlots);
+        
+        for (let i = 0; i < lastThreeSlots.length; i++) {
+          const slotId = lastThreeSlots[i];
+          console.log(`🔄 紧急加载 [${i + 1}/3]: ${slotId}`);
+          
+          const isReady = await preloadSingleSlot(slotId);
+          
+          if (isReady) {
+            console.log(`🎉 紧急加载成功: ${slotId}`);
+            // 使用这个广告位显示广告
+            preloadedAd = {
+              slotId: slotId,
+              isReady: true,
+              loadedAt: Date.now()
+            };
+            try {
+              await showPreloadedAd(resolve, reject);
+              isProcessing = false;
+              // 紧急加载成功，开始完整预加载任务为下次做准备
+              console.log('📋 紧急加载成功，开始完整预加载任务');
+              preloadNextAd();
+              return;
+            } catch (error) {
+              console.log('紧急加载广告显示失败');
+              isProcessing = false;
+              reject(new Error('广告显示失败'));
+              return;
+            }
+          }
+          
+          // 广告位之间延迟300ms
+          if (i < lastThreeSlots.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
+        }
+        
+        console.log('❌ 最后3个广告位也加载失败');
         isProcessing = false;
         reject(new Error('没有可用的广告'));
         return;
