@@ -1003,6 +1003,9 @@ export function useAdManager(config: AdConfig) {
         try {
           await showPreloadedAd(resolve, reject);
           isProcessing = false;
+          // 使用预加载成功，智能触发预加载为下次做准备
+          console.log('📋 直接使用预加载成功，智能触发预加载');
+          smartPreload();
           return;
         } catch (error) {
           console.log('预加载广告显示失败，开始新的预加载');
@@ -1021,6 +1024,9 @@ export function useAdManager(config: AdConfig) {
           try {
             await showPreloadedAd(resolve, reject);
             isProcessing = false;
+            // 等待预加载后使用成功，智能触发预加载为下次做准备
+            console.log('📋 等待预加载后使用成功，智能触发预加载');
+            smartPreload();
             return;
           } catch (error) {
             console.log('预加载广告显示失败');
