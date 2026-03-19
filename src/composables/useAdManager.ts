@@ -273,6 +273,25 @@ export function useAdManager(config: AdConfig) {
     }, 1000);
   };
   
+  // 智能预加载触发函数（方案C：避免重复触发）
+  const smartPreload = () => {
+    // 条件1：已有预加载广告，跳过
+    if (preloadedAd) {
+      console.log('📋 已有预加载广告，跳过预加载');
+      return;
+    }
+    
+    // 条件2：正在预加载中，跳过
+    if (isPreloading && preloadingPromise) {
+      console.log('⏳ 预加载进行中，跳过重复触发');
+      return;
+    }
+    
+    // 条件3：没有预加载，也未在预加载，开始新的预加载
+    console.log('🚀 开始新的预加载任务');
+    preloadNextAd();
+  };
+  
   // 预加载一组并行广告位（第一个成功就返回）
   const preloadParallelGroup = (slotIds: string[]): Promise<{ success: boolean; slotId: string | null }> => {
     return new Promise((resolve) => {
@@ -921,8 +940,8 @@ export function useAdManager(config: AdConfig) {
     };
     
     const onAdShow = () => {
-      console.log(`📺 预加载广告页面已打开 (${slotId})，开始下一次预加载`);
-      preloadNextAd();
+      console.log(`📺 预加载广告页面已打开 (${slotId})，智能触发预加载`);
+      smartPreload();
     };
     
     const onAdClose = () => {
@@ -1019,9 +1038,9 @@ export function useAdManager(config: AdConfig) {
         try {
           await showPreloadedAd(resolve, reject);
           isProcessing = false;
-          // 使用预加载成功，开始完整的预加载任务为下次做准备
-          console.log('📋 预加载广告使用成功，开始完整预加载任务');
-          preloadNextAd();
+          // 使用预加载成功，智能触发预加载为下次做准备
+          console.log('📋 预加载广告使用成功，智能触发预加载');
+          smartPreload();
           return;
         } catch (error) {
           console.log('预加载广告显示失败');
@@ -1052,9 +1071,9 @@ export function useAdManager(config: AdConfig) {
             try {
               await showPreloadedAd(resolve, reject);
               isProcessing = false;
-              // 紧急加载成功，开始完整预加载任务为下次做准备
-              console.log('📋 紧急加载成功，开始完整预加载任务');
-              preloadNextAd();
+              // 紧急加载成功，智能触发预加载为下次做准备
+              console.log('📋 紧急加载成功，智能触发预加载');
+              smartPreload();
               return;
             } catch (error) {
               console.log('紧急加载广告显示失败');
