@@ -814,6 +814,13 @@ export function useAdManager(config: AdConfig) {
         isAdSdkReady.value = true;
         isLoaded.value = true;
         preloadAd.value = true;
+        
+        // SDK 加载成功后 500ms 触发预加载
+        setTimeout(() => {
+          console.log('📱 原生环境 SDK 就绪，开始预加载广告');
+          preloadNextAd();
+        }, 500);
+        
         return;
       }
 
@@ -822,6 +829,13 @@ export function useAdManager(config: AdConfig) {
         isAdSdkReady.value = true;
         isLoaded.value = true;
         preloadAd.value = true;
+        
+        // SDK 已加载，500ms 后触发预加载
+        setTimeout(() => {
+          console.log('🌐 H5 SDK 已就绪，开始预加载广告');
+          preloadNextAd();
+        }, 500);
+        
         return;
       }
 
@@ -835,6 +849,12 @@ export function useAdManager(config: AdConfig) {
         isLoaded.value = true;
         preloadAd.value = true;
         window.baidu?.mobads?.setAppId?.(config.appId);
+        
+        // SDK 加载成功后 500ms 触发预加载
+        setTimeout(() => {
+          console.log('🌐 H5 SDK 加载成功，开始预加载广告');
+          preloadNextAd();
+        }, 500);
       };
       script.onerror = () => {
         console.error('百度 H5 广告 SDK 加载失败');
