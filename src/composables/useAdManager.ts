@@ -439,7 +439,7 @@ export function useAdManager(config: AdConfig) {
     });
   };
 
-  // 预加载下一个广告（优化策略：前3串行，中12并行，失败后再尝试最后3串行）
+  // 预加载下一个广告（优化策略：前3串行，中9并行分3组，后3串行）
   const preloadNextAd = async (): Promise<void> => {
     // 如果已经在预加载，返回现有的Promise
     if (isPreloading && preloadingPromise) {
@@ -496,9 +496,9 @@ export function useAdManager(config: AdConfig) {
         }
       }
       
-      // 阶段2：中间12个广告位，每3个并行请求
+      // 阶段2：中间9个广告位，每3个并行请求（分3组）
       if (!foundAd) {
-        const parallelSlots = slotIds.slice(3, 15);
+        const parallelSlots = slotIds.slice(3, 12);
         const parallelGroups = [];
         for (let i = 0; i < parallelSlots.length; i += 3) {
           parallelGroups.push(parallelSlots.slice(i, i + 3));
@@ -537,10 +537,10 @@ export function useAdManager(config: AdConfig) {
         }
       }
       
-      // 阶段3：如果前两阶段失败，再尝试最后3个广告位串行（兜底策略）
+      // 阶段3：最后3个广告位串行
       if (!foundAd) {
         const lastSerialSlots = slotIds.slice(12); // 最后3个广告位
-        console.log(`📊 阶段3-兜底串行：最后3个广告位`);
+        console.log(`📊 阶段3-串行：最后3个广告位`);
         
         for (let i = 0; i < lastSerialSlots.length; i++) {
           // 检查总超时
@@ -550,7 +550,7 @@ export function useAdManager(config: AdConfig) {
           }
           
           const slotId = lastSerialSlots[i];
-          console.log(`🔄 兜底串行 [${i + 1}/3]: ${slotId}`);
+          console.log(`🔄 后串行 [${i + 1}/3]: ${slotId}`);
           
           const isReady = await preloadSingleSlot(slotId);
           
@@ -560,7 +560,7 @@ export function useAdManager(config: AdConfig) {
               isReady: true,
               loadedAt: Date.now()
             };
-            console.log(`🎉 兜底串行预加载成功: ${slotId}`);
+            console.log(`🎉 后串行预加载成功: ${slotId}`);
             foundAd = true;
             break;
           }
