@@ -358,6 +358,7 @@ export async function getGoldLogs(userId: string, deviceId: string, limit: numbe
 interface TodayGoldStats {
   todayCoins: number;      // 今日金币总数
   todayRecordCount: number; // 今日记录数
+  yesterdayRecordCount: number; // 昨日记录数
 }
 
 /**
@@ -376,7 +377,8 @@ export async function getTodayGoldStats(userId: string): Promise<ApiResponse<Tod
           message: '获取成功',
           data: {
             todayCoins: 35000,
-            todayRecordCount: 120
+            todayRecordCount: 120,
+            yesterdayRecordCount: 105
           }
         });
       }, 500);
@@ -418,7 +420,8 @@ export async function getTodayGoldStats(userId: string): Promise<ApiResponse<Tod
       message: '网络错误，请稍后重试',
       data: {
         todayCoins: 0,
-        todayRecordCount: 0
+        todayRecordCount: 0,
+        yesterdayRecordCount: 0
       }
     };
   }
@@ -654,6 +657,251 @@ export async function recordActivity(userId: string, employeeId: string, deviceI
     return {
       success: false,
       message: '网络错误，请稍后重试',
+    };
+  }
+}
+
+// 奖金池相关接口
+interface PoolStatus {
+  redPacketPool: number; // 红包池余额
+  lotteryPool: number;   // 每日抽奖池余额
+}
+
+interface LotteryTicket {
+  id: string;
+  ticketNumber: string;
+  employeeId: string;
+  createdAt: string;
+  status: number; // 0: 未开奖, 1: 已中奖, 2: 未中奖
+}
+
+interface RedPacketResponse {
+  amount: number; // 发放的红包金额
+  redPacketPool: number; // 发放后的红包池余额
+}
+
+interface LotteryHistory {
+  id: string;
+  date: string;
+  poolAmount: number;
+  winners: Array<{
+    employeeId: string;
+    ticketNumber: string;
+    amount: number;
+  }>;
+}
+
+/**
+ * 获取奖金池状态
+ * @returns 红包池和抽奖池余额
+ */
+export async function getPoolStatus(): Promise<ApiResponse<PoolStatus>> {
+  // 开发模式下使用模拟数据
+  if (USE_MOCK_DATA) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          success: true,
+          message: '获取成功',
+          data: {
+            redPacketPool: 50000,
+            lotteryPool: 88888
+          }
+        });
+      }, 500);
+    });
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/pool/status`);
+    return await response.json();
+  } catch (error) {
+    console.error('获取奖金池状态失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: {
+        redPacketPool: 0,
+        lotteryPool: 0
+      }
+    };
+  }
+}
+
+/**
+ * 发放红包
+ * @param userId 用户ID
+ * @param employeeId 员工号
+ * @returns 发放结果
+ */
+export async function sendRedPacket(userId: string, employeeId: string): Promise<ApiResponse<RedPacketResponse>> {
+  // 开发模式下使用模拟数据
+  if (USE_MOCK_DATA) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          success: true,
+          message: '发放成功',
+          data: {
+            amount: 2500,
+            redPacketPool: 47500
+          }
+        });
+      }, 500);
+    });
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/pool/red-packet/send`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userId, employeeId }),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('发放红包失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: {
+        amount: 0,
+        redPacketPool: 0
+      }
+    };
+  }
+}
+
+/**
+ * 记录广告观看（用于抽奖券生成）
+ * @param userId 用户ID
+ * @param employeeId 员工号
+ * @returns 记录结果
+ */
+export async function recordAdView(userId: string, employeeId: string): Promise<ApiResponse<{ ticketGenerated: boolean; ticketNumber?: string }>> {
+  // 开发模式下使用模拟数据
+  if (USE_MOCK_DATA) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          success: true,
+          message: '记录成功',
+          data: {
+            ticketGenerated: Math.random() > 0.9, // 10%几率生成抽奖券
+            ticketNumber: Math.random() > 0.9 ? `T${Date.now()}` : undefined
+          }
+        });
+      }, 500);
+    });
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/pool/ad/view-record`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userId, employeeId }),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('记录广告观看失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: {
+        ticketGenerated: false
+      }
+    };
+  }
+}
+
+/**
+ * 获取用户抽奖券
+ * @param employeeId 员工号
+ * @returns 抽奖券列表
+ */
+export async function getUserTickets(employeeId: string): Promise<ApiResponse<LotteryTicket[]>> {
+  // 开发模式下使用模拟数据
+  if (USE_MOCK_DATA) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const tickets: LotteryTicket[] = [];
+        for (let i = 0; i < 5; i++) {
+          tickets.push({
+            id: `ticket_${i}`,
+            ticketNumber: `T${Date.now() - i * 10000}`,
+            employeeId: employeeId,
+            createdAt: new Date(Date.now() - i * 86400000).toISOString(),
+            status: 0
+          });
+        }
+        resolve({
+          success: true,
+          message: '获取成功',
+          data: tickets
+        });
+      }, 500);
+    });
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/pool/lottery/tickets?employeeId=${employeeId}`);
+    return await response.json();
+  } catch (error) {
+    console.error('获取抽奖券失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: []
+    };
+  }
+}
+
+/**
+ * 获取往期开奖记录
+ * @param limit 限制数量，默认10
+ * @returns 开奖记录列表
+ */
+export async function getLotteryHistory(limit: number = 10): Promise<ApiResponse<LotteryHistory[]>> {
+  // 开发模式下使用模拟数据
+  if (USE_MOCK_DATA) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const history: LotteryHistory[] = [];
+        for (let i = 0; i < 3; i++) {
+          history.push({
+            id: `lottery_${i}`,
+            date: new Date(Date.now() - i * 86400000).toISOString().split('T')[0],
+            poolAmount: 88888,
+            winners: [
+              {
+                employeeId: '8202',
+                ticketNumber: `T${Date.now() - i * 10000}`,
+                amount: 44444
+              }
+            ]
+          });
+        }
+        resolve({
+          success: true,
+          message: '获取成功',
+          data: history
+        });
+      }, 500);
+    });
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/pool/lottery/history?limit=${limit}`);
+    return await response.json();
+  } catch (error) {
+    console.error('获取开奖记录失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: []
     };
   }
 }

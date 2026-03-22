@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { Coins, History, PlayCircle, LogOut, TrendingUp, Wallet, CreditCard } from 'lucide-vue-next';
-import { getUserInfo, rewardGold, getGoldLogs, getTodayGoldStats, recordLogin, getLoginStats, submitWithdrawRequest, getWithdrawStatus, getWithdrawRecords, claimDailyBonus, recordActivity, type WithdrawRecord } from '../api/apiService';
+import { Coins, History, PlayCircle, LogOut, TrendingUp, Wallet, CreditCard, Trophy, Gift } from 'lucide-vue-next';
+import { getUserInfo, rewardGold, getGoldLogs, getTodayGoldStats, recordLogin, getLoginStats, submitWithdrawRequest, getWithdrawStatus, getWithdrawRecords, claimDailyBonus, recordActivity, getPoolStatus, recordAdView, getUserTickets, type WithdrawRecord } from '../api/apiService';
 import { useAdManager } from '../composables/useAdManager';
 import { TTSPlugin } from '../plugins/TTSPlugin';
 import { Capacitor } from '@capacitor/core';
@@ -22,6 +22,7 @@ const currentMonthGold = ref(0);
 const lastMonthGold = ref(0);
 const todayCoins = ref(0);
 const todayRecordCount = ref(0);
+const yesterdayRecordCount = ref(0);
 const todayTarget = ref(100000);
 const bonusGold = ref(0);  // 额外金币奖励
 const hasClaimedBonus = ref(false);  // 是否已领取额外金币
@@ -43,6 +44,18 @@ let syncInterval: ReturnType<typeof setInterval> | null = null;
 const showRewardPopup = ref(false);
 const rewardAmount = ref(0);
 let rewardTimeout: ReturnType<typeof setTimeout> | null = null;
+
+// 红包弹窗
+const showRedPacketPopup = ref(false);
+const redPacketAmount = ref(0);
+const isRedPacketOpened = ref(false);
+let redPacketTimeout: ReturnType<typeof setTimeout> | null = null;
+
+// 奖金池相关（暂时隐藏，下下个版本上线）
+// const poolStatus = ref({ redPacketPool: 0, lotteryPool: 0 });
+// const isLoadingPool = ref(false);
+// const userTickets = ref<any[]>([]);
+// const adViewCount = ref(0);
 
 // 播放金币到账语音
 const playRewardSound = async (amount: number) => {
@@ -153,6 +166,47 @@ const showRewardAnimation = async (amount: number) => {
     showRewardPopup.value = false;
     console.log('showRewardPopup 已设置为 false');
   }, 1000);
+};
+
+// 显示红包弹窗
+const showRedPacketAnimation = async (amount: number) => {
+  console.log('========== showRedPacketAnimation 被调用 ==========');
+  console.log('红包金额:', amount);
+  
+  // 清除之前的定时器
+  if (redPacketTimeout) {
+    clearTimeout(redPacketTimeout);
+  }
+  
+  redPacketAmount.value = amount;
+  showRedPacketPopup.value = true;
+  isRedPacketOpened.value = false;
+  console.log('showRedPacketPopup 已设置为 true');
+  console.log('isRedPacketOpened 已设置为 false');
+};
+
+// 打开红包
+const openRedPacket = async () => {
+  console.log('========== openRedPacket 被调用 ==========');
+  isRedPacketOpened.value = true;
+  console.log('isRedPacketOpened 已设置为 true');
+  
+  // 播放语音
+  await playRewardSound(redPacketAmount.value);
+  console.log('playRewardSound 已调用');
+  
+  // 2秒后隐藏
+  redPacketTimeout = setTimeout(() => {
+    showRedPacketPopup.value = false;
+    console.log('showRedPacketPopup 已设置为 false');
+  }, 2000);
+};
+
+// 模拟触发红包
+const simulateRedPacket = async () => {
+  console.log('========== 模拟触发红包 ==========');
+  const amount = Math.floor(Math.random() * 100) + 50; // 50-150金币
+  await showRedPacketAnimation(amount);
 };
 const showWithdrawModal = ref(false);
 const withdrawAmount = ref(0);
@@ -283,6 +337,7 @@ onMounted(async () => {
   await loadUserInfo();
   await loadTodayGoldStats(); // 加载今日金币统计（全局）
   await loadGoldRecords(); // 加载收益记录（当前设备）
+  // await loadPoolStatus(); // 加载奖金池状态（暂时隐藏，下下个版本上线）
 
   // 记录用户活动（进入首页）
   await recordUserActivity();
@@ -293,6 +348,7 @@ onMounted(async () => {
     console.log('🔄 定时同步数据看板...');
     await loadUserInfo(false); // 定时同步时不显示加载状态
     await loadTodayGoldStats(); // 同步今日金币统计（全局）
+    // await loadPoolStatus(); // 同步奖金池状态（暂时隐藏，下下个版本上线）
   }, 30000);
 
   // 监听页面可见性变化，页面重新可见时同步数据
@@ -349,6 +405,49 @@ const loadUserInfo = async (showLoading: boolean = true) => {
   }
 };
 
+// 加载奖金池状态（暂时隐藏，下下个版本上线）
+// const loadPoolStatus = async () => {
+//   isLoadingPool.value = true;
+//   try {
+//     console.log('🔄 开始加载奖金池状态...');
+//     const response = await getPoolStatus();
+//     
+//     if (response.success && response.data) {
+//       poolStatus.value = response.data;
+//       console.log('🏆 奖金池状态:', poolStatus.value);
+//     } else {
+//       console.warn('⚠️ 获取奖金池状态失败:', response.message);
+//     }
+//   } catch (err) {
+//     console.error('❌ 加载奖金池状态失败:', err);
+//   } finally {
+//     isLoadingPool.value = false;
+//   }
+// };
+
+// 记录广告观看（用于抽奖券生成）（暂时隐藏，下下个版本上线）
+// const recordAdViewCount = async () => {
+//   if (!userId.value || !empId.value) return;
+//   
+//   try {
+//     const response = await recordAdView(userId.value, empId.value);
+//     
+//     if (response.success && response.data) {
+//       if (response.data.ticketGenerated) {
+//         console.log('🎫 生成抽奖券:', response.data.ticketNumber);
+//         // 可以在这里显示抽奖券生成的提示
+//       }
+//     }
+//   } catch (err) {
+//     console.error('❌ 记录广告观看失败:', err);
+//   }
+// };
+
+// 导航到抽奖详情页面（暂时隐藏，下下个版本上线）
+// const navigateToLotteryDetail = () => {
+//   router.push('/lottery-detail');
+// };
+
 // 加载今日金币统计（全局，所有设备）
 const loadTodayGoldStats = async () => {
   if (!userId.value) {
@@ -361,13 +460,15 @@ const loadTodayGoldStats = async () => {
     const response = await getTodayGoldStats(userId.value);
     
     if (response.success && response.data) {
-      todayCoins.value = Number(response.data.todayCoins) || 0;
-      todayRecordCount.value = Number(response.data.todayRecordCount) || 0;
-      console.log('💰 今日金币统计（全局）:', {
-        coins: todayCoins.value,
-        records: todayRecordCount.value
-      });
-    } else {
+    todayCoins.value = Number(response.data.todayCoins) || 0;
+    todayRecordCount.value = Number(response.data.todayRecordCount) || 0;
+    yesterdayRecordCount.value = Number(response.data.yesterdayRecordCount) || 0;
+    console.log('💰 今日金币统计（全局）:', {
+      coins: todayCoins.value,
+      records: todayRecordCount.value,
+      yesterdayRecords: yesterdayRecordCount.value
+    });
+  } else {
       console.warn('⚠️ 获取今日金币统计失败:', response.message);
     }
   } catch (err) {
@@ -745,6 +846,7 @@ const submitWithdraw = async () => {
               <div class="p-4">
                 <p class="text-emerald-100/60 text-[9px] uppercase tracking-wider mb-1">本月累计金币</p>
                 <p class="text-lg font-bold text-white tracking-tight">{{ Math.floor(currentMonthGold).toLocaleString() }}</p>
+                <p class="text-emerald-200/80 text-[8px] mt-2">预估收益≈{{ (currentMonthGold / 1000).toFixed(2) }}元</p>
               </div>
             </div>
             <div class="group relative glass-card rounded-[1.25rem] overflow-hidden transition-all hover:bg-white/5">
@@ -767,9 +869,12 @@ const submitWithdraw = async () => {
                 <div class="flex items-center gap-2">
                   <p class="text-lg font-bold text-amber-400 tracking-tight whitespace-nowrap">{{ Math.floor(todayCoins).toLocaleString() }}</p>
                   <span class="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded whitespace-nowrap flex-shrink-0">{{ todayRecordCount }}条</span>
+                  <span class="text-[10px] text-zinc-400 bg-zinc-500/10 px-1.5 py-0.5 rounded whitespace-nowrap flex-shrink-0">{{ yesterdayRecordCount }}条</span>
                 </div>
               </div>
             </div>
+            
+
           </div>
       </div>
 
@@ -844,6 +949,33 @@ const submitWithdraw = async () => {
 
       <!-- Ad Trigger - 大圆形按钮 -->
       <div class="flex flex-col items-center justify-center py-2 relative">
+        <!-- 今日奖金池（暂时隐藏，下下个版本上线） -->
+      <!-- <div class="relative w-full max-w-xs mb-6">
+        <div class="absolute inset-0 bg-gradient-to-r from-yellow-500 to-amber-500 blur-xl opacity-20 rounded-2xl animate-pulse"></div>
+        <div class="relative glass-card rounded-2xl p-4 border border-yellow-500/30">
+          <div class="flex flex-col items-center mb-3">
+            <div class="flex items-center mb-2">
+              <Trophy class="w-5 h-5 text-yellow-500 mr-3" />
+              <h3 class="text-[10px] uppercase tracking-wider text-zinc-400 font-medium">今日奖金池</h3>
+            </div>
+            <p class="text-3xl font-bold text-white text-center animate-pulse">
+              <span class="animate-bounce">₸</span>
+              {{ poolStatus.lotteryPool.toLocaleString() }}
+              <span class="animate-bounce ml-1">金币</span>
+            </p>
+          </div>
+          <div class="flex items-center justify-between text-[8px] text-zinc-500">
+            <span>每晚10点开奖</span>
+            <button 
+              @click="navigateToLotteryDetail" 
+              class="bg-yellow-500/20 text-yellow-400 text-xs font-bold px-3 py-1 rounded-full hover:bg-yellow-500/30 transition-all"
+            >
+              点击查看详情
+            </button>
+          </div>
+        </div>
+      </div> -->
+        
         <div class="relative">
           <!-- 按钮背景光晕 -->
           <div 
@@ -890,7 +1022,38 @@ const submitWithdraw = async () => {
           </div>
         </transition>
         
-        <!-- 测试按钮（已隐藏） -->
+        <!-- 红包弹窗 -->
+        <transition name="red-packet-popup">
+          <div v-if="showRedPacketPopup" class="fixed inset-0 flex items-center justify-center z-[10000] pointer-events-none">
+            <div class="bg-gradient-to-r from-red-500 to-pink-600 text-white px-8 py-6 rounded-2xl font-bold shadow-2xl flex flex-col items-center border border-white/30 pointer-events-auto animate-red-packet-jump z-[10000]">
+              <!-- 红包封面 -->
+              <div v-if="!isRedPacketOpened" @click="openRedPacket" class="w-full flex flex-col items-center cursor-pointer hover:scale-105 transition-transform">
+                <div class="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mb-6">
+                  <Coins class="w-10 h-10 text-white" />
+                </div>
+                <h3 class="text-2xl font-bold mb-2">恭喜发财</h3>
+                <p class="text-lg mb-6">获得随机红包</p>
+                <div class="bg-white/20 px-8 py-3 rounded-full text-lg font-bold mb-6">
+                  点击拆红包
+                </div>
+              </div>
+              
+              <!-- 红包打开后 -->
+              <div v-else class="w-full flex flex-col items-center animate-bounce">
+                <div class="w-20 h-20 bg-yellow-400/30 rounded-full flex items-center justify-center mb-6">
+                  <Coins class="w-12 h-12 text-yellow-300" />
+                </div>
+                <h3 class="text-2xl font-bold mb-2">恭喜发财</h3>
+                <p class="text-lg mb-4">获得红包奖励</p>
+                <div class="text-4xl font-extrabold mb-6 text-yellow-300">+{{ Math.floor(redPacketAmount) }} 金币</div>
+                <div class="w-full h-1 bg-white/20 rounded-full mb-6"></div>
+                <p class="text-sm text-white/80">运气不错！</p>
+              </div>
+            </div>
+          </div>
+        </transition>
+        
+        <!-- 测试按钮（隐藏） -->
         <!-- <div class="flex gap-3 mt-4">
           <button
             @click="showRewardAnimation(100)"
@@ -899,10 +1062,10 @@ const submitWithdraw = async () => {
             测试奖励弹窗
           </button>
           <button
-            @click="playRewardSound(100)"
-            class="px-6 py-3 bg-green-500 text-white rounded-full text-sm font-medium hover:bg-green-600 transition-colors"
+            @click="simulateRedPacket()"
+            class="px-6 py-3 bg-red-500 text-white rounded-full text-sm font-medium hover:bg-red-600 transition-colors"
           >
-            测试语音播报
+            测试红包弹窗
           </button>
         </div> -->
       </div>
@@ -1225,6 +1388,36 @@ const submitWithdraw = async () => {
 .reward-popup-leave-to {
   opacity: 0;
   transform: scale(0.8);
+}
+
+/* 红包弹窗动画 */
+.red-packet-popup-enter-active,
+.red-packet-popup-leave-active {
+  transition: all 0.5s ease;
+}
+
+.red-packet-popup-enter-from {
+  opacity: 0;
+  transform: scale(0.5);
+}
+
+.red-packet-popup-leave-to {
+  opacity: 0;
+  transform: scale(1.2);
+}
+
+/* 红包跳动动画 */
+@keyframes redPacketJump {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.animate-red-packet-jump {
+  animation: redPacketJump 2s ease-in-out infinite;
 }
 
 /* 玻璃卡片 */

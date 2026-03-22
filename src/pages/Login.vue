@@ -113,12 +113,7 @@ const onInput = (e: Event) => {
         </form>
       </div>
 
-      <!-- 底部备案信息 -->
-      <div class="mt-4 text-center">
-        <p class="text-[10px] text-zinc-600 uppercase tracking-[0.2em]">
-          浙ICP备2026009642号-1
-        </p>
-      </div>
+
     </div>
   </div>
 </template>

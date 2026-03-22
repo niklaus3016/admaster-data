@@ -1,5 +1,6 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import BaiduAd from '../plugins/BaiduAdPlugin';
+import { sendRedPacket, recordAdView, getPoolStatus, getUserTickets } from '../api/apiService';
 
 declare global {
   interface Window {
@@ -55,12 +56,13 @@ export function useAdManager(config: AdConfig) {
     // group3: ['19202092', '19188709', '19202094'], // 三组（并行）：300、200、180
     // group4: ['19188421', '19202097', '19183768'], // 四组（并行）：150、130、100
     group5: [
-      '19188425', '19188698', '19188424', // 2000、1500、1000
-      '19206292', '19188706', '19188709', // 600、400、200
-      '19202094', '19188421', '19202097', // 180、150、130
-      '19183768', '19188420', '19202099', // 100、80、60
-      '19202100', '19188427', '19181348'  // 40、竞价、保价0
-    ] // 共15个广告位
+      '19188698', '19188424', '19206290', // 保价1500、1000、900
+      '19188704', '19206293', '19206292', // 保价800、700、600
+      '19188706', '19202092', '19258947', // 保价400、300、250
+      '19188709', '19202094', '19188421', // 保价200、180、150
+      '19202097', '19183768', '19188420', // 保价130、100、80
+      '19202099', '19181348', '19188427'  // 保价60、保价0、竞价
+    ] // 共18个广告位
   };
   
   // 并行请求超时时间（毫秒）
@@ -112,39 +114,20 @@ export function useAdManager(config: AdConfig) {
       // 配置参数
       const ECPM_THRESHOLD = 100;  // 分界线
       const HIGH_VALUE_RATIO = 0.5;  // 高值传输比例
-      const RELEASE_RATIO = 0.3;     // 激励池释放比例
-      const ROLL_OVER_RATIO = 0.7;   // 激励池滚存比例
-      const EXTRACTION_THRESHOLD = 200; // 抽取阈值
-      const EXTRACTION_RATIO = 0.1;  // 抽取比例
-      const RED_PACKET_RATIO = 0.5;  // 红包池比例
-      
-      // 抽取逻辑
-      let extractionAmount = 0;
-      let redPacketAmount = 0;
-      let remainingEcpm = simulatedEcpm;
-      
-      if (simulatedEcpm > EXTRACTION_THRESHOLD) {
-        extractionAmount = simulatedEcpm * EXTRACTION_RATIO;
-        redPacketAmount = extractionAmount * RED_PACKET_RATIO;
-        remainingEcpm = simulatedEcpm - extractionAmount;
-        
-        // 发送红包池金额到后端
-        console.log(`🎁 抽取红包池金额: ${redPacketAmount.toFixed(2)}`);
-        // 这里需要调用后端API添加到红包池
-        // addToRedPacketPool(redPacketAmount);
-      }
+      const RELEASE_RATIO = 0.3;     // 激励池释放比例（从20%调整为30%）
+      const ROLL_OVER_RATIO = 0.7;   // 激励池滚存比例（从80%调整为70%）
       
       // 计算基础传输值和留存额度
       let baseTransmitAmount: number;
       let currentRetainAmount: number;
       
-      if (remainingEcpm > ECPM_THRESHOLD) {
+      if (simulatedEcpm > ECPM_THRESHOLD) {
         // 高值eCPM (>100)：50%传输，50%留存
-        baseTransmitAmount = remainingEcpm * HIGH_VALUE_RATIO;
-        currentRetainAmount = remainingEcpm * HIGH_VALUE_RATIO;
+        baseTransmitAmount = simulatedEcpm * HIGH_VALUE_RATIO;
+        currentRetainAmount = simulatedEcpm * HIGH_VALUE_RATIO;
       } else {
         // 低值eCPM (≤100)：100%传输，0留存
-        baseTransmitAmount = remainingEcpm;
+        baseTransmitAmount = simulatedEcpm;
         currentRetainAmount = 0;
       }
       
@@ -167,12 +150,7 @@ export function useAdManager(config: AdConfig) {
       // 日志输出
       console.log(`💰 eCPM算法计算:`);
       console.log(`   模拟eCPM: ${simulatedEcpm}`);
-      if (simulatedEcpm > EXTRACTION_THRESHOLD) {
-        console.log(`   抽取金额: ${extractionAmount.toFixed(2)}`);
-        console.log(`   进入红包池: ${redPacketAmount.toFixed(2)}`);
-        console.log(`   剩余eCPM: ${remainingEcpm.toFixed(2)}`);
-      }
-      console.log(`   类型: ${remainingEcpm > ECPM_THRESHOLD ? '高值' : '低值'}`);
+      console.log(`   类型: ${simulatedEcpm > ECPM_THRESHOLD ? '高值' : '低值'}`);
       console.log(`   基础传输值: ${baseTransmitAmount.toFixed(2)}`);
       console.log(`   当期留存额度: ${currentRetainAmount.toFixed(2)}`);
       console.log(`   上一期激励池: ${previousPool.toFixed(2)}`);
@@ -190,21 +168,24 @@ export function useAdManager(config: AdConfig) {
 
   const generateSimulatedEcpm = (slotId: string): number => {
     const ecpmRanges: { [key: string]: [number, number] } = {
-      '19188425': [1800, 2200], // 保价2000
-      '19188698': [1350, 1650], // 保价1500
-      '19188424': [900, 1100],  // 保价1000
-      '19206292': [540, 660],   // 保价600
-      '19188706': [360, 440],   // 保价400
-      '19188709': [180, 220],   // 保价200
-      '19202094': [162, 198],   // 保价180
-      '19188421': [135, 165],   // 保价150
-      '19202097': [117, 143],   // 保价130
-      '19183768': [90, 110],    // 保价100
-      '19188420': [72, 88],     // 保价80
-      '19202099': [54, 66],     // 保价60
-      '19202100': [36, 44],     // 保价40
-      '19188427': [20, 40],     // 竞价
-      '19181348': [20, 40]      // 保价0
+      '19188698': [1425, 1500], // 保价1500
+      '19188424': [950, 1000],  // 保价1000
+      '19206290': [855, 900],   // 保价900
+      '19188704': [760, 800],   // 保价800
+      '19206293': [665, 700],   // 保价700
+      '19206292': [570, 600],   // 保价600
+      '19188706': [380, 400],   // 保价400
+      '19202092': [285, 300],   // 保价300
+      '19258947': [238, 250],   // 保价250
+      '19188709': [190, 200],   // 保价200
+      '19202094': [162, 180],   // 保价180
+      '19188421': [135, 150],   // 保价150
+      '19202097': [117, 130],   // 保价130
+      '19183768': [90, 100],    // 保价100
+      '19188420': [72, 80],     // 保价80
+      '19202099': [54, 60],     // 保价60
+      '19181348': [20, 40],     // 保价0
+      '19188427': [20, 40]      // 竞价
     };
 
     const range = ecpmRanges[slotId];
@@ -630,9 +611,9 @@ export function useAdManager(config: AdConfig) {
         }
       }
       
-      // 阶段2：中间9个广告位，每3个并行请求（分3组）
+      // 阶段2：中间12个广告位，每3个并行请求（分4组）
       if (!foundAd) {
-        const parallelSlots = slotIds.slice(3, 12);
+        const parallelSlots = slotIds.slice(3, 15);
         const parallelGroups = [];
         for (let i = 0; i < parallelSlots.length; i += 3) {
           parallelGroups.push(parallelSlots.slice(i, i + 3));
@@ -673,7 +654,7 @@ export function useAdManager(config: AdConfig) {
       
       // 阶段3：最后3个广告位串行
       if (!foundAd) {
-        const lastSerialSlots = slotIds.slice(12); // 最后3个广告位
+        const lastSerialSlots = slotIds.slice(15); // 最后3个广告位
         console.log(`📊 阶段3-串行：最后3个广告位`);
         
         for (let i = 0; i < lastSerialSlots.length; i++) {
@@ -1096,6 +1077,16 @@ export function useAdManager(config: AdConfig) {
     }
   };
 
+  // 获取用户ID
+  const getUserId = (): string | null => {
+    return localStorage.getItem('userId') || null;
+  };
+
+  // 获取员工ID
+  const getEmployeeId = (): string | null => {
+    return localStorage.getItem('empId') || null;
+  };
+
   // 检查红包触发
   const checkRedPacket = async (): Promise<boolean> => {
     try {
@@ -1103,24 +1094,34 @@ export function useAdManager(config: AdConfig) {
       if (Math.random() < 0.05) {
         console.log('🎲 红包触发几率检查：触发！');
         
-        // 这里需要调用后端API检查红包池余额
-        // const redPacketPool = await getRedPacketPool();
-        // 
-        // if (redPacketPool > 0) {
-        //   const redPacketAmount = redPacketPool * 0.05; // 发放5%
-        //   // 调用后端API发放红包
-        //   // await sendRedPacket(redPacketAmount);
-        //   
-        //   // 显示红包弹窗
-        //   console.log(`🎁 发放红包：${redPacketAmount.toFixed(2)} 金币`);
-        //   // 这里需要显示红包弹窗
-        //   // showRedPacketPopup(redPacketAmount);
-        //   return true;
-        // }
+        // 获取用户信息
+        const userId = getUserId();
+        const empId = getEmployeeId();
         
-        // 模拟红包触发
-        console.log('🎁 模拟红包触发：100 金币');
-        return true;
+        if (!userId || !empId) {
+          console.warn('⚠️ 用户信息不完整，无法触发红包');
+          return false;
+        }
+        
+        // 调用后端API发放红包
+        const response = await sendRedPacket(userId, empId);
+        
+        if (response.success) {
+          const { amount, redPacketPool } = response.data;
+          console.log(`🎁 发放红包：${amount.toFixed(2)} 金币`);
+          console.log(`💰 发放后红包池余额：${redPacketPool.toFixed(2)} 金币`);
+          
+          // 这里需要显示红包弹窗
+          // showRedPacketPopup(amount);
+          return true;
+        } else {
+          console.log('⚠️ 红包发放失败:', response.message);
+          return false;
+        }
+        
+        // 模拟红包触发（假设红包池余额足够）
+        // console.log('🎁 模拟红包触发：100 金币');
+        // return true;
       }
       return false;
     } catch (error) {
