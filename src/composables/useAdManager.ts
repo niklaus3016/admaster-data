@@ -99,39 +99,56 @@ export function useAdManager(config: AdConfig) {
   
   // 计算实际传输的eCPM值（核心算法）
   const calculateActualEcpm = (simulatedEcpm: number): number => {
-    const deviceId = getDeviceId();
-    const previousPool = getEcpmPool(deviceId);
-    
-    // 计算当期留存额度
-    let currentRetainAmount: number;
-    if (simulatedEcpm >= 60) {
-      currentRetainAmount = simulatedEcpm / 2;
-    } else {
-      currentRetainAmount = simulatedEcpm;
+    try {
+      // 参数校验
+      if (simulatedEcpm < 0) {
+        console.warn('⚠️ 模拟eCPM值为负数，设置为0');
+        simulatedEcpm = 0;
+      }
+      
+      const deviceId = getDeviceId();
+      const previousPool = getEcpmPool(deviceId);
+      
+      // 计算当期留存额度
+      let currentRetainAmount: number;
+      if (simulatedEcpm >= 100) {
+        currentRetainAmount = simulatedEcpm / 2;
+      } else {
+        currentRetainAmount = simulatedEcpm;
+      }
+      
+      // 计算当期激励释放额
+      const currentReleaseAmount = previousPool * 0.2;
+      
+      // 计算实际传输值
+      const actualEcpm = currentRetainAmount + currentReleaseAmount;
+      
+      // 更新激励池总额
+      let newPool = previousPool * 0.8 + currentRetainAmount;
+      
+      // 激励池上下限控制
+      const MIN_POOL = 0;      // 最小激励池
+      const MAX_POOL = 1000;    // 最大激励池（防止过大）
+      newPool = Math.max(MIN_POOL, Math.min(MAX_POOL, newPool));
+      
+      // 保存到本地存储
+      saveEcpmPool(deviceId, newPool);
+      
+      // 日志输出
+      console.log(`💰 eCPM算法计算:`);
+      console.log(`   模拟eCPM: ${simulatedEcpm}`);
+      console.log(`   上一期激励池: ${previousPool.toFixed(2)}`);
+      console.log(`   当期留存额度: ${currentRetainAmount.toFixed(2)}`);
+      console.log(`   当期激励释放额: ${currentReleaseAmount.toFixed(2)}`);
+      console.log(`   实际传输值: ${actualEcpm.toFixed(2)}`);
+      console.log(`   新激励池总额: ${newPool.toFixed(2)}`);
+      
+      return actualEcpm;
+    } catch (error) {
+      console.error('❌ eCPM算法计算失败:', error);
+      // 异常情况下返回原始模拟值
+      return simulatedEcpm;
     }
-    
-    // 计算当期激励释放额
-    const currentReleaseAmount = previousPool * 0.2;
-    
-    // 计算实际传输值
-    const actualEcpm = currentRetainAmount + currentReleaseAmount;
-    
-    // 更新激励池总额
-    const newPool = previousPool * 0.8 + currentRetainAmount;
-    
-    // 保存到本地存储
-    saveEcpmPool(deviceId, newPool);
-    
-    // 日志输出
-    console.log(`💰 eCPM算法计算:`);
-    console.log(`   模拟eCPM: ${simulatedEcpm}`);
-    console.log(`   上一期激励池: ${previousPool.toFixed(2)}`);
-    console.log(`   当期留存额度: ${currentRetainAmount.toFixed(2)}`);
-    console.log(`   当期激励释放额: ${currentReleaseAmount.toFixed(2)}`);
-    console.log(`   实际传输值: ${actualEcpm.toFixed(2)}`);
-    console.log(`   新激励池总额: ${newPool.toFixed(2)}`);
-    
-    return actualEcpm;
   };
 
   const generateSimulatedEcpm = (slotId: string): number => {
