@@ -58,11 +58,10 @@ export function useAdManager(config: AdConfig) {
     group5: [
       '19188698', '19188424', '19206290', // 保价1500、1000、900
       '19188704', '19206293', '19206292', // 保价800、700、600
-      '19188706', '19202092', '19258947', // 保价400、300、250
       '19188709', '19202094', '19188421', // 保价200、180、150
       '19202097', '19183768', '19188420', // 保价130、100、80
       '19202099', '19181348', '19188427'  // 保价60、保价0、竞价
-    ] // 共18个广告位
+    ] // 共15个广告位
   };
   
   // 并行请求超时时间（毫秒）
@@ -611,9 +610,9 @@ export function useAdManager(config: AdConfig) {
         }
       }
       
-      // 阶段2：中间12个广告位，每3个并行请求（分4组）
+      // 阶段2：中间9个广告位，每3个并行请求（分3组）
       if (!foundAd) {
-        const parallelSlots = slotIds.slice(3, 15);
+        const parallelSlots = slotIds.slice(3, 12);
         const parallelGroups = [];
         for (let i = 0; i < parallelSlots.length; i += 3) {
           parallelGroups.push(parallelSlots.slice(i, i + 3));
@@ -654,7 +653,7 @@ export function useAdManager(config: AdConfig) {
       
       // 阶段3：最后3个广告位串行
       if (!foundAd) {
-        const lastSerialSlots = slotIds.slice(15); // 最后3个广告位
+        const lastSerialSlots = slotIds.slice(12); // 最后3个广告位
         console.log(`📊 阶段3-串行：最后3个广告位`);
         
         for (let i = 0; i < lastSerialSlots.length; i++) {
