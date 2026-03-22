@@ -1061,6 +1061,18 @@ export function useAdManager(config: AdConfig) {
       const ecpm = calculateActualEcpm(simulatedEcpm);
       
       console.log(`✅ 预加载广告成功 (${slotId})，返回 ECPM:`, ecpm);
+      
+      // 广告成功后检查红包触发
+      console.log('🎲 广告成功后检查红包触发...');
+      setTimeout(async () => {
+        const hasRedPacket = await checkRedPacket();
+        if (hasRedPacket) {
+          console.log('🎁 广告成功后触发红包');
+        } else {
+          console.log('🎁 广告成功后未触发红包');
+        }
+      }, 1000);
+      
       resolveOnce({ ecpm, slotId });
     };
     
