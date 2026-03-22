@@ -571,100 +571,30 @@ export function useAdManager(config: AdConfig) {
     
     // 创建新的预加载Promise
     preloadingPromise = (async () => {
-      const startTime = Date.now();
-      const TOTAL_TIMEOUT = 30000; // 总超时30秒
-      
-      const slotIds = AD_GROUPS.group5;
+      const totalStartTime = Date.now();
+      const MAX_ATTEMPTS = 2; // 最大尝试次数
       let foundAd = false;
       
-      // 阶段1：前6个广告位串行
-      const firstSerialSlots = slotIds.slice(0, 6);
-      console.log(`📊 阶段1-串行：前6个广告位`);
-      
-      for (let i = 0; i < firstSerialSlots.length; i++) {
-        // 检查总超时
-        if (Date.now() - startTime > TOTAL_TIMEOUT) {
-          console.log('⏱️ 预加载总超时（30秒），终止任务');
-          break;
-        }
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        console.log(`\n🔄 预加载尝试 ${attempt}/${MAX_ATTEMPTS}`);
+        const startTime = Date.now();
+        const TOTAL_TIMEOUT = 30000; // 每轮总超时30秒
         
-        const slotId = firstSerialSlots[i];
-        console.log(`🔄 前串行 [${i + 1}/6]: ${slotId}`);
+        const slotIds = AD_GROUPS.group5;
         
-        const isReady = await preloadSingleSlot(slotId);
+        // 阶段1：前6个广告位串行
+        const firstSerialSlots = slotIds.slice(0, 6);
+        console.log(`📊 阶段1-串行：前6个广告位`);
         
-        if (isReady) {
-          preloadedAd = {
-            slotId: slotId,
-            isReady: true,
-            loadedAt: Date.now()
-          };
-          console.log(`🎉 前串行预加载成功: ${slotId}`);
-          foundAd = true;
-          break;
-        }
-        
-        // 广告位之间延迟300ms
-        if (i < firstSerialSlots.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 300));
-        }
-      }
-      
-      // 阶段2：中间6个广告位，每3个并行请求（分2组）
-      if (!foundAd) {
-        const parallelSlots = slotIds.slice(6, 12);
-        const parallelGroups = [];
-        for (let i = 0; i < parallelSlots.length; i += 3) {
-          parallelGroups.push(parallelSlots.slice(i, i + 3));
-        }
-        
-        console.log(`📊 阶段2-并行：${parallelGroups.length}组，每组3个广告位`);
-        
-        for (let groupIndex = 0; groupIndex < parallelGroups.length; groupIndex++) {
+        for (let i = 0; i < firstSerialSlots.length; i++) {
           // 检查总超时
           if (Date.now() - startTime > TOTAL_TIMEOUT) {
-            console.log('⏱️ 预加载总超时（30秒），终止任务');
+            console.log('⏱️ 预加载总超时（30秒），终止本轮任务');
             break;
           }
           
-          const group = parallelGroups[groupIndex];
-          console.log(`🔄 并行组 [${groupIndex + 1}/${parallelGroups.length}]: ${group.join(', ')}`);
-          
-          // 并行请求3个广告位（第一个成功就返回）
-          const result = await preloadParallelGroup(group);
-          
-          if (result.success && result.slotId) {
-            preloadedAd = {
-              slotId: result.slotId,
-              isReady: true,
-              loadedAt: Date.now()
-            };
-            console.log(`🎉 并行预加载成功: ${result.slotId}`);
-            foundAd = true;
-            break;
-          }
-          
-          // 组间延迟300ms
-          if (groupIndex < parallelGroups.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 300));
-          }
-        }
-      }
-      
-      // 阶段3：最后3个广告位串行
-      if (!foundAd) {
-        const lastSerialSlots = slotIds.slice(12); // 最后3个广告位
-        console.log(`📊 阶段3-串行：最后3个广告位`);
-        
-        for (let i = 0; i < lastSerialSlots.length; i++) {
-          // 检查总超时
-          if (Date.now() - startTime > TOTAL_TIMEOUT) {
-            console.log('⏱️ 预加载总超时（30秒），终止任务');
-            break;
-          }
-          
-          const slotId = lastSerialSlots[i];
-          console.log(`🔄 后串行 [${i + 1}/3]: ${slotId}`);
+          const slotId = firstSerialSlots[i];
+          console.log(`🔄 前串行 [${i + 1}/6]: ${slotId}`);
           
           const isReady = await preloadSingleSlot(slotId);
           
@@ -674,22 +604,108 @@ export function useAdManager(config: AdConfig) {
               isReady: true,
               loadedAt: Date.now()
             };
-            console.log(`🎉 后串行预加载成功: ${slotId}`);
+            console.log(`🎉 前串行预加载成功: ${slotId}`);
             foundAd = true;
             break;
           }
           
           // 广告位之间延迟300ms
-          if (i < lastSerialSlots.length - 1) {
+          if (i < firstSerialSlots.length - 1) {
             await new Promise(resolve => setTimeout(resolve, 300));
           }
+        }
+        
+        // 阶段2：中间6个广告位，每3个并行请求（分2组）
+        if (!foundAd) {
+          const parallelSlots = slotIds.slice(6, 12);
+          const parallelGroups = [];
+          for (let i = 0; i < parallelSlots.length; i += 3) {
+            parallelGroups.push(parallelSlots.slice(i, i + 3));
+          }
+          
+          console.log(`📊 阶段2-并行：${parallelGroups.length}组，每组3个广告位`);
+          
+          for (let groupIndex = 0; groupIndex < parallelGroups.length; groupIndex++) {
+            // 检查总超时
+            if (Date.now() - startTime > TOTAL_TIMEOUT) {
+              console.log('⏱️ 预加载总超时（30秒），终止本轮任务');
+              break;
+            }
+            
+            const group = parallelGroups[groupIndex];
+            console.log(`🔄 并行组 [${groupIndex + 1}/${parallelGroups.length}]: ${group.join(', ')}`);
+            
+            // 并行请求3个广告位（第一个成功就返回）
+            const result = await preloadParallelGroup(group);
+            
+            if (result.success && result.slotId) {
+              preloadedAd = {
+                slotId: result.slotId,
+                isReady: true,
+                loadedAt: Date.now()
+              };
+              console.log(`🎉 并行预加载成功: ${result.slotId}`);
+              foundAd = true;
+              break;
+            }
+            
+            // 组间延迟300ms
+            if (groupIndex < parallelGroups.length - 1) {
+              await new Promise(resolve => setTimeout(resolve, 300));
+            }
+          }
+        }
+        
+        // 阶段3：最后3个广告位串行
+        if (!foundAd) {
+          const lastSerialSlots = slotIds.slice(12); // 最后3个广告位
+          console.log(`📊 阶段3-串行：最后3个广告位`);
+          
+          for (let i = 0; i < lastSerialSlots.length; i++) {
+            // 检查总超时
+            if (Date.now() - startTime > TOTAL_TIMEOUT) {
+              console.log('⏱️ 预加载总超时（30秒），终止本轮任务');
+              break;
+            }
+            
+            const slotId = lastSerialSlots[i];
+            console.log(`🔄 后串行 [${i + 1}/3]: ${slotId}`);
+            
+            const isReady = await preloadSingleSlot(slotId);
+            
+            if (isReady) {
+              preloadedAd = {
+                slotId: slotId,
+                isReady: true,
+                loadedAt: Date.now()
+              };
+              console.log(`🎉 后串行预加载成功: ${slotId}`);
+              foundAd = true;
+              break;
+            }
+            
+            // 广告位之间延迟300ms
+            if (i < lastSerialSlots.length - 1) {
+              await new Promise(resolve => setTimeout(resolve, 300));
+            }
+          }
+        }
+        
+        const roundTime = ((Date.now() - startTime) / 1000).toFixed(1);
+        console.log(`📋 第${attempt}轮预加载结束，${foundAd ? '成功' : '未找到广告'}，耗时${roundTime}秒`);
+        
+        if (foundAd) {
+          break;
+        } else if (attempt < MAX_ATTEMPTS) {
+          console.log('🔄 第一轮预加载失败，1秒后开始第二轮尝试...');
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
       }
       
       isPreloading = false;
       preloadingPromise = null;
-      const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
-      console.log(`📋 预加载任务结束，${foundAd ? '成功' : '未找到广告'}，耗时${totalTime}秒`);
+      const totalTime = ((Date.now() - totalStartTime) / 1000).toFixed(1);
+      console.log(`📋 预加载任务全部结束，${foundAd ? '成功' : '未找到广告'}，总耗时${totalTime}秒`);
     })();
     
     return preloadingPromise;
@@ -1229,7 +1245,7 @@ export function useAdManager(config: AdConfig) {
         } catch (error) {
           console.log('预加载广告显示失败');
           isProcessing = false;
-          reject(new Error('广告显示失败'));
+          reject(new Error('暂无广告'));
           return;
         }
       } else {
@@ -1253,18 +1269,18 @@ export function useAdManager(config: AdConfig) {
               loadedAt: Date.now()
             };
             try {
-              await showPreloadedAd(resolve, reject);
-              isProcessing = false;
-              // 紧急加载成功，智能触发预加载为下次做准备
-              console.log('📋 紧急加载成功，智能触发预加载');
-              smartPreload();
-              return;
-            } catch (error) {
-              console.log('紧急加载广告显示失败');
-              isProcessing = false;
-              reject(new Error('广告显示失败'));
-              return;
-            }
+                await showPreloadedAd(resolve, reject);
+                isProcessing = false;
+                // 紧急加载成功，智能触发预加载为下次做准备
+                console.log('📋 紧急加载成功，智能触发预加载');
+                smartPreload();
+                return;
+              } catch (error) {
+                console.log('紧急加载广告显示失败');
+                isProcessing = false;
+                reject(new Error('暂无广告'));
+                return;
+              }
           }
           
           // 广告位之间延迟300ms
@@ -1275,7 +1291,7 @@ export function useAdManager(config: AdConfig) {
         
         console.log('❌ 最后3个广告位也加载失败');
         isProcessing = false;
-        reject(new Error('没有可用的广告'));
+        reject(new Error('暂无广告'));
         return;
       }
     });
