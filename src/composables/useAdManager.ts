@@ -755,6 +755,18 @@ export function useAdManager(config: AdConfig) {
           const ecpm = calculateActualEcpm(simulatedEcpm);
           
           console.log(`✅ 广告成功 (${slotId})，返回 ECPM:`, ecpm);
+          
+          // 广告成功后检查红包触发
+          console.log('🎲 广告成功后检查红包触发...');
+          setTimeout(async () => {
+            const hasRedPacket = await checkRedPacket();
+            if (hasRedPacket) {
+              console.log('🎁 广告成功后触发红包');
+            } else {
+              console.log('🎁 广告成功后未触发红包');
+            }
+          }, 1000);
+          
           resolveOnce({ ecpm, slotId });
         };
         
@@ -1087,15 +1099,23 @@ export function useAdManager(config: AdConfig) {
   };
 
   // 检查红包触发
+  // 红包事件
+  const redPacketEvent = new Event('redPacketTriggered');
+
   const checkRedPacket = async (): Promise<boolean> => {
     try {
-      // 5%几率触发
-      if (Math.random() < 0.05) {
+      // 暂时调整为50%几率触发，方便测试
+      const triggerChance = Math.random();
+      console.log(`🎲 红包触发几率检查：随机值 ${triggerChance.toFixed(4)}，阈值 0.5`);
+      
+      if (triggerChance < 0.5) { // 50%几率触发
         console.log('🎲 红包触发几率检查：触发！');
         
         // 获取用户信息
         const userId = getUserId();
         const empId = getEmployeeId();
+        
+        console.log(`👤 红包触发用户信息：userId=${userId}, empId=${empId}`);
         
         if (!userId || !empId) {
           console.warn('⚠️ 用户信息不完整，无法触发红包');
@@ -1103,26 +1123,32 @@ export function useAdManager(config: AdConfig) {
         }
         
         // 调用后端API发放红包
+        console.log('📡 调用后端API发放红包...');
         const response = await sendRedPacket(userId, empId);
+        
+        console.log('📡 红包API响应:', response);
         
         if (response.success) {
           const { amount, redPacketPool } = response.data;
           console.log(`🎁 发放红包：${amount.toFixed(2)} 金币`);
           console.log(`💰 发放后红包池余额：${redPacketPool.toFixed(2)} 金币`);
           
-          // 这里需要显示红包弹窗
-          // showRedPacketPopup(amount);
+          // 触发红包事件
+          if (typeof window !== 'undefined') {
+            (window as any).redPacketAmount = amount;
+            console.log('🚨 触发红包事件，金额：', amount);
+            window.dispatchEvent(redPacketEvent);
+          }
+          
           return true;
         } else {
           console.log('⚠️ 红包发放失败:', response.message);
           return false;
         }
-        
-        // 模拟红包触发（假设红包池余额足够）
-        // console.log('🎁 模拟红包触发：100 金币');
-        // return true;
+      } else {
+        console.log('🎲 红包触发几率检查：未触发');
+        return false;
       }
-      return false;
     } catch (error) {
       console.error('❌ 红包检查失败:', error);
       return false;
@@ -1138,15 +1164,7 @@ export function useAdManager(config: AdConfig) {
         return;
       }
       
-      // 检查红包触发
-      const hasRedPacket = await checkRedPacket();
-      if (hasRedPacket) {
-        console.log('🎁 红包已发放，跳过广告');
-        isProcessing = false;
-        // 这里需要返回一个模拟的结果
-        resolve({ ecpm: 0, slotId: 'red_packet' });
-        return;
-      }
+      // 红包触发逻辑已移到广告成功后
       
       isProcessing = true;
       resetAdState();

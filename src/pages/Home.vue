@@ -326,6 +326,24 @@ if (triggerPreloadAfterDelay) {
 }
 
 // 初始化数据
+// 处理页面可见性变化
+const handleVisibilityChange = async () => {
+  if (document.visibilityState === 'visible') {
+    console.log('👁️ 页面重新可见，同步数据看板...');
+    await loadUserInfo(false); // 页面聚焦时不显示加载状态
+    await loadTodayGoldStats(); // 同步今日金币统计（全局）
+  }
+};
+
+// 处理红包触发事件
+const handleRedPacketTriggered = async () => {
+  const amount = (window as any).redPacketAmount;
+  if (amount) {
+    console.log('🎁 接收到红包事件，金额：', amount);
+    await showRedPacketAnimation(amount);
+  }
+};
+
 onMounted(async () => {
   if (!empId.value || !userId.value) {
     router.push('/login');
@@ -353,16 +371,10 @@ onMounted(async () => {
 
   // 监听页面可见性变化，页面重新可见时同步数据
   document.addEventListener('visibilitychange', handleVisibilityChange);
+  
+  // 监听红包触发事件
+  window.addEventListener('redPacketTriggered', handleRedPacketTriggered);
 });
-
-// 处理页面可见性变化
-const handleVisibilityChange = async () => {
-  if (document.visibilityState === 'visible') {
-    console.log('👁️ 页面重新可见，同步数据看板...');
-    await loadUserInfo(false); // 页面聚焦时不显示加载状态
-    await loadTodayGoldStats(); // 同步今日金币统计（全局）
-  }
-};
 
 onUnmounted(() => {
   // 清理定时器
@@ -372,6 +384,8 @@ onUnmounted(() => {
   }
   // 移除事件监听
   document.removeEventListener('visibilitychange', handleVisibilityChange);
+  // 移除红包事件监听
+  window.removeEventListener('redPacketTriggered', handleRedPacketTriggered);
 });
 
 // 加载用户金币信息
