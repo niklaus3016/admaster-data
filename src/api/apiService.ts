@@ -1,7 +1,7 @@
 // API服务层，封装后端接口调用
 
 const API_BASE_URL = 'https://wfqmaepvjkdd.sealoshzh.site'; // 生产环境后端服务地址
-const USE_MOCK_DATA = false; // 生产模式下使用真实后端API
+const USE_MOCK_DATA = false; // 使用真实后端API
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -179,6 +179,30 @@ export async function checkEmployee(employeeId: string): Promise<ApiResponse<Emp
  * @returns 用户金币信息
  */
 export async function getUserInfo(userId: string, employeeId: string): Promise<ApiResponse<UserInfo>> {
+  // 开发模式下使用模拟数据
+  if (USE_MOCK_DATA) {
+    return new Promise((resolve) => {
+      // 模拟网络延迟
+      setTimeout(() => {
+        resolve({
+          success: true,
+          message: '获取成功',
+          data: {
+            userId: userId,
+            employeeId: employeeId,
+            currentMonthGold: 50000,
+            lastMonthGold: 120000,
+            todayTarget: 100000,
+            bonusGold: 5000,
+            hasClaimedBonus: false,
+            _id: 'mock_user_info',
+            __v: 0
+          }
+        });
+      }, 500);
+    });
+  }
+
   try {
     const response = await fetch(`${API_BASE_URL}/api/user/info?userId=${userId}&employeeId=${employeeId}`);
     return await response.json();
@@ -201,6 +225,25 @@ export async function getUserInfo(userId: string, employeeId: string): Promise<A
  * @returns 发放的金币数量和当前月金币总数
  */
 export async function rewardGold(userId: string, employeeId: string, ecpm: number, slotId: string, deviceId: string): Promise<ApiResponse<GoldReward>> {
+  // 开发模式下使用模拟数据
+  if (USE_MOCK_DATA) {
+    return new Promise((resolve) => {
+      // 模拟网络延迟
+      setTimeout(() => {
+        // 根据ecpm计算金币
+        const gold = Math.floor(ecpm * 0.1);
+        resolve({
+          success: true,
+          message: '发放成功',
+          data: {
+            gold: gold,
+            currentMonthGold: 50000 + gold
+          }
+        });
+      }, 500);
+    });
+  }
+
   try {
     const response = await fetch(`${API_BASE_URL}/api/gold/reward`, {
       method: 'POST',
@@ -227,6 +270,38 @@ export async function rewardGold(userId: string, employeeId: string, ecpm: numbe
  * @returns 金币发放记录列表
  */
 export async function getGoldLogs(userId: string, deviceId: string, limit: number = 200): Promise<ApiResponse<GoldLog[]>> {
+  // 开发模式下使用模拟数据
+  if (USE_MOCK_DATA) {
+    return new Promise((resolve) => {
+      // 模拟网络延迟
+      setTimeout(() => {
+        const mockLogs: GoldLog[] = [];
+        const now = Date.now();
+        
+        // 生成模拟数据
+        for (let i = 0; i < 50; i++) {
+          const timestamp = now - i * 60000; // 每分钟一条记录
+          mockLogs.push({
+            _id: `mock_log_${i}`,
+            userId: userId,
+            employeeId: '8202',
+            deviceId: deviceId,
+            ecpm: Math.floor(Math.random() * 2000) + 50,
+            gold: Math.floor((Math.random() * 2000 + 50) * 0.1),
+            createTime: new Date(timestamp).toISOString(),
+            __v: 0
+          });
+        }
+        
+        resolve({
+          success: true,
+          message: '获取成功',
+          data: mockLogs
+        });
+      }, 500);
+    });
+  }
+
   try {
     console.log('🔧 API - getGoldLogs 开始');
     console.log('   URL:', `${API_BASE_URL}/api/gold/log?userId=${userId}&deviceId=${deviceId}&limit=${limit}`);
@@ -291,6 +366,23 @@ interface TodayGoldStats {
  * @returns 今日金币统计
  */
 export async function getTodayGoldStats(userId: string): Promise<ApiResponse<TodayGoldStats>> {
+  // 开发模式下使用模拟数据
+  if (USE_MOCK_DATA) {
+    return new Promise((resolve) => {
+      // 模拟网络延迟
+      setTimeout(() => {
+        resolve({
+          success: true,
+          message: '获取成功',
+          data: {
+            todayCoins: 35000,
+            todayRecordCount: 120
+          }
+        });
+      }, 500);
+    });
+  }
+
   try {
     console.log('🔧 API - getTodayGoldStats 开始');
     console.log('   URL:', `${API_BASE_URL}/api/gold/today-stats?userId=${userId}`);

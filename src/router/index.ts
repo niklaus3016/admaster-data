@@ -8,17 +8,7 @@ const routes = [
     name: 'Login',
     component: Login,
   },
-  {
-    path: '/',
-    name: 'Home',
-    component: Home,
-    beforeEnter: (to, from) => {
-      const empId = localStorage.getItem('empId');
-      if (!empId) {
-        return '/login';
-      }
-    },
-  },
+  { path: '/', name: 'Home', component: Home, beforeEnter: (to, from, next) => { const empId = localStorage.getItem('empId'); if (!empId) { next('/login'); } else { next(); } }, },
 ];
 
 const router = createRouter({

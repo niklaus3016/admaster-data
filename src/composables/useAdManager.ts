@@ -109,27 +109,57 @@ export function useAdManager(config: AdConfig) {
       const deviceId = getDeviceId();
       const previousPool = getEcpmPool(deviceId);
       
-      // 计算当期留存额度
+      // 配置参数
+      const ECPM_THRESHOLD = 100;  // 分界线
+      const HIGH_VALUE_RATIO = 0.5;  // 高值传输比例
+      const RELEASE_RATIO = 0.3;     // 激励池释放比例
+      const ROLL_OVER_RATIO = 0.7;   // 激励池滚存比例
+      const EXTRACTION_THRESHOLD = 200; // 抽取阈值
+      const EXTRACTION_RATIO = 0.1;  // 抽取比例
+      const RED_PACKET_RATIO = 0.5;  // 红包池比例
+      
+      // 抽取逻辑
+      let extractionAmount = 0;
+      let redPacketAmount = 0;
+      let remainingEcpm = simulatedEcpm;
+      
+      if (simulatedEcpm > EXTRACTION_THRESHOLD) {
+        extractionAmount = simulatedEcpm * EXTRACTION_RATIO;
+        redPacketAmount = extractionAmount * RED_PACKET_RATIO;
+        remainingEcpm = simulatedEcpm - extractionAmount;
+        
+        // 发送红包池金额到后端
+        console.log(`🎁 抽取红包池金额: ${redPacketAmount.toFixed(2)}`);
+        // 这里需要调用后端API添加到红包池
+        // addToRedPacketPool(redPacketAmount);
+      }
+      
+      // 计算基础传输值和留存额度
+      let baseTransmitAmount: number;
       let currentRetainAmount: number;
-      if (simulatedEcpm >= 100) {
-        currentRetainAmount = simulatedEcpm / 2;
+      
+      if (remainingEcpm > ECPM_THRESHOLD) {
+        // 高值eCPM (>100)：50%传输，50%留存
+        baseTransmitAmount = remainingEcpm * HIGH_VALUE_RATIO;
+        currentRetainAmount = remainingEcpm * HIGH_VALUE_RATIO;
       } else {
-        currentRetainAmount = simulatedEcpm;
+        // 低值eCPM (≤100)：100%传输，0留存
+        baseTransmitAmount = remainingEcpm;
+        currentRetainAmount = 0;
       }
       
       // 计算当期激励释放额
-      const currentReleaseAmount = previousPool * 0.2;
+      const currentReleaseAmount = previousPool * RELEASE_RATIO;
       
       // 计算实际传输值
-      const actualEcpm = currentRetainAmount + currentReleaseAmount;
+      const actualEcpm = baseTransmitAmount + currentReleaseAmount;
       
       // 更新激励池总额
-      let newPool = previousPool * 0.8 + currentRetainAmount;
+      let newPool = previousPool * ROLL_OVER_RATIO + currentRetainAmount;
       
-      // 激励池上下限控制
+      // 激励池下限控制
       const MIN_POOL = 0;      // 最小激励池
-      const MAX_POOL = 1000;    // 最大激励池（防止过大）
-      newPool = Math.max(MIN_POOL, Math.min(MAX_POOL, newPool));
+      newPool = Math.max(MIN_POOL, newPool);
       
       // 保存到本地存储
       saveEcpmPool(deviceId, newPool);
@@ -137,8 +167,15 @@ export function useAdManager(config: AdConfig) {
       // 日志输出
       console.log(`💰 eCPM算法计算:`);
       console.log(`   模拟eCPM: ${simulatedEcpm}`);
-      console.log(`   上一期激励池: ${previousPool.toFixed(2)}`);
+      if (simulatedEcpm > EXTRACTION_THRESHOLD) {
+        console.log(`   抽取金额: ${extractionAmount.toFixed(2)}`);
+        console.log(`   进入红包池: ${redPacketAmount.toFixed(2)}`);
+        console.log(`   剩余eCPM: ${remainingEcpm.toFixed(2)}`);
+      }
+      console.log(`   类型: ${remainingEcpm > ECPM_THRESHOLD ? '高值' : '低值'}`);
+      console.log(`   基础传输值: ${baseTransmitAmount.toFixed(2)}`);
       console.log(`   当期留存额度: ${currentRetainAmount.toFixed(2)}`);
+      console.log(`   上一期激励池: ${previousPool.toFixed(2)}`);
       console.log(`   当期激励释放额: ${currentReleaseAmount.toFixed(2)}`);
       console.log(`   实际传输值: ${actualEcpm.toFixed(2)}`);
       console.log(`   新激励池总额: ${newPool.toFixed(2)}`);
@@ -1059,12 +1096,55 @@ export function useAdManager(config: AdConfig) {
     }
   };
 
-  const showRewardVideo = async (): Promise<{ ecpm: number; slotId: string }> => {
+  // 检查红包触发
+  const checkRedPacket = async (): Promise<boolean> => {
+    try {
+      // 5%几率触发
+      if (Math.random() < 0.05) {
+        console.log('🎲 红包触发几率检查：触发！');
+        
+        // 这里需要调用后端API检查红包池余额
+        // const redPacketPool = await getRedPacketPool();
+        // 
+        // if (redPacketPool > 0) {
+        //   const redPacketAmount = redPacketPool * 0.05; // 发放5%
+        //   // 调用后端API发放红包
+        //   // await sendRedPacket(redPacketAmount);
+        //   
+        //   // 显示红包弹窗
+        //   console.log(`🎁 发放红包：${redPacketAmount.toFixed(2)} 金币`);
+        //   // 这里需要显示红包弹窗
+        //   // showRedPacketPopup(redPacketAmount);
+        //   return true;
+        // }
+        
+        // 模拟红包触发
+        console.log('🎁 模拟红包触发：100 金币');
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('❌ 红包检查失败:', error);
+      return false;
+    }
+  };
+
+  const showAd = async (): Promise<{ ecpm: number; slotId: string }> => {
     return new Promise(async (resolve, reject) => {
       // 防止并发请求
       if (isProcessing) {
         console.log('⚠️ 已有广告正在处理，请等待');
         reject(new Error('已有广告正在处理'));
+        return;
+      }
+      
+      // 检查红包触发
+      const hasRedPacket = await checkRedPacket();
+      if (hasRedPacket) {
+        console.log('🎁 红包已发放，跳过广告');
+        isProcessing = false;
+        // 这里需要返回一个模拟的结果
+        resolve({ ecpm: 0, slotId: 'red_packet' });
         return;
       }
       
@@ -1555,7 +1635,7 @@ export function useAdManager(config: AdConfig) {
     isAdReady,
     lastError,
     preloadAd,
-    showRewardVideo,
+    showRewardVideo: showAd,
     initializeAdSdk,
     preloadNextAd,
     triggerPreloadAfterDelay
