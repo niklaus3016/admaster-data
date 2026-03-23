@@ -772,17 +772,6 @@ export function useAdManager(config: AdConfig) {
           
           console.log(`✅ 广告成功 (${slotId})，返回 ECPM:`, ecpm);
           
-          // 广告成功后检查红包触发
-          console.log('🎲 广告成功后检查红包触发...');
-          setTimeout(async () => {
-            const hasRedPacket = await checkRedPacket();
-            if (hasRedPacket) {
-              console.log('🎁 广告成功后触发红包');
-            } else {
-              console.log('🎁 广告成功后未触发红包');
-            }
-          }, 1000);
-          
           resolveOnce({ ecpm, slotId });
         };
         
@@ -1062,17 +1051,6 @@ export function useAdManager(config: AdConfig) {
       
       console.log(`✅ 预加载广告成功 (${slotId})，返回 ECPM:`, ecpm);
       
-      // 广告成功后检查红包触发
-      console.log('🎲 广告成功后检查红包触发...');
-      setTimeout(async () => {
-        const hasRedPacket = await checkRedPacket();
-        if (hasRedPacket) {
-          console.log('🎁 广告成功后触发红包');
-        } else {
-          console.log('🎁 广告成功后未触发红包');
-        }
-      }, 1000);
-      
       resolveOnce({ ecpm, slotId });
     };
     
@@ -1126,70 +1104,7 @@ export function useAdManager(config: AdConfig) {
     return localStorage.getItem('empId') || null;
   };
 
-  // 红包事件（模块级别常量）
-  const redPacketEvent = typeof window !== 'undefined' ? new Event('redPacketTriggered') : null;
-
-  // 检查红包触发
-  const checkRedPacket = async (): Promise<boolean> => {
-    try {
-      // 暂时调整为50%几率触发，方便测试
-      const triggerChance = Math.random();
-      console.log(`🎲 红包触发几率检查：随机值 ${triggerChance.toFixed(4)}，阈值 0.5`);
-      
-      if (triggerChance < 0.5) { // 50%几率触发
-        console.log('🎲 红包触发几率检查：触发！');
-        
-        // 获取用户信息
-        const userId = getUserId();
-        const empId = getEmployeeId();
-        
-        console.log(`👤 红包触发用户信息：userId=${userId}, empId=${empId}`);
-        
-        // 暂时注释掉用户信息检查，确保红包触发逻辑能够执行
-        // if (!userId || !empId) {
-        //   console.warn('⚠️ 用户信息不完整，无法触发红包');
-        //   return false;
-        // }
-        
-        // 使用默认值确保API调用能够执行
-        const finalUserId = userId || 'test_user';
-        const finalEmpId = empId || 'test_emp';
-        
-        // 调用后端API发放红包
-        console.log('📡 调用后端API发放红包...');
-        console.log(`📡 API参数：userId=${finalUserId}, employeeId=${finalEmpId}`);
-        const response = await sendRedPacket(finalUserId, finalEmpId);
-        
-        console.log('📡 红包API响应:', response);
-        
-        if (response.success) {
-          const { amount, redPacketPool } = response.data;
-          console.log(`🎁 发放红包：${amount.toFixed(2)} 金币`);
-          console.log(`💰 发放后红包池余额：${redPacketPool.toFixed(2)} 金币`);
-          
-          // 触发红包事件
-          if (typeof window !== 'undefined' && redPacketEvent) {
-            (window as any).redPacketAmount = amount;
-            console.log('🚨 触发红包事件，金额：', amount);
-            window.dispatchEvent(redPacketEvent);
-          } else {
-            console.warn('⚠️ 无法触发红包事件，window对象或事件未定义');
-          }
-          
-          return true;
-        } else {
-          console.log('⚠️ 红包发放失败:', response.message);
-          return false;
-        }
-      } else {
-        console.log('🎲 红包触发几率检查：未触发');
-        return false;
-      }
-    } catch (error) {
-      console.error('❌ 红包检查失败:', error);
-      return false;
-    }
-  };
+  // 红包触发逻辑已移至后端处理
 
   const showAd = async (): Promise<{ ecpm: number; slotId: string }> => {
     return new Promise(async (resolve, reject) => {

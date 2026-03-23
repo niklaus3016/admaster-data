@@ -335,15 +335,6 @@ const handleVisibilityChange = async () => {
   }
 };
 
-// 处理红包触发事件
-const handleRedPacketTriggered = async () => {
-  const amount = (window as any).redPacketAmount;
-  if (amount) {
-    console.log('🎁 接收到红包事件，金额：', amount);
-    await showRedPacketAnimation(amount);
-  }
-};
-
 onMounted(async () => {
   if (!empId.value || !userId.value) {
     router.push('/login');
@@ -371,9 +362,6 @@ onMounted(async () => {
 
   // 监听页面可见性变化，页面重新可见时同步数据
   document.addEventListener('visibilitychange', handleVisibilityChange);
-  
-  // 监听红包触发事件
-  window.addEventListener('redPacketTriggered', handleRedPacketTriggered);
 });
 
 onUnmounted(() => {
@@ -384,8 +372,6 @@ onUnmounted(() => {
   }
   // 移除事件监听
   document.removeEventListener('visibilitychange', handleVisibilityChange);
-  // 移除红包事件监听
-  window.removeEventListener('redPacketTriggered', handleRedPacketTriggered);
 });
 
 // 加载用户金币信息
@@ -595,6 +581,16 @@ const handleWatchAd = async () => {
     if (rewardResponse.success && rewardResponse.data) {
       const earned = rewardResponse.data.gold;
       console.log('获得金币数量:', earned);
+      
+      // 检查是否有红包信息
+      const hasRedPacket = rewardResponse.data.hasRedPacket;
+      const redPacketAmount = rewardResponse.data.redPacketAmount;
+      
+      if (hasRedPacket && redPacketAmount > 0) {
+        console.log('🎁 后端触发红包，金额：', redPacketAmount);
+        // 显示红包动画
+        await showRedPacketAnimation(redPacketAmount);
+      }
       
       // 确保金币数量是有效的数字
       if (typeof earned === 'number' && earned > 0) {
