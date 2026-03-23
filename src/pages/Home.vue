@@ -275,10 +275,9 @@ const openRedPacket = async () => {
         redPacketRecords.value.unshift(newRedPacketRecord);
         console.log('✅ 手动添加红包记录:', newRedPacketRecord);
         
-        // 重新加载今日金币统计、收益记录和红包记录
+        // 重新加载今日金币统计和收益记录，但不重新加载红包记录（避免清空手动添加的记录）
         await loadTodayGoldStats();
         await loadGoldRecords();
-        await loadRedPacketRecords();
       } else {
         console.warn('⚠️ 红包领取失败:', response.message);
       }
