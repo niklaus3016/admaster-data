@@ -629,15 +629,13 @@ const combinedRecords = computed(() => {
   // 转换金币记录，添加type字段
   const goldRecords = records.value.map(record => ({
     ...record,
-    type: 'gold',
-    timestamp: new Date(record.time).getTime()
+    type: 'gold'
   }));
   
   // 转换红包记录，添加type字段
   const redPacketRecordsWithType = redPacketRecords.value.map(record => ({
     ...record,
-    type: 'red-packet',
-    timestamp: new Date(record.time).getTime()
+    type: 'red-packet'
   }));
   
   // 合并并按时间倒序排序
