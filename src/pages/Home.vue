@@ -835,6 +835,7 @@ const handleClaimBonus = async () => {
   
   try {
     const response = await claimDailyBonus(userId.value, empId.value);
+    console.log('领取每日奖励响应:', response);
     if (response.success && response.data) {
       const earned = response.data.gold;
       currentMonthGold.value = response.data.currentMonthGold;
@@ -845,6 +846,7 @@ const handleClaimBonus = async () => {
       await loadTodayGoldStats();
       await loadGoldRecords();
     } else {
+      console.warn('领取每日奖励失败:', response.message);
       error.value = response.message || '领取失败';
     }
   } catch (err) {
