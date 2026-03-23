@@ -259,8 +259,9 @@ const openRedPacket = async () => {
         console.log('🎁 红包领取成功，金额:', response.data.gold);
         // 更新本地状态
         currentMonthGold.value = response.data.currentMonthGold;
-        // 重新加载今日金币统计和红包记录
+        // 重新加载今日金币统计、收益记录和红包记录
         await loadTodayGoldStats();
+        await loadGoldRecords();
         await loadRedPacketRecords();
       } else {
         console.warn('⚠️ 红包领取失败:', response.message);
