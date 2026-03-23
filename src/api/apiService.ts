@@ -907,3 +907,216 @@ export async function getLotteryHistory(limit: number = 10): Promise<ApiResponse
     };
   }
 }
+
+/**
+ * 红包记录接口
+ */
+export interface RedPacketRecord {
+  _id: string;
+  userId: string;
+  employeeId: string;
+  amount: number;
+  poolBalanceAfter: number;
+  createdAt: string;
+}
+
+interface RedPacketRecordsResponse {
+  records: RedPacketRecord[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+  };
+}
+
+/**
+ * 获取红包发放记录（管理员接口）
+ * @param employeeId 可选，按员工ID筛选
+ * @param page 分页页码，默认1
+ * @param limit 每页记录数，默认20
+ * @returns 红包发放记录列表
+ */
+export async function getRedPacketRecords(employeeId?: string, page: number = 1, limit: number = 20): Promise<ApiResponse<RedPacketRecordsResponse>> {
+  // 开发模式下使用模拟数据
+  if (USE_MOCK_DATA) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const mockRecords: RedPacketRecord[] = [];
+        const now = Date.now();
+        
+        // 生成模拟数据
+        for (let i = 0; i < 11; i++) {
+          const timestamp = now - i * 60000; // 每分钟一条记录
+          mockRecords.push({
+            _id: `mock_red_packet_${i}`,
+            userId: 'user123',
+            employeeId: '8202',
+            amount: Math.floor(Math.random() * 500) + 100,
+            poolBalanceAfter: 5000 - i * 100,
+            createdAt: new Date(timestamp).toISOString()
+          });
+        }
+        
+        resolve({
+          success: true,
+          message: '获取成功',
+          data: {
+            records: mockRecords,
+            pagination: {
+              total: mockRecords.length,
+              page: 1,
+              limit: 20,
+              pages: 1
+            }
+          }
+        });
+      }, 500);
+    });
+  }
+
+  try {
+    let url = `${API_BASE_URL}/api/admin/red-packet/records?page=${page}&limit=${limit}`;
+    if (employeeId) {
+      url += `&employeeId=${employeeId}`;
+    }
+    
+    // 注意：需要管理员登录才能访问此接口
+    const token = localStorage.getItem('adminToken');
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : ''
+      }
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('获取红包记录失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: {
+        records: [],
+        pagination: {
+          total: 0,
+          page: 1,
+          limit: 20,
+          pages: 1
+        }
+      }
+    };
+  }
+}
+
+/**
+ * 获取用户个人红包记录
+ * @param userId 用户ID
+ * @param page 分页页码，默认1
+ * @param limit 每页记录数，默认20
+ * @returns 红包发放记录列表
+ */
+export async function getUserRedPacketRecords(userId: string, page: number = 1, limit: number = 20): Promise<ApiResponse<RedPacketRecordsResponse>> {
+  // 开发模式下使用模拟数据
+  if (USE_MOCK_DATA) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const mockRecords: RedPacketRecord[] = [];
+        const now = Date.now();
+        
+        // 生成模拟数据
+        for (let i = 0; i < 5; i++) {
+          const timestamp = now - i * 60000; // 每分钟一条记录
+          mockRecords.push({
+            _id: `mock_user_red_packet_${i}`,
+            userId: userId,
+            employeeId: '8202',
+            amount: Math.floor(Math.random() * 500) + 100,
+            poolBalanceAfter: 5000 - i * 100,
+            createdAt: new Date(timestamp).toISOString()
+          });
+        }
+        
+        resolve({
+          success: true,
+          message: '获取成功',
+          data: {
+            records: mockRecords,
+            pagination: {
+              total: mockRecords.length,
+              page: 1,
+              limit: 20,
+              pages: 1
+            }
+          }
+        });
+      }, 500);
+    });
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/red-packet/records?userId=${userId}&page=${page}&limit=${limit}`);
+    return await response.json();
+  } catch (error) {
+    console.error('获取用户红包记录失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: {
+        records: [],
+        pagination: {
+          total: 0,
+          page: 1,
+          limit: 20,
+          pages: 1
+        }
+      }
+    };
+  }
+}
+
+/**
+ * 拆红包确认接口
+ * @param userId 用户ID
+ * @param employeeId 员工号
+ * @param redPacketAmount 红包金额
+ * @returns 红包领取结果
+ */
+export async function claimRedPacket(userId: string, employeeId: string, redPacketAmount: number): Promise<ApiResponse<{ gold: number; currentMonthGold: number }>> {
+  // 开发模式下使用模拟数据
+  if (USE_MOCK_DATA) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          success: true,
+          message: '红包领取成功',
+          data: {
+            gold: redPacketAmount,
+            currentMonthGold: 8860
+          }
+        });
+      }, 500);
+    });
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/employee/red-packet/claim`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userId, employeeId, redPacketAmount }),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('拆红包确认失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: {
+        gold: 0,
+        currentMonthGold: 0
+      }
+    };
+  }
+}

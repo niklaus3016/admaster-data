@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { Coins, History, PlayCircle, LogOut, TrendingUp, Wallet, CreditCard, Trophy, Gift } from 'lucide-vue-next';
-import { getUserInfo, rewardGold, getGoldLogs, getTodayGoldStats, recordLogin, getLoginStats, submitWithdrawRequest, getWithdrawStatus, getWithdrawRecords, claimDailyBonus, recordActivity, getPoolStatus, recordAdView, getUserTickets, type WithdrawRecord } from '../api/apiService';
+import { getUserInfo, rewardGold, getGoldLogs, getTodayGoldStats, recordLogin, getLoginStats, submitWithdrawRequest, getWithdrawStatus, getWithdrawRecords, claimDailyBonus, recordActivity, getPoolStatus, recordAdView, getUserTickets, getUserRedPacketRecords, claimRedPacket, type WithdrawRecord } from '../api/apiService';
 import { useAdManager } from '../composables/useAdManager';
 import { TTSPlugin } from '../plugins/TTSPlugin';
 import { Capacitor } from '@capacitor/core';
@@ -51,6 +51,11 @@ const redPacketAmount = ref(0);
 const isRedPacketOpened = ref(false);
 let redPacketTimeout: ReturnType<typeof setTimeout> | null = null;
 
+// 红包记录
+const redPacketRecords = ref<any[]>([]);
+const isLoadingRedPacketRecords = ref(false);
+const showRedPacketRecords = ref(false);
+
 // 奖金池相关（暂时隐藏，下下个版本上线）
 // const poolStatus = ref({ redPacketPool: 0, lotteryPool: 0 });
 // const isLoadingPool = ref(false);
@@ -84,15 +89,17 @@ const playRewardSound = async (amount: number) => {
       try {
         const result = await TTSPlugin.speak({ text: message });
         console.log('原生 TTS 播放成功:', result);
+        // 为了确保语音播放完毕，添加一个小延迟
+        await new Promise(resolve => setTimeout(resolve, 1000));
       } catch (err) {
         console.error('原生 TTS 播放失败:', err);
         // 回退到 Web Speech API
-        playWebSpeech(message);
+        await playWebSpeech(message);
       }
     } else {
       // 在浏览器中使用 Web Speech API
       console.log('使用 Web Speech API');
-      playWebSpeech(message);
+      await playWebSpeech(message);
     }
   } catch (err) {
     console.error('语音播放失败:', err);
@@ -100,47 +107,62 @@ const playRewardSound = async (amount: number) => {
 };
 
 // 使用 Web Speech API 播放语音
-const playWebSpeech = (message: string) => {
-  if (typeof window === 'undefined' || !window.speechSynthesis) {
-    console.error('浏览器不支持语音合成');
-    return;
-  }
-  
-  // 取消之前的语音
-  window.speechSynthesis.cancel();
-  
-  const utterance = new SpeechSynthesisUtterance(message);
-  utterance.lang = 'zh-CN';
-  utterance.rate = 1.0;
-  utterance.pitch = 1.2;
-  utterance.volume = 1.0;
-  
-  // 等待语音列表加载完成
-  const speak = () => {
-    const voices = window.speechSynthesis.getVoices();
-    console.log('可用语音数量:', voices.length);
-    
-    const zhVoice = voices.find(v => v.lang.includes('zh'));
-    if (zhVoice) {
-      utterance.voice = zhVoice;
-      console.log('使用中文语音:', zhVoice.name);
-    } else {
-      console.log('未找到中文语音，使用默认语音');
+const playWebSpeech = (message: string): Promise<void> => {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      console.error('浏览器不支持语音合成');
+      resolve();
+      return;
     }
     
-    window.speechSynthesis.speak(utterance);
-    console.log('语音播放命令已发送');
-  };
-  
-  // 检查语音列表是否已加载
-  if (window.speechSynthesis.getVoices().length > 0) {
-    speak();
-  } else {
-    window.speechSynthesis.onvoiceschanged = () => {
-      window.speechSynthesis.onvoiceschanged = null;
-      speak();
+    // 取消之前的语音
+    window.speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(message);
+    utterance.lang = 'zh-CN';
+    utterance.rate = 1.0;
+    utterance.pitch = 1.2;
+    utterance.volume = 1.0;
+    
+    // 语音播放完成事件
+    utterance.onend = () => {
+      console.log('语音播放完成');
+      resolve();
     };
-  }
+    
+    // 语音播放错误事件
+    utterance.onerror = () => {
+      console.error('语音播放错误');
+      resolve();
+    };
+    
+    // 等待语音列表加载完成
+    const speak = () => {
+      const voices = window.speechSynthesis.getVoices();
+      console.log('可用语音数量:', voices.length);
+      
+      const zhVoice = voices.find(v => v.lang.includes('zh'));
+      if (zhVoice) {
+        utterance.voice = zhVoice;
+        console.log('使用中文语音:', zhVoice.name);
+      } else {
+        console.log('未找到中文语音，使用默认语音');
+      }
+      
+      window.speechSynthesis.speak(utterance);
+      console.log('语音播放命令已发送');
+    };
+    
+    // 检查语音列表是否已加载
+    if (window.speechSynthesis.getVoices().length > 0) {
+      speak();
+    } else {
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.onvoiceschanged = null;
+        speak();
+      };
+    }
+  });
 };
 
 // 显示金币奖励
@@ -195,25 +217,17 @@ const showRedPacketAnimation = async (amount: number) => {
       try {
         const result = await TTSPlugin.speak({ text: message });
         console.log('原生 TTS 播放成功:', result);
+        // 为了确保语音播放完毕，添加一个小延迟
+        await new Promise(resolve => setTimeout(resolve, 1000));
       } catch (err) {
         console.error('原生 TTS 播放失败:', err);
         // 回退到 Web Speech API
-        if (typeof window !== 'undefined' && window.speechSynthesis) {
-          window.speechSynthesis.cancel();
-          const utterance = new SpeechSynthesisUtterance(message);
-          utterance.lang = 'zh-CN';
-          window.speechSynthesis.speak(utterance);
-        }
+        await playWebSpeech(message);
       }
     } else {
       // 在浏览器中使用 Web Speech API
       console.log('使用 Web Speech API 播放红包触发提示');
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(message);
-        utterance.lang = 'zh-CN';
-        window.speechSynthesis.speak(utterance);
-      }
+      await playWebSpeech(message);
     }
   } catch (err) {
     console.error('红包触发语音播放失败:', err);
@@ -229,6 +243,32 @@ const openRedPacket = async () => {
   // 播放语音
   await playRewardSound(redPacketAmount.value);
   console.log('playRewardSound 已调用');
+  
+  // 调用拆红包确认接口
+  if (userId.value && empId.value) {
+    console.log('📡 调用拆红包确认接口...');
+    console.log('   userId:', userId.value);
+    console.log('   employeeId:', empId.value);
+    console.log('   redPacketAmount:', redPacketAmount.value);
+    
+    try {
+      const response = await claimRedPacket(userId.value, empId.value, redPacketAmount.value);
+      console.log('✅ 拆红包确认接口响应:', response);
+      
+      if (response.success && response.data) {
+        console.log('🎁 红包领取成功，金额:', response.data.gold);
+        // 更新本地状态
+        currentMonthGold.value = response.data.currentMonthGold;
+        // 重新加载今日金币统计和红包记录
+        await loadTodayGoldStats();
+        await loadRedPacketRecords();
+      } else {
+        console.warn('⚠️ 红包领取失败:', response.message);
+      }
+    } catch (err) {
+      console.error('❌ 拆红包确认失败:', err);
+    }
+  }
   
   // 2秒后隐藏
   redPacketTimeout = setTimeout(() => {
@@ -381,6 +421,7 @@ onMounted(async () => {
   await loadUserInfo();
   await loadTodayGoldStats(); // 加载今日金币统计（全局）
   await loadGoldRecords(); // 加载收益记录（当前设备）
+  await loadRedPacketRecords(); // 加载红包记录
   // await loadPoolStatus(); // 加载奖金池状态（暂时隐藏，下下个版本上线）
 
   // 记录用户活动（进入首页）
@@ -511,6 +552,99 @@ const loadTodayGoldStats = async () => {
   }
 };
 
+// 加载红包记录
+const loadRedPacketRecords = async () => {
+  if (!userId.value) {
+    console.log('❌ 加载红包记录失败：userId为空');
+    return;
+  }
+
+  console.log('🔄 开始加载红包记录...');
+  isLoadingRedPacketRecords.value = true;
+
+  // 重置数据，避免显示旧数据
+  redPacketRecords.value = [];
+
+  try {
+    console.log('📡 发送API请求获取红包记录...');
+    console.log('   userId:', userId.value);
+
+    // 获取用户的红包记录
+    const response = await getUserRedPacketRecords(userId.value, 1, 100);
+
+    console.log('✅ API请求完成，响应:', {
+      success: response.success,
+      message: response.message,
+      dataLength: response.data ? response.data.records.length : 0
+    });
+
+    if (response.success && response.data && Array.isArray(response.data.records)) {
+      console.log('📊 开始处理数据，原始数据量:', response.data.records.length);
+
+      // 转换并排序记录（按时间倒序，最新的在前面）
+      redPacketRecords.value = response.data.records
+        .map((record: any, index: number) => {
+          // 安全处理时间字段
+          const createdAt = record.createdAt || Date.now();
+          const recordTime = new Date(createdAt);
+
+          const redPacketRecord = {
+            id: record._id || `red_packet_record-${index}-${Date.now()}`, // 确保ID唯一
+            time: recordTime.toLocaleString('zh-CN', {
+              year: 'numeric', month: '2-digit', day: '2-digit',
+              hour: '2-digit', minute: '2-digit'
+            }),
+            amount: Number(record.amount) || 0, // 确保金额为数字且有默认值
+            poolBalanceAfter: Number(record.poolBalanceAfter) || 0,
+            timestamp: recordTime.getTime() // 用于排序
+          };
+
+          // 每10条记录打印一次，避免日志过多
+          if (index % 10 === 0) {
+            console.log(`   处理红包记录 ${index + 1}:`, {
+              id: redPacketRecord.id,
+              time: redPacketRecord.time,
+              amount: redPacketRecord.amount
+            });
+          }
+
+          return redPacketRecord;
+        })
+        .sort((a, b) => b.timestamp - a.timestamp); // 按时间倒序排序
+
+      console.log('🔧 排序完成，最终红包记录数:', redPacketRecords.value.length);
+    } else {
+      console.warn('⚠️ API响应数据异常:', response);
+    }
+  } catch (err) {
+    console.error('❌ 获取红包记录失败:', err);
+  } finally {
+    console.log('✅ 加载红包记录完成');
+    isLoadingRedPacketRecords.value = false;
+  }
+};
+
+// 合并金币记录和红包记录
+const combinedRecords = computed(() => {
+  // 转换金币记录，添加type字段
+  const goldRecords = records.value.map(record => ({
+    ...record,
+    type: 'gold',
+    timestamp: new Date(record.time).getTime()
+  }));
+  
+  // 转换红包记录，添加type字段
+  const redPacketRecordsWithType = redPacketRecords.value.map(record => ({
+    ...record,
+    type: 'red-packet',
+    timestamp: new Date(record.time).getTime()
+  }));
+  
+  // 合并并按时间倒序排序
+  return [...goldRecords, ...redPacketRecordsWithType]
+    .sort((a, b) => b.timestamp - a.timestamp);
+});
+
 // 加载金币记录（仅当前设备，用于最近收益列表）
 const loadGoldRecords = async () => {
   if (!userId.value) {
@@ -617,29 +751,29 @@ const handleWatchAd = async () => {
       const earned = rewardResponse.data.gold;
       console.log('获得金币数量:', earned);
       
-      // 检查是否有红包信息
-      const hasRedPacket = rewardResponse.data.hasRedPacket;
-      const redPacketAmount = rewardResponse.data.redPacketAmount;
-      
-      if (hasRedPacket && redPacketAmount > 0) {
-        console.log('🎁 后端触发红包，金额：', redPacketAmount);
-        // 显示红包动画
-        await showRedPacketAnimation(redPacketAmount);
-      }
-      
       // 确保金币数量是有效的数字
-      if (typeof earned === 'number' && earned > 0) {
-        // 更新本地状态
-        currentMonthGold.value = rewardResponse.data.currentMonthGold;
-        // 显示金币奖励动画和语音
-        showRewardAnimation(earned);
-        // 重新加载今日金币统计（全局）和收益记录（当前设备）
-        await loadTodayGoldStats();
-        await loadGoldRecords();
-      } else {
-        console.error('金币数量无效:', earned);
-        error.value = '金币发放失败';
-      }
+        if (typeof earned === 'number' && earned > 0) {
+          // 更新本地状态
+          currentMonthGold.value = rewardResponse.data.currentMonthGold;
+          // 显示金币奖励动画和语音
+          await showRewardAnimation(earned);
+          // 检查是否有红包信息
+          const hasRedPacket = rewardResponse.data.hasRedPacket;
+          const redPacketAmount = rewardResponse.data.redPacketAmount;
+          
+          if (hasRedPacket && redPacketAmount > 0) {
+            console.log('🎁 后端触发红包，金额：', redPacketAmount);
+            // 显示红包动画
+            await showRedPacketAnimation(redPacketAmount);
+          }
+          // 重新加载今日金币统计（全局）、收益记录（当前设备）和红包记录
+          await loadTodayGoldStats();
+          await loadGoldRecords();
+          await loadRedPacketRecords();
+        } else {
+          console.error('金币数量无效:', earned);
+          error.value = '金币发放失败';
+        }
     } else {
       error.value = rewardResponse.message || '金币发放失败';
     }
@@ -1140,7 +1274,7 @@ const submitWithdraw = async () => {
               <p class="text-[10px] text-zinc-600 uppercase tracking-widest">加载中...</p>
             </div>
             <!-- 空状态 -->
-            <div v-else-if="records.length === 0" class="py-16 text-center">
+            <div v-else-if="records.length === 0 && redPacketRecords.length === 0" class="py-16 text-center">
               <div class="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
                 <History class="w-5 h-5 text-zinc-700" />
               </div>
@@ -1148,18 +1282,17 @@ const submitWithdraw = async () => {
             </div>
             <!-- 记录列表 -->
             <div 
-              v-else
-              v-for="record in records.slice(0, 50)" 
+              v-for="record in combinedRecords.slice(0, 50)" 
               :key="record.id" 
               class="px-8 py-5 flex justify-between items-center hover:bg-white/2 transition-colors group"
             >
               <div class="flex flex-col">
                 <span class="text-[11px] text-zinc-400 font-mono tracking-tighter">{{ record.time }}</span>
-                <span class="text-[9px] text-zinc-600 uppercase tracking-widest mt-0.5">广告激励成功</span>
+                <span class="text-[9px] text-zinc-600 uppercase tracking-widest mt-0.5">{{ record.type === 'red-packet' ? '幸运红包' : '广告激励成功' }}</span>
               </div>
               <div class="flex items-center">
-                <span class="text-sm font-bold text-amber-400 font-mono group-hover:scale-110 transition-transform mr-2">+{{ Math.floor(record.amount) }}</span>
-                <Coins class="w-3 h-3 text-amber-500/50" />
+                <span class="text-sm font-bold font-mono group-hover:scale-110 transition-transform mr-2" :class="record.type === 'red-packet' ? 'text-red-400' : 'text-amber-400'">+{{ Math.floor(record.amount) }}</span>
+                <component :is="record.type === 'red-packet' ? 'Gift' : 'Coins'" class="w-3 h-3" :class="record.type === 'red-packet' ? 'text-red-500/50' : 'text-amber-500/50'" />
               </div>
             </div>
           </div>
@@ -1225,6 +1358,65 @@ const submitWithdraw = async () => {
           
           <div class="p-8 border-t border-white/5 text-center">
             <p class="text-[10px] text-zinc-600 uppercase tracking-[0.2em]">共计 {{ records.length }} 条记录</p>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- 红包记录弹窗 -->
+    <transition name="modal">
+      <div v-if="showRedPacketRecords" class="fixed inset-0 z-[9999] flex items-end justify-center sm:items-center p-0 sm:p-6 pointer-events-auto">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-md z-[9998] pointer-events-auto" @click="showRedPacketRecords = false" />
+        <div class="relative w-full max-w-md bg-[#020205] border-t sm:border border-white/10 rounded-t-[3rem] sm:rounded-[3rem] overflow-hidden flex flex-col h-[90vh] max-h-[600px] z-[9999] shadow-2xl">
+          <div class="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-[#020205] z-10">
+            <div class="flex items-center">
+              <div class="w-8 h-8 bg-red-500/20 rounded-full flex items-center justify-center mr-3 border border-red-500/30">
+                <Gift class="w-4 h-4 text-red-400" />
+              </div>
+              <h3 class="text-sm font-bold uppercase tracking-widest">红包记录</h3>
+            </div>
+            <button 
+              @click="showRedPacketRecords = false"
+              class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-zinc-500 hover:text-white"
+            >
+              <LogOut class="w-4 h-4 rotate-90" />
+            </button>
+          </div>
+          
+          <div class="flex-1 overflow-y-auto no-scrollbar p-4">
+            <div class="space-y-2">
+              <!-- 加载状态 -->
+              <div v-if="isLoadingRedPacketRecords" class="py-20 text-center">
+                <div class="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 animate-spin">
+                  <Gift class="w-5 h-5 text-zinc-700" />
+                </div>
+                <p class="text-xs text-zinc-600 uppercase tracking-widest">加载中...</p>
+              </div>
+              <!-- 空状态 -->
+              <div v-else-if="redPacketRecords.length === 0" class="py-20 text-center">
+                <p class="text-xs text-zinc-600 uppercase tracking-widest">暂无红包记录</p>
+              </div>
+              <!-- 红包记录列表 -->
+              <div 
+                v-else
+                v-for="record in redPacketRecords" 
+                :key="record.id" 
+                class="px-6 py-4 rounded-2xl glass-card flex justify-between items-center min-h-[60px]"
+              >
+                <div class="flex flex-col">
+                  <span class="text-[11px] text-zinc-400 font-mono tracking-tighter">{{ record.time }}</span>
+                  <span class="text-[9px] text-zinc-600 uppercase tracking-widest mt-0.5">幸运红包</span>
+                </div>
+                <div class="flex items-center">
+                  <span class="text-sm font-bold text-red-400 font-mono mr-2">+{{ Math.floor(record.amount) }}</span>
+                  <Gift class="w-3 h-3 text-red-500/50" />
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="p-8 border-t border-white/5 text-center">
+            <p class="text-[10px] text-zinc-600 uppercase tracking-[0.2em]">共计 {{ redPacketRecords.length }} 条红包记录</p>
           </div>
         </div>
       </div>
