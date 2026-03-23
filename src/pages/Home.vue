@@ -1334,7 +1334,7 @@ const submitWithdraw = async () => {
               </div>
               <div class="flex items-center">
                 <span class="text-sm font-bold font-mono group-hover:scale-110 transition-transform mr-2" :class="record.type === 'red-packet' ? 'text-red-400' : 'text-amber-400'">+{{ Math.floor(record.amount) }}</span>
-                <component :is="record.type === 'red-packet' ? 'Gift' : 'Coins'" class="w-3 h-3" :class="record.type === 'red-packet' ? 'text-red-500/50' : 'text-amber-500/50'" />
+                <component :is="record.type === 'red-packet' ? 'Gift' : 'Coins'" class="w-4 h-4" :class="record.type === 'red-packet' ? 'text-red-500' : 'text-amber-500'" />
               </div>
             </div>
           </div>
