@@ -247,7 +247,7 @@ export async function rewardGold(userId: string, employeeId: string, ecpm: numbe
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/gold/reward`, {
+    const response = await fetch(`${API_BASE_URL}/api/employee/reward-gold`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
