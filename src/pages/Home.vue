@@ -260,6 +260,21 @@ const openRedPacket = async () => {
         console.log('🎁 红包领取成功，金额:', response.data.gold);
         // 更新本地状态
         currentMonthGold.value = response.data.currentMonthGold;
+        
+        // 手动添加红包记录到redPacketRecords，确保立即显示在最近收益列表中
+        const newRedPacketRecord = {
+          id: `red_packet_${Date.now()}`,
+          time: new Date().toLocaleString('zh-CN', {
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit'
+          }),
+          amount: response.data.gold,
+          poolBalanceAfter: 0,
+          timestamp: Date.now()
+        };
+        redPacketRecords.value.unshift(newRedPacketRecord);
+        console.log('✅ 手动添加红包记录:', newRedPacketRecord);
+        
         // 重新加载今日金币统计、收益记录和红包记录
         await loadTodayGoldStats();
         await loadGoldRecords();
@@ -761,10 +776,20 @@ const handleWatchAd = async () => {
           const hasRedPacket = rewardResponse.data.hasRedPacket;
           const redPacketAmount = rewardResponse.data.redPacketAmount;
           
+          console.log('红包信息:', {
+            hasRedPacket: hasRedPacket,
+            redPacketAmount: redPacketAmount
+          });
+          
           if (hasRedPacket && redPacketAmount > 0) {
             console.log('🎁 后端触发红包，金额：', redPacketAmount);
             // 显示红包动画
             await showRedPacketAnimation(redPacketAmount);
+          } else {
+            console.log('❌ 未触发红包，原因:', {
+              hasRedPacket: hasRedPacket,
+              redPacketAmount: redPacketAmount
+            });
           }
           // 重新加载今日金币统计（全局）、收益记录（当前设备）和红包记录
           await loadTodayGoldStats();
