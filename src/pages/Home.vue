@@ -658,8 +658,23 @@ const combinedRecords = computed(() => {
   }));
   
   // 合并并按时间倒序排序
-  return [...goldRecords, ...redPacketRecordsWithType]
-    .sort((a, b) => b.timestamp - a.timestamp);
+  const mergedRecords = [...goldRecords, ...redPacketRecordsWithType];
+  console.log('🔄 合并记录前 - 金币记录数:', goldRecords.length, '红包记录数:', redPacketRecordsWithType.length);
+  
+  // 按时间倒序排序
+  const sortedRecords = mergedRecords.sort((a, b) => {
+    const timestampA = a.timestamp || 0;
+    const timestampB = b.timestamp || 0;
+    console.log('🔄 排序比较 - 记录A时间戳:', timestampA, '记录B时间戳:', timestampB);
+    return timestampB - timestampA;
+  });
+  
+  console.log('🔄 合并记录后 - 总记录数:', sortedRecords.length);
+  if (sortedRecords.length > 0) {
+    console.log('🔄 前5条记录:', sortedRecords.slice(0, 5).map(r => ({ time: r.time, amount: r.amount, type: r.type, timestamp: r.timestamp })));
+  }
+  
+  return sortedRecords;
 });
 
 // 加载金币记录（仅当前设备，用于最近收益列表）
