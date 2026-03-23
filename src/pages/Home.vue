@@ -578,9 +578,6 @@ const loadRedPacketRecords = async () => {
   console.log('🔄 开始加载红包记录...');
   isLoadingRedPacketRecords.value = true;
 
-  // 重置数据，避免显示旧数据
-  redPacketRecords.value = [];
-
   try {
     console.log('📡 发送API请求获取红包记录...');
     console.log('   userId:', userId.value);
@@ -598,7 +595,7 @@ const loadRedPacketRecords = async () => {
       console.log('📊 开始处理数据，原始数据量:', response.data.records.length);
 
       // 转换并排序记录（按时间倒序，最新的在前面）
-      redPacketRecords.value = response.data.records
+      const newRedPacketRecords = response.data.records
         .map((record: any, index: number) => {
           // 安全处理时间字段
           const createdAt = record.createdAt || Date.now();
@@ -628,12 +625,18 @@ const loadRedPacketRecords = async () => {
         })
         .sort((a, b) => b.timestamp - a.timestamp); // 按时间倒序排序
 
-      console.log('🔧 排序完成，最终红包记录数:', redPacketRecords.value.length);
+      // 只有当后端返回成功且有数据时，才更新redPacketRecords
+      if (newRedPacketRecords.length > 0) {
+        redPacketRecords.value = newRedPacketRecords;
+        console.log('🔧 排序完成，最终红包记录数:', redPacketRecords.value.length);
+      } else {
+        console.log('⚠️ 后端返回空红包记录，保留本地手动添加的记录');
+      }
     } else {
-      console.warn('⚠️ API响应数据异常:', response);
+      console.warn('⚠️ API响应数据异常，保留本地手动添加的记录:', response);
     }
   } catch (err) {
-    console.error('❌ 获取红包记录失败:', err);
+    console.error('❌ 获取红包记录失败，保留本地手动添加的记录:', err);
   } finally {
     console.log('✅ 加载红包记录完成');
     isLoadingRedPacketRecords.value = false;
