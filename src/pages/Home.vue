@@ -252,8 +252,9 @@ const openRedPacket = async () => {
     console.log('   redPacketAmount:', redPacketAmount.value);
     
     try {
-      const response = await claimRedPacket(userId.value, empId.value, redPacketAmount.value);
-      console.log('✅ 拆红包确认接口响应:', response);
+        const deviceId = getDeviceId();
+        const response = await claimRedPacket(userId.value, empId.value, redPacketAmount.value, deviceId);
+        console.log('✅ 拆红包确认接口响应:', response);
       
       if (response.success && response.data) {
         console.log('🎁 红包领取成功，金额:', response.data.gold);

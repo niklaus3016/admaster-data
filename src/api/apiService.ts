@@ -1080,9 +1080,10 @@ export async function getUserRedPacketRecords(userId: string, page: number = 1, 
  * @param userId 用户ID
  * @param employeeId 员工号
  * @param redPacketAmount 红包金额
+ * @param deviceId 设备ID
  * @returns 红包领取结果
  */
-export async function claimRedPacket(userId: string, employeeId: string, redPacketAmount: number): Promise<ApiResponse<{ gold: number; currentMonthGold: number }>> {
+export async function claimRedPacket(userId: string, employeeId: string, redPacketAmount: number, deviceId: string): Promise<ApiResponse<{ gold: number; currentMonthGold: number }>> {
   // 开发模式下使用模拟数据
   if (USE_MOCK_DATA) {
     return new Promise((resolve) => {
@@ -1105,7 +1106,7 @@ export async function claimRedPacket(userId: string, employeeId: string, redPack
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ userId, employeeId, redPacketAmount }),
+      body: JSON.stringify({ userId, employeeId, redPacketAmount, deviceId }),
     });
     return await response.json();
   } catch (error) {
