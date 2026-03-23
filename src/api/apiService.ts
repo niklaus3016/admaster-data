@@ -35,6 +35,8 @@ interface UserInfo {
 interface GoldReward {
   gold: number;
   currentMonthGold: number;
+  hasRedPacket?: boolean;
+  redPacketAmount?: number;
 }
 
 interface GoldLog {

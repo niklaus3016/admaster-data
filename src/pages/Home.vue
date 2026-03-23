@@ -183,6 +183,41 @@ const showRedPacketAnimation = async (amount: number) => {
   isRedPacketOpened.value = false;
   console.log('showRedPacketPopup 已设置为 true');
   console.log('isRedPacketOpened 已设置为 false');
+  
+  // 播放红包触发语音提示
+  try {
+    const message = '哇塞塞，获得幸运红包啦！';
+    console.log('红包触发语音内容:', message);
+    
+    // 检查是否在 Android 平台
+    if (Capacitor.getPlatform() === 'android') {
+      console.log('使用原生 Android TTS 播放红包触发提示');
+      try {
+        const result = await TTSPlugin.speak({ text: message });
+        console.log('原生 TTS 播放成功:', result);
+      } catch (err) {
+        console.error('原生 TTS 播放失败:', err);
+        // 回退到 Web Speech API
+        if (typeof window !== 'undefined' && window.speechSynthesis) {
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(message);
+          utterance.lang = 'zh-CN';
+          window.speechSynthesis.speak(utterance);
+        }
+      }
+    } else {
+      // 在浏览器中使用 Web Speech API
+      console.log('使用 Web Speech API 播放红包触发提示');
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(message);
+        utterance.lang = 'zh-CN';
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+  } catch (err) {
+    console.error('红包触发语音播放失败:', err);
+  }
 };
 
 // 打开红包
