@@ -582,9 +582,9 @@ export function useAdManager(config: AdConfig) {
         
         const slotIds = AD_GROUPS.group5;
         
-        // 阶段1：前6个广告位串行
-        const firstSerialSlots = slotIds.slice(0, 6);
-        console.log(`📊 阶段1-串行：前6个广告位`);
+        // 阶段1：前3个广告位串行
+        const firstSerialSlots = slotIds.slice(0, 3);
+        console.log(`📊 阶段1-串行：前3个广告位`);
         
         for (let i = 0; i < firstSerialSlots.length; i++) {
           // 检查总超时
@@ -594,7 +594,7 @@ export function useAdManager(config: AdConfig) {
           }
           
           const slotId = firstSerialSlots[i];
-          console.log(`🔄 前串行 [${i + 1}/6]: ${slotId}`);
+          console.log(`🔄 前串行 [${i + 1}/3]: ${slotId}`);
           
           const isReady = await preloadSingleSlot(slotId);
           
@@ -615,12 +615,12 @@ export function useAdManager(config: AdConfig) {
           }
         }
         
-        // 阶段2：中间6个广告位，每3个并行请求（分2组）
+        // 阶段2：剩下的广告位，每3个一组并行请求
         if (!foundAd) {
-          const parallelSlots = slotIds.slice(6, 12);
+          const remainingSlots = slotIds.slice(3);
           const parallelGroups = [];
-          for (let i = 0; i < parallelSlots.length; i += 3) {
-            parallelGroups.push(parallelSlots.slice(i, i + 3));
+          for (let i = 0; i < remainingSlots.length; i += 3) {
+            parallelGroups.push(remainingSlots.slice(i, i + 3));
           }
           
           console.log(`📊 阶段2-并行：${parallelGroups.length}组，每组3个广告位`);
