@@ -1055,7 +1055,7 @@ export async function getUserRedPacketRecords(userId: string, page: number = 1, 
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/red-packet/records?userId=${userId}&page=${page}&limit=${limit}`);
+    const response = await fetch(`${API_BASE_URL}/api/employee/red-packet/records?userId=${userId}&page=${page}&limit=${limit}`);
     return await response.json();
   } catch (error) {
     console.error('获取用户红包记录失败:', error);
