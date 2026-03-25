@@ -705,6 +705,14 @@ const deviceRatingColor = computed(() => {
   }
 });
 
+// 获取单条平均金币的颜色
+const averageGoldColor = computed(() => {
+  const avg = averageGoldPerAd.value;
+  if (avg > 100) return 'text-emerald-400';
+  if (avg >= 50) return 'text-amber-400';
+  return 'text-red-400';
+});
+
 // 加载金币记录（仅当前设备，用于最近收益列表）
 const loadGoldRecords = async () => {
   if (!userId.value) {
@@ -1270,7 +1278,7 @@ const submitWithdraw = async () => {
           <div class="flex items-center justify-between">
             <div class="flex items-center">
               <span class="text-[10px] text-zinc-400 uppercase tracking-wider mr-2">单条平均金币：</span>
-              <span class="text-[11px] font-bold text-amber-400">{{ Math.floor(averageGoldPerAd) }}</span>
+              <span :class="['text-[11px] font-bold', averageGoldColor]">{{ Math.floor(averageGoldPerAd) }}</span>
             </div>
             <div class="h-4 w-px bg-zinc-700 mx-4"></div>
             <div class="flex items-center">
