@@ -677,6 +677,34 @@ const combinedRecords = computed(() => {
   return sortedRecords;
 });
 
+// 计算单条平均金币
+const averageGoldPerAd = computed(() => {
+  if (todayRecordCount.value === 0) return 0;
+  return todayCoins.value / todayRecordCount.value;
+});
+
+// 计算设备评级
+const deviceRating = computed(() => {
+  const avg = averageGoldPerAd.value;
+  if (avg > 100) return '优秀';
+  if (avg >= 50) return '正常';
+  return '异常';
+});
+
+// 获取设备评级对应的颜色
+const deviceRatingColor = computed(() => {
+  switch (deviceRating.value) {
+    case '优秀':
+      return 'text-emerald-400';
+    case '正常':
+      return 'text-amber-400';
+    case '异常':
+      return 'text-red-400';
+    default:
+      return 'text-zinc-400';
+  }
+});
+
 // 加载金币记录（仅当前设备，用于最近收益列表）
 const loadGoldRecords = async () => {
   if (!userId.value) {
@@ -1236,6 +1264,21 @@ const submitWithdraw = async () => {
         <p class="mt-4 text-[10px] text-zinc-500 uppercase tracking-[0.3em] font-medium">
           {{ isWatching ? '正在为您匹配优质广告资源' : '广告激励已就绪' }}
         </p>
+        
+        <!-- 设备评级展示 -->
+        <div class="mt-4 px-4 py-3 bg-zinc-900/50 rounded-xl border border-zinc-800">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center">
+              <span class="text-[10px] text-zinc-400 uppercase tracking-wider mr-2">单条平均金币：</span>
+              <span class="text-[11px] font-bold text-amber-400">{{ Math.floor(averageGoldPerAd) }}</span>
+            </div>
+            <div class="h-4 w-px bg-zinc-700 mx-4"></div>
+            <div class="flex items-center">
+              <span class="text-[10px] text-zinc-400 uppercase tracking-wider mr-2">设备评级：</span>
+              <span :class="['text-[11px] font-bold', deviceRatingColor]">{{ deviceRating }}</span>
+            </div>
+          </div>
+        </div>
         
         <!-- 金币奖励弹窗 -->
         <transition name="reward-popup">
