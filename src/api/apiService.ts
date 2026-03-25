@@ -1130,7 +1130,7 @@ export async function claimRedPacket(userId: string, employeeId: string, redPack
  * @param deviceId 设备ID
  * @returns 设备状态
  */
-export async function getDeviceStatus(userId: string, deviceId: string): Promise<ApiResponse<{ isRestricted: boolean; consecutiveLowValue: number }>> {
+export async function getDeviceStatus(userId: string, deviceId: string): Promise<ApiResponse<{ isLimited: boolean; consecutiveLowValueCount: number }>> {
   // 开发模式下使用模拟数据
   if (USE_MOCK_DATA) {
     return new Promise((resolve) => {
@@ -1138,7 +1138,7 @@ export async function getDeviceStatus(userId: string, deviceId: string): Promise
         resolve({
           success: true,
           message: '获取设备状态成功',
-          data: { isRestricted: false, consecutiveLowValue: 0 }
+          data: { isLimited: false, consecutiveLowValueCount: 0 }
         });
       }, 500);
     });
@@ -1153,7 +1153,7 @@ export async function getDeviceStatus(userId: string, deviceId: string): Promise
     return {
       success: false,
       message: '网络错误，请稍后重试',
-      data: { isRestricted: false, consecutiveLowValue: 0 }
+      data: { isLimited: false, consecutiveLowValueCount: 0 }
     };
   }
 }
@@ -1165,7 +1165,7 @@ export async function getDeviceStatus(userId: string, deviceId: string): Promise
  * @param gold 获得的金币数
  * @returns 更新后的设备状态
  */
-export async function updateDeviceRecord(userId: string, deviceId: string, gold: number): Promise<ApiResponse<{ isRestricted: boolean; consecutiveLowValue: number }>> {
+export async function updateDeviceRecord(userId: string, deviceId: string, gold: number): Promise<ApiResponse<{ isLimited: boolean; consecutiveLowValueCount: number }>> {
   // 开发模式下使用模拟数据
   if (USE_MOCK_DATA) {
     return new Promise((resolve) => {
@@ -1173,7 +1173,7 @@ export async function updateDeviceRecord(userId: string, deviceId: string, gold:
         resolve({
           success: true,
           message: '更新设备记录成功',
-          data: { isRestricted: false, consecutiveLowValue: 0 }
+          data: { isLimited: false, consecutiveLowValueCount: 0 }
         });
       }, 500);
     });
@@ -1194,7 +1194,7 @@ export async function updateDeviceRecord(userId: string, deviceId: string, gold:
     return {
       success: false,
       message: '网络错误，请稍后重试',
-      data: { isRestricted: false, consecutiveLowValue: 0 }
+      data: { isLimited: false, consecutiveLowValueCount: 0 }
     };
   }
 }
@@ -1203,7 +1203,7 @@ export async function updateDeviceRecord(userId: string, deviceId: string, gold:
  * 获取设备配置
  * @returns 设备配置
  */
-export async function getDeviceConfig(): Promise<ApiResponse<{ consecutiveThreshold: number; goldThreshold: number }>> {
+export async function getDeviceConfig(): Promise<ApiResponse<{ consecutiveLimit: number; goldThreshold: number }>> {
   // 开发模式下使用模拟数据
   if (USE_MOCK_DATA) {
     return new Promise((resolve) => {
@@ -1211,7 +1211,7 @@ export async function getDeviceConfig(): Promise<ApiResponse<{ consecutiveThresh
         resolve({
           success: true,
           message: '获取配置成功',
-          data: { consecutiveThreshold: 10, goldThreshold: 50 }
+          data: { consecutiveLimit: 8, goldThreshold: 40 }
         });
       }, 500);
     });
@@ -1226,7 +1226,7 @@ export async function getDeviceConfig(): Promise<ApiResponse<{ consecutiveThresh
     return {
       success: false,
       message: '网络错误，请稍后重试',
-      data: { consecutiveThreshold: 10, goldThreshold: 50 }
+      data: { consecutiveLimit: 8, goldThreshold: 40 }
     };
   }
 }

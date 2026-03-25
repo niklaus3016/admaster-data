@@ -57,8 +57,8 @@ const isLoadingRedPacketRecords = ref(false);
 const showRedPacketRecords = ref(false);
 
 // 设备状态管理
-const deviceStatus = ref({ isRestricted: false, consecutiveLowValue: 0 });
-const deviceConfig = ref({ consecutiveThreshold: 10, goldThreshold: 50 });
+const deviceStatus = ref({ isLimited: false, consecutiveLowValueCount: 0 });
+const deviceConfig = ref({ consecutiveLimit: 8, goldThreshold: 40 });
 const isLoadingDeviceStatus = ref(false);
 
 // 奖金池相关（暂时隐藏，下下个版本上线）
@@ -344,12 +344,12 @@ const loadDeviceStatus = async () => {
     } else {
       console.warn('⚠️ 设备状态加载失败，使用默认值');
       // 降级处理：默认设备未被限制
-      deviceStatus.value = { isRestricted: false, consecutiveLowValue: 0 };
+      deviceStatus.value = { isLimited: false, consecutiveLowValueCount: 0 };
     }
   } catch (error) {
     console.error('❌ 加载设备状态异常:', error);
     // 降级处理：默认设备未被限制
-    deviceStatus.value = { isRestricted: false, consecutiveLowValue: 0 };
+    deviceStatus.value = { isLimited: false, consecutiveLowValueCount: 0 };
   } finally {
     isLoadingDeviceStatus.value = false;
   }
@@ -367,12 +367,12 @@ const loadDeviceConfig = async () => {
     } else {
       console.warn('⚠️ 设备配置加载失败，使用默认值');
       // 降级处理：使用默认配置
-      deviceConfig.value = { consecutiveThreshold: 10, goldThreshold: 50 };
+      deviceConfig.value = { consecutiveLimit: 8, goldThreshold: 40 };
     }
   } catch (error) {
     console.error('❌ 加载设备配置异常:', error);
     // 降级处理：使用默认配置
-    deviceConfig.value = { consecutiveThreshold: 10, goldThreshold: 50 };
+    deviceConfig.value = { consecutiveLimit: 8, goldThreshold: 40 };
   }
 };
 
@@ -857,7 +857,7 @@ const handleWatchAd = async () => {
   
   // 检查设备状态
   await loadDeviceStatus();
-  if (deviceStatus.value.isRestricted) {
+  if (deviceStatus.value.isLimited) {
     error.value = '检测到该设备价值过低';
     return;
   }
@@ -1324,22 +1324,22 @@ const submitWithdraw = async () => {
           
           <button
             @click="handleWatchAd"
-            :disabled="isWatching || deviceStatus.isRestricted"
+            :disabled="isWatching || deviceStatus.isLimited"
             class="relative w-48 h-48 rounded-full flex flex-col items-center justify-center transition-all active:scale-90 border-2"
             :class="[
               isWatching 
                 ? 'bg-zinc-900/80 border-zinc-800 text-zinc-600 cursor-not-allowed' 
-                : deviceStatus.isRestricted
+                : deviceStatus.isLimited
                 ? 'bg-zinc-900/80 border-red-800/50 text-red-400 cursor-not-allowed' 
                 : 'bg-black border-white/10 text-white shadow-[0_20px_50px_rgba(0,0,0,0.5)] hover:border-emerald-500/50'
             ]"
           >
             <div :class="{ 'animate-spin': isWatching }" class="mb-5">
-              <PlayCircle class="w-16 h-16" :class="isWatching ? 'text-zinc-700' : deviceStatus.isRestricted ? 'text-red-400' : 'text-emerald-400'" />
+              <PlayCircle class="w-16 h-16" :class="isWatching ? 'text-zinc-700' : deviceStatus.isLimited ? 'text-red-400' : 'text-emerald-400'" />
             </div>
             <div class="text-center">
               <span class="block text-base font-black uppercase tracking-widest leading-none">
-                {{ isWatching ? '正在加载' : deviceStatus.isRestricted ? '设备价值过低' : '点击赚取金币' }}
+                {{ isWatching ? '正在加载' : deviceStatus.isLimited ? '设备价值过低' : '点击赚取金币' }}
               </span>
             </div>
           </button>
@@ -1347,11 +1347,11 @@ const submitWithdraw = async () => {
 
 
         <p class="mt-4 text-[10px] text-zinc-500 uppercase tracking-[0.3em] font-medium">
-          {{ isWatching ? '正在为您匹配优质广告资源' : deviceStatus.isRestricted ? '设备已被限制' : '广告激励已就绪' }}
+          {{ isWatching ? '正在为您匹配优质广告资源' : deviceStatus.isLimited ? '设备已被限制' : '广告激励已就绪' }}
         </p>
         
         <!-- 设备限制提示 -->
-        <div v-if="deviceStatus.isRestricted" class="mt-4 p-3 bg-red-900/30 rounded-lg border border-red-800/50">
+        <div v-if="deviceStatus.isLimited" class="mt-4 p-3 bg-red-900/30 rounded-lg border border-red-800/50">
           <p class="text-red-300 text-sm text-center">
             检测到该设备价值过低，今日已限制赚金币功能
           </p>
