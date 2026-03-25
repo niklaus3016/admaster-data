@@ -1130,7 +1130,7 @@ export async function claimRedPacket(userId: string, employeeId: string, redPack
  * @param deviceId 设备ID
  * @returns 设备状态
  */
-export async function getDeviceStatus(userId: string, deviceId: string): Promise<ApiResponse<{ isLimited: boolean; consecutiveLowValueCount: number }>> {
+export async function getDeviceStatus(userId: string, deviceId: string): Promise<ApiResponse<{ isLimited: boolean; message?: string; consecutiveLowValueCount?: number }>> {
   // 开发模式下使用模拟数据
   if (USE_MOCK_DATA) {
     return new Promise((resolve) => {
@@ -1138,7 +1138,7 @@ export async function getDeviceStatus(userId: string, deviceId: string): Promise
         resolve({
           success: true,
           message: '获取设备状态成功',
-          data: { isLimited: false, consecutiveLowValueCount: 0 }
+          data: { isLimited: false, consecutiveLowValueCount: 0, message: '设备状态正常' }
         });
       }, 500);
     });
@@ -1146,14 +1146,22 @@ export async function getDeviceStatus(userId: string, deviceId: string): Promise
 
   try {
     const response = await fetch(`${API_BASE_URL}/api/device/status?userId=${userId}&deviceId=${deviceId}`);
-    return await response.json();
+    const data = await response.json();
+    // 确保返回的数据结构一致
+    if (data.success && data.data) {
+      // 如果后端返回的数据没有consecutiveLowValueCount字段，添加默认值
+      if (data.data.consecutiveLowValueCount === undefined) {
+        data.data.consecutiveLowValueCount = 0;
+      }
+    }
+    return data;
   } catch (error) {
     console.error('获取设备状态失败:', error);
     // 降级处理：默认设备未被限制
     return {
       success: false,
       message: '网络错误，请稍后重试',
-      data: { isLimited: false, consecutiveLowValueCount: 0 }
+      data: { isLimited: false, consecutiveLowValueCount: 0, message: '设备状态正常' }
     };
   }
 }
