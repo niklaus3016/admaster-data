@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { Coins, History, PlayCircle, LogOut, TrendingUp, Wallet, CreditCard, Trophy, Gift } from 'lucide-vue-next';
-import { getUserInfo, rewardGold, getGoldLogs, getTodayGoldStats, recordLogin, getLoginStats, submitWithdrawRequest, getWithdrawStatus, getWithdrawRecords, claimDailyBonus, recordActivity, getPoolStatus, recordAdView, getUserTickets, getUserRedPacketRecords, claimRedPacket, type WithdrawRecord } from '../api/apiService';
+import { getUserInfo, rewardGold, getGoldLogs, getTodayGoldStats, recordLogin, getLoginStats, submitWithdrawRequest, getWithdrawStatus, getWithdrawRecords, claimDailyBonus, recordActivity, getPoolStatus, recordAdView, getUserTickets, getUserRedPacketRecords, claimRedPacket, getDeviceStatus, updateDeviceRecord, getDeviceConfig, type WithdrawRecord } from '../api/apiService';
 import { useAdManager } from '../composables/useAdManager';
 import { TTSPlugin } from '../plugins/TTSPlugin';
 import { Capacitor } from '@capacitor/core';
@@ -55,6 +55,11 @@ let redPacketTimeout: ReturnType<typeof setTimeout> | null = null;
 const redPacketRecords = ref<any[]>([]);
 const isLoadingRedPacketRecords = ref(false);
 const showRedPacketRecords = ref(false);
+
+// 设备状态管理
+const deviceStatus = ref({ isRestricted: false, consecutiveLowValue: 0 });
+const deviceConfig = ref({ consecutiveThreshold: 10, goldThreshold: 50 });
+const isLoadingDeviceStatus = ref(false);
 
 // 奖金池相关（暂时隐藏，下下个版本上线）
 // const poolStatus = ref({ redPacketPool: 0, lotteryPool: 0 });
@@ -323,6 +328,54 @@ const getDeviceId = (): string => {
   return deviceId;
 };
 
+// 加载设备状态
+const loadDeviceStatus = async () => {
+  if (!userId.value) return;
+  
+  isLoadingDeviceStatus.value = true;
+  try {
+    const deviceId = getDeviceId();
+    console.log('🔄 加载设备状态...');
+    const response = await getDeviceStatus(userId.value, deviceId);
+    
+    if (response.success && response.data) {
+      deviceStatus.value = response.data;
+      console.log('✅ 设备状态加载成功:', deviceStatus.value);
+    } else {
+      console.warn('⚠️ 设备状态加载失败，使用默认值');
+      // 降级处理：默认设备未被限制
+      deviceStatus.value = { isRestricted: false, consecutiveLowValue: 0 };
+    }
+  } catch (error) {
+    console.error('❌ 加载设备状态异常:', error);
+    // 降级处理：默认设备未被限制
+    deviceStatus.value = { isRestricted: false, consecutiveLowValue: 0 };
+  } finally {
+    isLoadingDeviceStatus.value = false;
+  }
+};
+
+// 加载设备配置
+const loadDeviceConfig = async () => {
+  try {
+    console.log('🔄 加载设备配置...');
+    const response = await getDeviceConfig();
+    
+    if (response.success && response.data) {
+      deviceConfig.value = response.data;
+      console.log('✅ 设备配置加载成功:', deviceConfig.value);
+    } else {
+      console.warn('⚠️ 设备配置加载失败，使用默认值');
+      // 降级处理：使用默认配置
+      deviceConfig.value = { consecutiveThreshold: 10, goldThreshold: 50 };
+    }
+  } catch (error) {
+    console.error('❌ 加载设备配置异常:', error);
+    // 降级处理：使用默认配置
+    deviceConfig.value = { consecutiveThreshold: 10, goldThreshold: 50 };
+  }
+};
+
 // 记录用户活动
 const recordUserActivity = async () => {
   if (!userId.value || !empId.value) return;
@@ -438,6 +491,8 @@ onMounted(async () => {
   await loadTodayGoldStats(); // 加载今日金币统计（全局）
   await loadGoldRecords(); // 加载收益记录（当前设备）
   await loadRedPacketRecords(); // 加载红包记录
+  await loadDeviceStatus(); // 加载设备状态
+  await loadDeviceConfig(); // 加载设备配置
   // await loadPoolStatus(); // 加载奖金池状态（暂时隐藏，下下个版本上线）
 
   // 记录用户活动（进入首页）
@@ -800,6 +855,13 @@ const loadGoldRecords = async () => {
 const handleWatchAd = async () => {
   if (isWatching.value || !empId.value || !userId.value) return;
   
+  // 检查设备状态
+  await loadDeviceStatus();
+  if (deviceStatus.value.isRestricted) {
+    error.value = '检测到该设备价值过低';
+    return;
+  }
+  
   isWatching.value = true;
   error.value = '';
   
@@ -844,6 +906,19 @@ const handleWatchAd = async () => {
               redPacketAmount: redPacketAmount
             });
           }
+          // 更新设备记录
+          try {
+            const deviceId = getDeviceId();
+            const deviceRecordResponse = await updateDeviceRecord(userId.value, deviceId, earned);
+            if (deviceRecordResponse.success && deviceRecordResponse.data) {
+              deviceStatus.value = deviceRecordResponse.data;
+              console.log('✅ 设备记录更新成功:', deviceStatus.value);
+            }
+          } catch (error) {
+            console.error('❌ 更新设备记录失败:', error);
+            // 降级处理：继续执行，不影响用户获得金币
+          }
+          
           // 重新加载今日金币统计（全局）、收益记录（当前设备）和红包记录
           await loadTodayGoldStats();
           await loadGoldRecords();
@@ -1249,20 +1324,22 @@ const submitWithdraw = async () => {
           
           <button
             @click="handleWatchAd"
-            :disabled="isWatching"
+            :disabled="isWatching || deviceStatus.isRestricted"
             class="relative w-48 h-48 rounded-full flex flex-col items-center justify-center transition-all active:scale-90 border-2"
             :class="[
               isWatching 
                 ? 'bg-zinc-900/80 border-zinc-800 text-zinc-600 cursor-not-allowed' 
+                : deviceStatus.isRestricted
+                ? 'bg-zinc-900/80 border-red-800/50 text-red-400 cursor-not-allowed' 
                 : 'bg-black border-white/10 text-white shadow-[0_20px_50px_rgba(0,0,0,0.5)] hover:border-emerald-500/50'
             ]"
           >
             <div :class="{ 'animate-spin': isWatching }" class="mb-5">
-              <PlayCircle class="w-16 h-16" :class="isWatching ? 'text-zinc-700' : 'text-emerald-400'" />
+              <PlayCircle class="w-16 h-16" :class="isWatching ? 'text-zinc-700' : deviceStatus.isRestricted ? 'text-red-400' : 'text-emerald-400'" />
             </div>
             <div class="text-center">
               <span class="block text-base font-black uppercase tracking-widest leading-none">
-                {{ isWatching ? '正在加载' : '点击赚取金币' }}
+                {{ isWatching ? '正在加载' : deviceStatus.isRestricted ? '设备价值过低' : '点击赚取金币' }}
               </span>
             </div>
           </button>
@@ -1270,8 +1347,15 @@ const submitWithdraw = async () => {
 
 
         <p class="mt-4 text-[10px] text-zinc-500 uppercase tracking-[0.3em] font-medium">
-          {{ isWatching ? '正在为您匹配优质广告资源' : '广告激励已就绪' }}
+          {{ isWatching ? '正在为您匹配优质广告资源' : deviceStatus.isRestricted ? '设备已被限制' : '广告激励已就绪' }}
         </p>
+        
+        <!-- 设备限制提示 -->
+        <div v-if="deviceStatus.isRestricted" class="mt-4 p-3 bg-red-900/30 rounded-lg border border-red-800/50">
+          <p class="text-red-300 text-sm text-center">
+            检测到该设备价值过低，今日已限制赚金币功能
+          </p>
+        </div>
         
         <!-- 设备评级展示 -->
         <div class="mt-4 px-4 py-3 bg-zinc-900/50 rounded-xl border border-zinc-800">

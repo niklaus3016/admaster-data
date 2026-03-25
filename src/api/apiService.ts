@@ -1121,3 +1121,112 @@ export async function claimRedPacket(userId: string, employeeId: string, redPack
     };
   }
 }
+
+// 设备状态相关接口
+
+/**
+ * 获取设备状态
+ * @param userId 用户ID
+ * @param deviceId 设备ID
+ * @returns 设备状态
+ */
+export async function getDeviceStatus(userId: string, deviceId: string): Promise<ApiResponse<{ isRestricted: boolean; consecutiveLowValue: number }>> {
+  // 开发模式下使用模拟数据
+  if (USE_MOCK_DATA) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          success: true,
+          message: '获取设备状态成功',
+          data: { isRestricted: false, consecutiveLowValue: 0 }
+        });
+      }, 500);
+    });
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/device/status?userId=${userId}&deviceId=${deviceId}`);
+    return await response.json();
+  } catch (error) {
+    console.error('获取设备状态失败:', error);
+    // 降级处理：默认设备未被限制
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: { isRestricted: false, consecutiveLowValue: 0 }
+    };
+  }
+}
+
+/**
+ * 更新设备记录
+ * @param userId 用户ID
+ * @param deviceId 设备ID
+ * @param gold 获得的金币数
+ * @returns 更新后的设备状态
+ */
+export async function updateDeviceRecord(userId: string, deviceId: string, gold: number): Promise<ApiResponse<{ isRestricted: boolean; consecutiveLowValue: number }>> {
+  // 开发模式下使用模拟数据
+  if (USE_MOCK_DATA) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          success: true,
+          message: '更新设备记录成功',
+          data: { isRestricted: false, consecutiveLowValue: 0 }
+        });
+      }, 500);
+    });
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/device/update`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userId, deviceId, gold }),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('更新设备记录失败:', error);
+    // 降级处理：继续执行，不影响用户获得金币
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: { isRestricted: false, consecutiveLowValue: 0 }
+    };
+  }
+}
+
+/**
+ * 获取设备配置
+ * @returns 设备配置
+ */
+export async function getDeviceConfig(): Promise<ApiResponse<{ consecutiveThreshold: number; goldThreshold: number }>> {
+  // 开发模式下使用模拟数据
+  if (USE_MOCK_DATA) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          success: true,
+          message: '获取配置成功',
+          data: { consecutiveThreshold: 10, goldThreshold: 50 }
+        });
+      }, 500);
+    });
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/device/config`);
+    return await response.json();
+  } catch (error) {
+    console.error('获取设备配置失败:', error);
+    // 降级处理：使用默认配置
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: { consecutiveThreshold: 10, goldThreshold: 50 }
+    };
+  }
+}
