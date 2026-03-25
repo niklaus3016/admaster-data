@@ -1238,3 +1238,113 @@ export async function getDeviceConfig(): Promise<ApiResponse<{ consecutiveLimit:
     };
   }
 }
+
+// 幸运彩票相关接口
+
+/**
+ * 获取奖金池状态
+ * @returns 奖金池状态
+ */
+export async function getLotteryPool(): Promise<ApiResponse<{ totalAmount: number; todayAmount: number }>> {
+  // 开发模式下使用模拟数据
+  if (USE_MOCK_DATA) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          success: true,
+          message: '获取奖金池状态成功',
+          data: { totalAmount: 125000, todayAmount: 35000 }
+        });
+      }, 500);
+    });
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/lottery/pool`);
+    return await response.json();
+  } catch (error) {
+    console.error('获取奖金池状态失败:', error);
+    // 降级处理：返回默认值
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: { totalAmount: 0, todayAmount: 0 }
+    };
+  }
+}
+
+/**
+ * 获取用户奖券列表
+ * @returns 用户奖券列表
+ */
+export async function getLotteryTickets(): Promise<ApiResponse<any[]>> {
+  // 开发模式下使用模拟数据
+  if (USE_MOCK_DATA) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          success: true,
+          message: '获取奖券列表成功',
+          data: [
+            { _id: '1', userId: 'test123', ticketNumber: 'LT202403250001', status: 'active', createdAt: new Date().toISOString() }
+          ]
+        });
+      }, 500);
+    });
+  }
+
+  try {
+    const userId = localStorage.getItem('userId');
+    if (!userId) {
+      return {
+        success: false,
+        message: '用户未登录',
+        data: []
+      };
+    }
+    const response = await fetch(`${API_BASE_URL}/api/lottery/tickets?userId=${userId}`);
+    return await response.json();
+  } catch (error) {
+    console.error('获取奖券列表失败:', error);
+    // 降级处理：返回空数组
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: []
+    };
+  }
+}
+
+
+
+/**
+ * 获取彩票设置
+ * @returns 彩票设置
+ */
+export async function getLotterySettings(): Promise<ApiResponse<{ poolPercentage: number; drawTime: string }>> {
+  // 开发模式下使用模拟数据
+  if (USE_MOCK_DATA) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          success: true,
+          message: '获取彩票设置成功',
+          data: { poolPercentage: 5, drawTime: '22:00' }
+        });
+      }, 500);
+    });
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/lottery/settings`);
+    return await response.json();
+  } catch (error) {
+    console.error('获取彩票设置失败:', error);
+    // 降级处理：返回默认值
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: { poolPercentage: 5, drawTime: '22:00' }
+    };
+  }
+}
