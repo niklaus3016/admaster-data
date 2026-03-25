@@ -339,7 +339,11 @@ const loadDeviceStatus = async () => {
     const response = await getDeviceStatus(userId.value, deviceId);
     
     if (response.success && response.data) {
-      deviceStatus.value = response.data;
+      // 确保consecutiveLowValueCount有默认值
+      deviceStatus.value = {
+        isLimited: response.data.isLimited,
+        consecutiveLowValueCount: response.data.consecutiveLowValueCount || 0
+      };
       console.log('✅ 设备状态加载成功:', deviceStatus.value);
     } else {
       console.warn('⚠️ 设备状态加载失败，使用默认值');
@@ -911,7 +915,11 @@ const handleWatchAd = async () => {
             const deviceId = getDeviceId();
             const deviceRecordResponse = await updateDeviceRecord(userId.value, deviceId, earned);
             if (deviceRecordResponse.success && deviceRecordResponse.data) {
-              deviceStatus.value = deviceRecordResponse.data;
+              // 确保consecutiveLowValueCount有默认值
+              deviceStatus.value = {
+                isLimited: deviceRecordResponse.data.isLimited,
+                consecutiveLowValueCount: deviceRecordResponse.data.consecutiveLowValueCount || 0
+              };
               console.log('✅ 设备记录更新成功:', deviceStatus.value);
             }
           } catch (error) {
