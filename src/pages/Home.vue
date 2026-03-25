@@ -1282,7 +1282,7 @@ const submitWithdraw = async () => {
             </div>
             <div class="h-4 w-px bg-zinc-700 mx-4"></div>
             <div class="flex items-center">
-              <span class="text-[10px] text-zinc-400 uppercase tracking-wider mr-2">设备评级：</span>
+              <span class="text-[10px] text-zinc-400 uppercase tracking-wider mr-2">评级：</span>
               <span :class="['text-[11px] font-bold', deviceRatingColor]">{{ deviceRating }}</span>
             </div>
           </div>
