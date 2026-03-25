@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { Coins, History, PlayCircle, LogOut, TrendingUp, Wallet, CreditCard, Trophy, Gift } from 'lucide-vue-next';
+import { Coins, History, PlayCircle, LogOut, TrendingUp, Wallet, CreditCard, Trophy, Gift, Ticket } from 'lucide-vue-next';
 import { getUserInfo, rewardGold, getGoldLogs, getTodayGoldStats, recordLogin, getLoginStats, submitWithdrawRequest, getWithdrawStatus, getWithdrawRecords, claimDailyBonus, recordActivity, getPoolStatus, recordAdView, getUserTickets, getUserRedPacketRecords, claimRedPacket, getDeviceStatus, updateDeviceRecord, getDeviceConfig, type WithdrawRecord } from '../api/apiService';
 import { useAdManager } from '../composables/useAdManager';
 import { TTSPlugin } from '../plugins/TTSPlugin';
@@ -738,20 +738,25 @@ const combinedRecords = computed(() => {
 
 // 计算单条平均金币
 const averageGoldPerAd = computed(() => {
-  if (todayRecordCount.value === 0) return 0;
+  if (todayRecordCount.value === 0) return '-';
   return todayCoins.value / todayRecordCount.value;
 });
 
 // 计算设备评级
 const deviceRating = computed(() => {
+  if (todayRecordCount.value === 0) return '-';
   const avg = averageGoldPerAd.value;
-  if (avg > 100) return '优秀';
-  if (avg >= 50) return '正常';
-  return '异常';
+  if (typeof avg === 'number') {
+    if (avg > 100) return '优秀';
+    if (avg >= 50) return '正常';
+    return '异常';
+  }
+  return '-';
 });
 
 // 获取设备评级对应的颜色
 const deviceRatingColor = computed(() => {
+  if (deviceRating.value === '-') return 'text-zinc-400';
   switch (deviceRating.value) {
     case '优秀':
       return 'text-emerald-400';
@@ -767,9 +772,13 @@ const deviceRatingColor = computed(() => {
 // 获取单条平均金币的颜色
 const averageGoldColor = computed(() => {
   const avg = averageGoldPerAd.value;
-  if (avg > 100) return 'text-emerald-400';
-  if (avg >= 50) return 'text-amber-400';
-  return 'text-red-400';
+  if (avg === '-') return 'text-zinc-400';
+  if (typeof avg === 'number') {
+    if (avg > 100) return 'text-emerald-400';
+    if (avg >= 50) return 'text-amber-400';
+    return 'text-red-400';
+  }
+  return 'text-zinc-400';
 });
 
 // 加载金币记录（仅当前设备，用于最近收益列表）
@@ -1117,7 +1126,7 @@ const submitWithdraw = async () => {
       </button>
     </header>
 
-    <main class="max-w-md mx-auto px-6 mt-6 space-y-6 relative z-10">
+    <main class="max-w-md mx-auto px-6 mt-6 space-y-6 relative z-10 pb-24">
       <!-- Stats Section -->
       <div class="space-y-3">
         <div class="flex justify-between items-end px-2">
@@ -1370,7 +1379,7 @@ const submitWithdraw = async () => {
           <div class="flex items-center justify-between">
             <div class="flex items-center">
               <span class="text-[10px] text-zinc-400 uppercase tracking-wider mr-2">单条平均金币：</span>
-              <span :class="['text-[11px] font-bold', averageGoldColor]">{{ averageGoldPerAd.toFixed(1) }}</span>
+              <span :class="['text-[11px] font-bold', averageGoldColor]">{{ typeof averageGoldPerAd === 'number' ? averageGoldPerAd.toFixed(1) : averageGoldPerAd }}</span>
             </div>
             <div class="h-4 w-px bg-zinc-700 mx-4"></div>
             <div class="flex items-center">
@@ -1780,27 +1789,23 @@ const submitWithdraw = async () => {
     </transition>
 
     <!-- 底部导航栏 -->
-    <div class="bg-zinc-900 border-t border-zinc-800 py-3 px-6">
+    <div class="fixed bottom-0 left-0 right-0 bg-black/40 backdrop-blur-xl border-t border-white/5 py-3 px-6 z-50">
       <div class="flex items-center justify-around">
         <router-link 
           to="/" 
-          class="flex flex-col items-center transition-colors"
-          :class="$route.path === '/' ? 'text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'"
+          class="flex flex-col items-center transition-all duration-300"
+          :class="$route.path === '/' ? 'text-emerald-400 scale-105' : 'text-zinc-400 hover:text-zinc-300'"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-          </svg>
-          <span class="text-xs">电子手工</span>
+          <TrendingUp class="w-6 h-6 mb-1" />
+          <span class="text-xs font-medium">电子手工</span>
         </router-link>
         <router-link 
           to="/lottery" 
-          class="flex flex-col items-center transition-colors"
-          :class="$route.path === '/lottery' ? 'text-emerald-400' : 'text-zinc-500 hover:text-zinc-300'"
+          class="flex flex-col items-center transition-all duration-300"
+          :class="$route.path === '/lottery' ? 'text-emerald-400 scale-105' : 'text-zinc-400 hover:text-zinc-300'"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-          </svg>
-          <span class="text-xs">幸运彩票</span>
+          <Ticket class="w-6 h-6 mb-1" />
+          <span class="text-xs font-medium">幸运彩票</span>
         </router-link>
       </div>
     </div>

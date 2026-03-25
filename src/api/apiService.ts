@@ -862,11 +862,11 @@ export async function getUserTickets(employeeId: string): Promise<ApiResponse<Lo
 }
 
 /**
- * 获取往期开奖记录
+ * 获取往期开奖记录（旧接口，用于兼容）
  * @param limit 限制数量，默认10
  * @returns 开奖记录列表
  */
-export async function getLotteryHistory(limit: number = 10): Promise<ApiResponse<LotteryHistory[]>> {
+export async function getOldLotteryHistory(limit: number = 10): Promise<ApiResponse<LotteryHistory[]>> {
   // 开发模式下使用模拟数据
   if (USE_MOCK_DATA) {
     return new Promise((resolve) => {
@@ -1245,7 +1245,7 @@ export async function getDeviceConfig(): Promise<ApiResponse<{ consecutiveLimit:
  * 获取奖金池状态
  * @returns 奖金池状态
  */
-export async function getLotteryPool(): Promise<ApiResponse<{ totalAmount: number; todayAmount: number }>> {
+export async function getLotteryPool(): Promise<ApiResponse<{ currentAmount: number; totalAmount: number; lastDrawTime: string }>> {
   // 开发模式下使用模拟数据
   if (USE_MOCK_DATA) {
     return new Promise((resolve) => {
@@ -1253,7 +1253,11 @@ export async function getLotteryPool(): Promise<ApiResponse<{ totalAmount: numbe
         resolve({
           success: true,
           message: '获取奖金池状态成功',
-          data: { totalAmount: 125000, todayAmount: 35000 }
+          data: {
+            currentAmount: 1500,
+            totalAmount: 1500,
+            lastDrawTime: new Date().toISOString()
+          }
         });
       }, 500);
     });
@@ -1268,16 +1272,18 @@ export async function getLotteryPool(): Promise<ApiResponse<{ totalAmount: numbe
     return {
       success: false,
       message: '网络错误，请稍后重试',
-      data: { totalAmount: 0, todayAmount: 0 }
+      data: { currentAmount: 0, totalAmount: 0, lastDrawTime: new Date().toISOString() }
     };
   }
 }
 
 /**
  * 获取用户奖券列表
+ * @param userId 用户ID
+ * @param employeeId 员工ID
  * @returns 用户奖券列表
  */
-export async function getLotteryTickets(): Promise<ApiResponse<any[]>> {
+export async function getLotteryTickets(userId: string, employeeId: string): Promise<ApiResponse<{ tickets: any[] }>> {
   // 开发模式下使用模拟数据
   if (USE_MOCK_DATA) {
     return new Promise((resolve) => {
@@ -1285,24 +1291,16 @@ export async function getLotteryTickets(): Promise<ApiResponse<any[]>> {
         resolve({
           success: true,
           message: '获取奖券列表成功',
-          data: [
-            { _id: '1', userId: 'test123', ticketNumber: 'LT202403250001', status: 'active', createdAt: new Date().toISOString() }
-          ]
+          data: {
+            tickets: []
+          }
         });
       }, 500);
     });
   }
 
   try {
-    const userId = localStorage.getItem('userId');
-    if (!userId) {
-      return {
-        success: false,
-        message: '用户未登录',
-        data: []
-      };
-    }
-    const response = await fetch(`${API_BASE_URL}/api/lottery/tickets?userId=${userId}`);
+    const response = await fetch(`${API_BASE_URL}/api/lottery/tickets?userId=${userId}&employeeId=${employeeId}`);
     return await response.json();
   } catch (error) {
     console.error('获取奖券列表失败:', error);
@@ -1310,7 +1308,46 @@ export async function getLotteryTickets(): Promise<ApiResponse<any[]>> {
     return {
       success: false,
       message: '网络错误，请稍后重试',
-      data: []
+      data: { tickets: [] }
+    };
+  }
+}
+
+/**
+ * 获取用户上一期奖券
+ * @param userId 用户ID
+ * @returns 上一期奖券信息
+ */
+export async function getLastLotteryTicket(userId: string): Promise<ApiResponse<{ ticketNumber: string; issueNumber: string; status: string; validUntil: string; createdAt: string } | null>> {
+  // 开发模式下使用模拟数据
+  if (USE_MOCK_DATA) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          success: true,
+          message: '获取上一期奖券成功',
+          data: {
+            ticketNumber: '123456',
+            issueNumber: '2026-03-25-1774450400',
+            status: '有效',
+            validUntil: new Date(Date.now() + 86400000).toISOString(),
+            createdAt: new Date(Date.now() - 86400000).toISOString()
+          }
+        });
+      }, 500);
+    });
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/lottery/tickets/last?userId=${userId}`);
+    return await response.json();
+  } catch (error) {
+    console.error('获取上一期奖券失败:', error);
+    // 降级处理：返回null
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: null
     };
   }
 }
@@ -1321,7 +1358,18 @@ export async function getLotteryTickets(): Promise<ApiResponse<any[]>> {
  * 获取彩票设置
  * @returns 彩票设置
  */
-export async function getLotterySettings(): Promise<ApiResponse<{ poolPercentage: number; drawTime: string }>> {
+export async function getLotterySettings(): Promise<ApiResponse<{ 
+  poolPercentage: number; 
+  drawTime: string; 
+  adCountThreshold: number; 
+  enabled: boolean; 
+  firstPrizePercentage: number; 
+  secondPrizePercentage: number; 
+  thirdPrizePercentage: number; 
+  firstPrizeCount: number; 
+  secondPrizeCount: number; 
+  thirdPrizeCount: number 
+}>> {
   // 开发模式下使用模拟数据
   if (USE_MOCK_DATA) {
     return new Promise((resolve) => {
@@ -1329,7 +1377,18 @@ export async function getLotterySettings(): Promise<ApiResponse<{ poolPercentage
         resolve({
           success: true,
           message: '获取彩票设置成功',
-          data: { poolPercentage: 5, drawTime: '22:00' }
+          data: {
+            poolPercentage: 0.05,
+            drawTime: '22:00',
+            adCountThreshold: 2,
+            enabled: true,
+            firstPrizePercentage: 0.5,
+            secondPrizePercentage: 0.3,
+            thirdPrizePercentage: 0.2,
+            firstPrizeCount: 1,
+            secondPrizeCount: 2,
+            thirdPrizeCount: 3
+          }
         });
       }, 500);
     });
@@ -1344,7 +1403,157 @@ export async function getLotterySettings(): Promise<ApiResponse<{ poolPercentage
     return {
       success: false,
       message: '网络错误，请稍后重试',
-      data: { poolPercentage: 5, drawTime: '22:00' }
+      data: {
+        poolPercentage: 0.05,
+        drawTime: '22:00',
+        adCountThreshold: 2,
+        enabled: true,
+        firstPrizePercentage: 0.5,
+        secondPrizePercentage: 0.3,
+        thirdPrizePercentage: 0.2,
+        firstPrizeCount: 1,
+        secondPrizeCount: 2,
+        thirdPrizeCount: 3
+      }
+    };
+  }
+}
+
+/**
+ * 获取最新开奖结果
+ * @returns 最新开奖结果
+ */
+export async function getLotteryResult(): Promise<ApiResponse<any>> {
+  // 开发模式下使用模拟数据
+  if (USE_MOCK_DATA) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          success: true,
+          message: '获取最新开奖结果成功',
+          data: {
+            issueNumber: '2026-03-25-1774450400',
+            drawTime: new Date().toISOString(),
+            poolAmount: 1500,
+            winners: {
+              firstPrize: [],
+              secondPrize: [],
+              thirdPrize: []
+            },
+            firstPrize: 750,
+            secondPrize: 450,
+            thirdPrize: 300
+          }
+        });
+      }, 500);
+    });
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/lottery/result`);
+    return await response.json();
+  } catch (error) {
+    console.error('获取最新开奖结果失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: null
+    };
+  }
+}
+
+/**
+ * 生成奖券
+ * @param userId 用户ID
+ * @param employeeId 员工ID
+ * @returns 生成的奖券信息
+ */
+export async function generateLotteryTicket(userId: string, employeeId: string): Promise<ApiResponse<{ ticketNumber: string; issueNumber: string }>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/lottery/generate-ticket`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ userId, employeeId })
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('生成奖券失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: { ticketNumber: '', issueNumber: '' }
+    };
+  }
+}
+
+/**
+ * 获取幸运彩票开奖历史
+ * @param page 页码
+ * @param limit 每页数量
+ * @returns 开奖历史记录
+ */
+export async function getLotteryHistory(page: number = 1, limit: number = 20): Promise<ApiResponse<{ history: any[]; pagination: any }>> {
+  // 开发模式下使用模拟数据
+  if (USE_MOCK_DATA) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          success: true,
+          message: '获取开奖历史成功',
+          data: {
+            history: [
+              {
+                issueNumber: '2026-03-25-1774450400',
+                drawTime: new Date().toISOString(),
+                poolAmount: 1500,
+                firstPrize: 750,
+                secondPrize: 450,
+                thirdPrize: 300,
+                winners: {
+                  firstPrize: [
+                    {
+                      userId: 'user_8202_1772466028893',
+                      employeeId: '8202',
+                      amount: 750,
+                      ticketNumber: '123456'
+                    }
+                  ],
+                  secondPrize: [],
+                  thirdPrize: []
+                },
+                drawType: '随机'
+              }
+            ],
+            pagination: {
+              total: 1,
+              page: 1,
+              limit: 20,
+              pages: 1
+            }
+          }
+        });
+      }, 500);
+    });
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/lottery/history?page=${page}&limit=${limit}`);
+    console.log('获取开奖历史响应:', response);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    console.log('获取开奖历史数据:', data);
+    return data;
+  } catch (error) {
+    console.error('获取开奖历史失败:', error);
+    // 降级处理：返回空数据
+    return {
+      success: false,
+      message: '获取开奖历史失败，使用空数据',
+      data: { history: [], pagination: { total: 0, page: 1, limit: 20, pages: 1 } }
     };
   }
 }
