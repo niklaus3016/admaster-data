@@ -10,6 +10,7 @@ const lotteryTickets = ref<any[]>([]);
 const previousTickets = ref<any[]>([]);
 const showPreviousTickets = ref(false);
 const showAllTickets = ref(false);
+const displayMode = ref<'current' | 'previous'>('current'); // 'current' 显示本期，'previous' 显示上期
 const pastDraws = ref<any[]>([]);
 const userInfo = ref({ currentMonthGold: 0 });
 const isSpinning = ref(false);
@@ -107,30 +108,24 @@ const loadData = async () => {
     if (userId) {
       const lastTicketResponse = await getLastLotteryTicket(userId);
       console.log('getLastLotteryTicket响应:', lastTicketResponse);
-      if (lastTicketResponse.success && lastTicketResponse.data) {
+      if (lastTicketResponse.success && lastTicketResponse.data && lastTicketResponse.data.tickets) {
         // 检查是否中奖（根据后端返回的数据判断）
-        const lastTicketData = lastTicketResponse.data;
-        console.log('上一期彩票数据:', lastTicketData);
+        const lastTickets = lastTicketResponse.data.tickets;
+        console.log('上一期彩票数据:', lastTickets);
         
-        // 处理不同的数据结构
-        let lastTicket = lastTicketData;
-        if (lastTicketData.tickets && lastTicketData.tickets.length > 0) {
-          lastTicket = lastTicketData.tickets[0];
-        }
-        
-        // 检查后端返回的中奖状态
-        let isWinner = lastTicket.status && lastTicket.status.includes('中奖');
-        let prize = lastTicket.status || '已开奖';
-        console.log('初始中奖状态:', { isWinner, prize });
-        
-        console.log('最终中奖状态:', { isWinner, prize });
-        previousTickets.value = [{
-          ticketNumber: lastTicket.ticketNumber || '000000',
-          createdAt: lastTicket.createdAt || new Date().toISOString(),
-          status: lastTicket.status || '已开奖',
-          isWinner: isWinner,
-          prize: prize
-        }];
+        // 处理上一期彩票数据
+        previousTickets.value = lastTickets.map((ticket: any) => {
+          // 检查后端返回的中奖状态
+          const isWinner = ticket.status && ticket.status.includes('中奖');
+          const prize = ticket.status || '已开奖';
+          return {
+            ticketNumber: ticket.ticketNumber || '000000',
+            createdAt: ticket.createdAt || new Date().toISOString(),
+            status: ticket.status || '已开奖',
+            isWinner: isWinner,
+            prize: prize
+          };
+        });
         console.log('previousTickets:', previousTickets.value);
       } else {
         previousTickets.value = [];
@@ -331,15 +326,15 @@ watch(isSpinning, (spinning) => {
       <div class="w-full py-6 px-6 rounded-[2rem] bg-white/[0.01] border border-white/[0.03] relative overflow-hidden">
         <div class="flex justify-between items-end mb-4 relative z-10 px-2">
           <div class="flex flex-col gap-1">
-            <h3 class="text-[11px] uppercase tracking-[0.3em] text-zinc-500 font-black">我的幸运彩票</h3>
-            <div class="flex items-center gap-2">
-              <span class="text-xl font-black text-white">{{ lotteryTickets.length }}</span>
-              <span class="text-[9px] text-zinc-600 uppercase tracking-widest">张待开奖</span>
+              <h3 class="text-[11px] uppercase tracking-[0.3em] text-zinc-500 font-black">我的幸运彩票</h3>
+              <div class="flex items-center gap-2">
+                <span class="text-xl font-black text-white">{{ displayMode === 'current' ? lotteryTickets.length : previousTickets.length }}</span>
+                <span class="text-[9px] text-zinc-600 uppercase tracking-widest">{{ displayMode === 'current' ? '张待开奖' : '张已开奖' }}</span>
+              </div>
             </div>
-          </div>
           <div class="flex gap-2">
-            <button @click="showPreviousTickets = !showPreviousTickets" class="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[9px] text-zinc-400 uppercase tracking-[0.2em] font-bold hover:bg-white/10 transition-colors">
-              {{ showPreviousTickets ? '隐藏' : '显示' }}上期彩票
+            <button @click="displayMode = displayMode === 'current' ? 'previous' : 'current'" class="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[9px] text-zinc-400 uppercase tracking-[0.2em] font-bold hover:bg-white/10 transition-colors">
+              {{ displayMode === 'current' ? '显示' : '隐藏' }}上期彩票
             </button>
             <div v-if="isSpinning" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 backdrop-blur-sm">
               <div class="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
@@ -349,9 +344,9 @@ watch(isSpinning, (spinning) => {
         </div>
 
         <!-- 彩票列表 -->
-        <div v-if="lotteryTickets.length > 0" class="grid grid-cols-2 gap-3 relative z-10">
+        <div v-if="(displayMode === 'current' && lotteryTickets.length > 0) || (displayMode === 'previous' && previousTickets.length > 0)" class="grid grid-cols-2 gap-3 relative z-10">
           <div 
-            v-for="(ticket, index) in showAllTickets ? lotteryTickets : lotteryTickets.slice(0, 4)" 
+            v-for="(ticket, index) in displayMode === 'current' ? (showAllTickets ? lotteryTickets : lotteryTickets.slice(0, 4)) : (showAllTickets ? previousTickets : previousTickets.slice(0, 4))" 
             :key="ticket.ticketNumber" 
             class="ticket-card group relative flex flex-col h-24 cursor-pointer transition-all active:scale-[0.96]"
           >
@@ -360,7 +355,7 @@ watch(isSpinning, (spinning) => {
               <div class="absolute inset-0 bg-gradient-to-br from-amber-500/[0.03] to-transparent pointer-events-none" />
               
               <span class="text-[7px] text-zinc-600 uppercase tracking-[0.2em] font-bold mb-1">Ticket No.</span>
-              <span class="text-lg font-mono font-black text-amber-500 tracking-widest drop-shadow-[0_0_8px_rgba(245,158,11,0.2)]">
+              <span :class="displayMode === 'previous' && ticket.isWinner ? 'text-lg font-mono font-black text-red-500 tracking-widest drop-shadow-[0_0_8px_rgba(239,68,68,0.2)]' : 'text-lg font-mono font-black text-amber-500 tracking-widest drop-shadow-[0_0_8px_rgba(245,158,11,0.2)]'">
                 {{ ticket.ticketNumber || '000000' }}
               </span>
               <span class="text-[7px] text-zinc-500 font-mono mt-0.5 opacity-60">{{ new Date(ticket.createdAt || new Date()).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '.') }}</span>
@@ -370,6 +365,20 @@ watch(isSpinning, (spinning) => {
               
               <!-- 流光效果 -->
               <div class="shimmer-effect" />
+              
+              <!-- 中奖标签 -->
+              <div v-if="displayMode === 'previous' && ticket.isWinner" class="absolute top-0 right-0 pointer-events-none">
+                <div class="bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[8px] font-black uppercase tracking-widest py-1 px-3 rounded-bl-lg shadow-[0_0_10px_rgba(245,158,11,0.5)] animate-pulse">
+                  {{ ticket.prize || '中奖' }}
+                </div>
+              </div>
+              
+              <!-- 未中奖标签 -->
+              <div v-else-if="displayMode === 'previous' && !ticket.isWinner" class="absolute top-0 right-0 pointer-events-none">
+                <div class="bg-gradient-to-r from-zinc-700 to-zinc-800 text-zinc-300 text-[8px] font-bold uppercase tracking-widest py-1 px-3 rounded-bl-lg">
+                  未中奖
+                </div>
+              </div>
             </div>
 
             <!-- 侧边切口装饰 -->
@@ -378,78 +387,25 @@ watch(isSpinning, (spinning) => {
             
             <!-- 底部状态栏 -->
             <div class="mt-1 flex items-center justify-center gap-1.5">
-              <div class="w-1 h-1 rounded-full bg-amber-500/40" />
-              <span class="text-[7px] text-zinc-500 uppercase tracking-widest font-bold">{{ ticket.status || '待开奖' }}</span>
+              <div class="w-1 h-1 rounded-full" :class="displayMode === 'previous' && !ticket.isWinner ? 'bg-zinc-700/40' : 'bg-amber-500/40'" />
+              <span class="text-[7px] text-zinc-500 uppercase tracking-widest font-bold">{{ ticket.status || (displayMode === 'current' ? '待开奖' : '已开奖') }}</span>
             </div>
           </div>
           
-          <div v-if="lotteryTickets.length > 4" class="col-span-2 pt-2 text-center">
+          <div v-if="(displayMode === 'current' && lotteryTickets.length > 4) || (displayMode === 'previous' && previousTickets.length > 4)" class="col-span-2 pt-2 text-center">
             <button @click="toggleShowAllTickets" class="text-[9px] text-zinc-600 uppercase tracking-[0.3em] font-bold hover:text-zinc-400 transition-colors">
-              {{ showAllTickets ? '收起' : `查看其余 ${lotteryTickets.length - 4} 张彩票` }}
+              {{ showAllTickets ? '收起' : `查看其余 ${displayMode === 'current' ? lotteryTickets.length - 4 : previousTickets.length - 4} 张彩票` }}
             </button>
           </div>
         </div>
 
-        <!-- 上一期彩票 -->
-        <div v-if="showPreviousTickets && previousTickets.length > 0" class="mt-6 pt-4 border-t border-white/5 relative z-10">
-          <h4 class="text-[10px] uppercase tracking-[0.2em] text-zinc-600 font-bold mb-3 px-2">上一期彩票</h4>
-          <div class="grid grid-cols-2 gap-3">
-            <div 
-              v-for="(ticket, index) in previousTickets.slice(0, 4)" 
-              :key="ticket.ticketNumber" 
-              class="ticket-card group relative flex flex-col h-24 cursor-pointer transition-all active:scale-[0.96]"
-            >
-              <!-- 票面主体 -->
-              <div class="relative flex-1 bg-zinc-900/60 border border-white/5 rounded-xl flex flex-col items-center justify-center overflow-hidden">
-                <div class="absolute inset-0 bg-gradient-to-br from-amber-500/[0.03] to-transparent pointer-events-none" />
-                
-                <span class="text-[7px] text-zinc-600 uppercase tracking-[0.2em] font-bold mb-1">Ticket No.</span>
-                <span class="text-lg font-mono font-black text-amber-500 tracking-widest drop-shadow-[0_0_8px_rgba(245,158,11,0.2)]">
-                  {{ ticket.ticketNumber || '000000' }}
-                </span>
-                <span class="text-[7px] text-zinc-500 font-mono mt-0.5 opacity-60">{{ new Date(ticket.createdAt || new Date()).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '.') }}</span>
-                
-                <!-- 装饰虚线 (底部) -->
-                <div class="absolute bottom-2 left-2 right-2 border-t border-dashed border-white/5" />
-                
-                <!-- 流光效果 -->
-                <div class="shimmer-effect" />
-                
-                <!-- 中奖标签 -->
-                <div v-if="ticket.isWinner" class="absolute top-0 right-0 pointer-events-none">
-                  <div class="bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[8px] font-black uppercase tracking-widest py-1 px-3 rounded-bl-lg shadow-[0_0_10px_rgba(245,158,11,0.5)] animate-pulse">
-                    {{ ticket.prize || '中奖' }}
-                  </div>
-                </div>
-                
-                <!-- 未中奖标签 -->
-                <div v-else class="absolute top-0 right-0 pointer-events-none">
-                  <div class="bg-gradient-to-r from-zinc-700 to-zinc-800 text-zinc-300 text-[8px] font-bold uppercase tracking-widest py-1 px-3 rounded-bl-lg">
-                    未中奖
-                  </div>
-                </div>
-              </div>
-
-              <!-- 侧边切口装饰 -->
-              <div class="absolute top-1/2 -left-1.5 -translate-y-1/2 w-3 h-3 bg-[#0a0a0b] rounded-full border border-white/5" />
-              <div class="absolute top-1/2 -right-1.5 -translate-y-1/2 w-3 h-3 bg-[#0a0a0b] rounded-full border border-white/5" />
-              
-              <!-- 底部状态栏 -->
-              <div class="mt-1 flex items-center justify-center gap-1.5">
-                <div class="w-1 h-1 rounded-full" :class="ticket.isWinner ? 'bg-amber-500/40' : 'bg-zinc-700/40'" />
-                <span class="text-[7px] text-zinc-500 uppercase tracking-widest font-bold">{{ ticket.status || '已开奖' }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div v-else-if="!lotteryTickets.length" class="py-8 flex flex-col items-center justify-center gap-3 opacity-20 relative z-10">
+        <div v-else class="py-8 flex flex-col items-center justify-center gap-3 opacity-20 relative z-10">
           <div class="w-12 h-12 rounded-full border border-dashed border-zinc-700 flex items-center justify-center">
             <Ticket class="w-6 h-6 text-zinc-600" />
           </div>
           <div class="text-center">
-            <p class="text-[11px] uppercase tracking-[0.3em] text-zinc-600 font-black">暂无幸运彩票</p>
-            <p class="text-[9px] text-zinc-700 mt-1">观看广告即可自动获得幸运彩票</p>
+            <p class="text-[11px] uppercase tracking-[0.3em] text-zinc-600 font-black">{{ displayMode === 'current' ? '暂无幸运彩票' : '暂无上期彩票' }}</p>
+            <p class="text-[9px] text-zinc-700 mt-1">{{ displayMode === 'current' ? '观看广告即可自动获得幸运彩票' : '上一期没有彩票记录' }}</p>
           </div>
         </div>
 
