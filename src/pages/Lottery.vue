@@ -369,7 +369,7 @@ watch(isSpinning, (spinning) => {
               <!-- 中奖标签 -->
               <div v-if="displayMode === 'previous' && ticket.isWinner" class="absolute top-0 right-0 pointer-events-none">
                 <div class="bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[8px] font-black uppercase tracking-widest py-1 px-3 rounded-bl-lg shadow-[0_0_10px_rgba(245,158,11,0.5)] animate-pulse">
-                  {{ ticket.prize || '中奖' }}
+                  {{ (ticket.prize || '中奖').replace('中奖（', '').replace('）', '') }}
                 </div>
               </div>
               
