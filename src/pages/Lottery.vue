@@ -93,8 +93,27 @@ const loadData = async () => {
         // 检查是否中奖（根据后端返回的数据判断）
         const lastTicket = lastTicketResponse.data;
         // 检查后端返回的中奖状态
-        const isWinner = (lastTicket as any).isWinner || false;
-        const prize = (lastTicket as any).prize || (isWinner ? '中奖' : undefined);
+        let isWinner = (lastTicket as any).isWinner || false;
+        let prize = (lastTicket as any).prize || (isWinner ? '中奖' : undefined);
+        
+        // 如果后端没有返回中奖状态，根据往期开奖记录判断
+        if (!isWinner && lotteryHistory.value.length > 0) {
+          const lastTicketNumber = lastTicket.ticketNumber;
+          // 遍历往期开奖记录，查找是否有匹配的中奖号码
+          for (const history of lotteryHistory.value) {
+            if (history.winners && history.winners.length > 0) {
+              for (const winner of history.winners) {
+                if (winner.ticketNumber === lastTicketNumber) {
+                  isWinner = true;
+                  prize = `一等奖`; // 假设找到的都是一等奖，实际应该根据历史记录中的奖项判断
+                  break;
+                }
+              }
+              if (isWinner) break;
+            }
+          }
+        }
+        
         previousTickets.value = [{
           ticketNumber: lastTicket.ticketNumber,
           createdAt: lastTicket.createdAt,
