@@ -9,6 +9,7 @@ const poolStatus = ref({ currentAmount: 0, totalAmount: 0, lastDrawTime: '' });
 const lotteryTickets = ref<any[]>([]);
 const previousTickets = ref<any[]>([]);
 const showPreviousTickets = ref(false);
+const showAllTickets = ref(false);
 const pastDraws = ref<any[]>([]);
 const userInfo = ref({ currentMonthGold: 0 });
 const isSpinning = ref(false);
@@ -27,6 +28,11 @@ const lotterySettings = ref({
 }); // 默认值
 let timerInterval: any = null;
 const isLoading = ref(true);
+
+// 切换显示所有彩票
+const toggleShowAllTickets = () => {
+  showAllTickets.value = !showAllTickets.value;
+};
 
 // 计算属性
 const formattedPoolAmount = computed(() => {
@@ -335,7 +341,7 @@ watch(isSpinning, (spinning) => {
         <!-- 彩票列表 -->
         <div v-if="lotteryTickets.length > 0" class="grid grid-cols-2 gap-3 relative z-10">
           <div 
-            v-for="(ticket, index) in lotteryTickets.slice(0, 4)" 
+            v-for="(ticket, index) in showAllTickets ? lotteryTickets : lotteryTickets.slice(0, 4)" 
             :key="ticket.ticketNumber" 
             class="ticket-card group relative flex flex-col h-24 cursor-pointer transition-all active:scale-[0.96]"
           >
@@ -368,8 +374,8 @@ watch(isSpinning, (spinning) => {
           </div>
           
           <div v-if="lotteryTickets.length > 4" class="col-span-2 pt-2 text-center">
-            <button class="text-[9px] text-zinc-600 uppercase tracking-[0.3em] font-bold hover:text-zinc-400 transition-colors">
-              查看其余 {{ lotteryTickets.length - 4 }} 张彩票
+            <button @click="toggleShowAllTickets" class="text-[9px] text-zinc-600 uppercase tracking-[0.3em] font-bold hover:text-zinc-400 transition-colors">
+              {{ showAllTickets ? '收起' : `查看其余 ${lotteryTickets.length - 4} 张彩票` }}
             </button>
           </div>
         </div>
