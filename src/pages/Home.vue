@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { Coins, History, PlayCircle, LogOut, TrendingUp, Wallet, CreditCard, Trophy, Gift, Ticket } from 'lucide-vue-next';
-import { getUserInfo, rewardGold, getGoldLogs, getTodayGoldStats, recordLogin, getLoginStats, submitWithdrawRequest, getWithdrawStatus, getWithdrawRecords, claimDailyBonus, recordActivity, getPoolStatus, recordAdView, getUserTickets, getUserRedPacketRecords, claimRedPacket, getDeviceStatus, updateDeviceRecord, getDeviceConfig, type WithdrawRecord } from '../api/apiService';
+import { getUserInfo, rewardGold, getGoldLogs, getTodayGoldStats, recordLogin, getLoginStats, submitWithdrawRequest, getWithdrawStatus, getWithdrawRecords, claimDailyBonus, recordActivity, getPoolStatus, recordAdView, getUserTickets, getUserRedPacketRecords, claimRedPacket, getDeviceStatus, updateDeviceRecord, getDeviceConfig, getCurrentLotteryTickets, type WithdrawRecord } from '../api/apiService';
 import { useAdManager } from '../composables/useAdManager';
 import { TTSPlugin } from '../plugins/TTSPlugin';
 import { Capacitor } from '@capacitor/core';
@@ -48,6 +48,9 @@ let rewardTimeout: ReturnType<typeof setTimeout> | null = null;
 // 红包弹窗
 const showRedPacketPopup = ref(false);
 const redPacketAmount = ref(0);
+
+// 彩票数量
+const lotteryTickets = ref<any[]>([]);
 const isRedPacketOpened = ref(false);
 let redPacketTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -588,6 +591,13 @@ const loadUserInfo = async (showLoading: boolean = true) => {
       hasClaimedBonus.value = Boolean(response.data.hasClaimedBonus);
     } else {
       error.value = response.message || '获取金币信息失败';
+    }
+    
+    // 获取彩票数量
+    const ticketsResponse = await getCurrentLotteryTickets('user_8202_1772466028893');
+    console.log('获取彩票数量响应:', ticketsResponse);
+    if (ticketsResponse.success && ticketsResponse.data) {
+      lotteryTickets.value = ticketsResponse.data.tickets || [];
     }
   } catch (err) {
     console.error('获取金币信息失败:', err);
@@ -1861,11 +1871,14 @@ const submitWithdraw = async () => {
         </router-link>
         <router-link 
           to="/lottery" 
-          class="flex flex-col items-center transition-all duration-300"
+          class="flex flex-col items-center transition-all duration-300 relative"
           :class="$route.path === '/lottery' ? 'text-emerald-400 scale-105' : 'text-zinc-400 hover:text-zinc-300'"
         >
           <Ticket class="w-6 h-6 mb-1" />
           <span class="text-xs font-medium">幸运彩票</span>
+          <div v-if="lotteryTickets.length > 0" class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+            {{ lotteryTickets.length }}
+          </div>
         </router-link>
       </div>
     </div>

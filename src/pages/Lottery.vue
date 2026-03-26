@@ -592,11 +592,14 @@ watch(isSpinning, (spinning) => {
         </router-link>
         <router-link 
           to="/lottery" 
-          class="flex flex-col items-center transition-all duration-300"
+          class="flex flex-col items-center transition-all duration-300 relative"
           :class="$route.path === '/lottery' ? 'text-emerald-400 scale-105' : 'text-zinc-400 hover:text-zinc-300'"
         >
           <Ticket class="w-6 h-6 mb-1" />
           <span class="text-xs font-medium">幸运彩票</span>
+          <div v-if="lotteryTickets.length > 0" class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+            {{ lotteryTickets.length }}
+          </div>
         </router-link>
       </div>
     </div>
