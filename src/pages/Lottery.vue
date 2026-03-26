@@ -174,14 +174,27 @@ const updateCountdown = () => {
 };
 
 // 生命周期钩子
+let poolRefreshInterval: any = null;
+
 onMounted(() => {
   loadData();
   updateCountdown();
   timerInterval = setInterval(updateCountdown, 1000);
+  // 每30秒自动刷新奖金池数据
+  poolRefreshInterval = setInterval(() => {
+    // 只刷新奖金池数据，避免频繁加载所有数据
+    const poolResponse = getLotteryPool();
+    poolResponse.then(response => {
+      if (response.success && response.data) {
+        poolStatus.value = response.data;
+      }
+    });
+  }, 30000); // 30秒刷新一次
 });
 
 onUnmounted(() => {
   if (timerInterval) clearInterval(timerInterval);
+  if (poolRefreshInterval) clearInterval(poolRefreshInterval);
 });
 
 // 监听开奖状态
@@ -199,7 +212,7 @@ watch(isSpinning, (spinning) => {
     <div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-600/10 blur-[120px] rounded-full pointer-events-none" />
 
     <!-- Header -->
-    <header class="bg-black/40 backdrop-blur-xl border-b border-white/5 px-6 py-5 flex justify-between items-center sticky top-0 z-20">
+    <header class="bg-black/40 backdrop-blur-xl border-b border-white/5 pt-8 pb-5 px-6 flex justify-between items-center sticky top-0 z-20">
       <div class="flex items-center gap-3">
         <div class="w-8 h-8 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/20">
           <Ticket class="text-white w-5 h-5" />
@@ -215,7 +228,7 @@ watch(isSpinning, (spinning) => {
       </div>
     </header>
 
-    <main class="max-w-md mx-auto px-6 mt-4 space-y-4 relative z-10">
+    <main class="max-w-md mx-auto px-6 mt-6 space-y-6 relative z-10">
       <!-- 奖金池 -->
       <div class="relative group bg-gradient-to-br from-zinc-900 to-black p-8 rounded-[2.5rem] border border-white/5 overflow-hidden shadow-2xl text-center">
         <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />

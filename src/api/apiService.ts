@@ -37,6 +37,8 @@ interface GoldReward {
   currentMonthGold: number;
   hasRedPacket?: boolean;
   redPacketAmount?: number;
+  ticketNumber?: string;
+  issueNumber?: string;
 }
 
 interface GoldLog {

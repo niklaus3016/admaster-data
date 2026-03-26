@@ -239,6 +239,49 @@ const showRedPacketAnimation = async (amount: number) => {
   }
 };
 
+// 显示奖券获得提示
+const showTicketAnimation = async (ticketNumber: string) => {
+  console.log('========== showTicketAnimation 被调用 ==========');
+  console.log('奖券号码:', ticketNumber);
+  
+  // 播放奖券获得语音提示
+  try {
+    const message = `恭喜你获得幸运彩票，号码是${ticketNumber}`;
+    console.log('奖券获得语音内容:', message);
+    
+    // 检查是否在 Android 平台
+    if (Capacitor.getPlatform() === 'android') {
+      console.log('使用原生 Android TTS 播放奖券获得提示');
+      try {
+        const result = await TTSPlugin.speak({ text: message });
+        console.log('原生 TTS 播放成功:', result);
+        // 为了确保语音播放完毕，添加一个小延迟
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (err) {
+        console.error('原生 TTS 播放失败:', err);
+        // 回退到 Web Speech API
+        await playWebSpeech(message);
+      }
+    } else {
+      // 在浏览器中使用 Web Speech API
+      console.log('使用 Web Speech API 播放奖券获得提示');
+      await playWebSpeech(message);
+    }
+  } catch (err) {
+    console.error('奖券获得语音播放失败:', err);
+  }
+  
+  // 显示奖券获得弹窗
+  showRewardPopup.value = true;
+  rewardAmount.value = 0; // 奖券获得提示，不需要显示金币数量
+  
+  // 1秒后隐藏
+  rewardTimeout = setTimeout(() => {
+    showRewardPopup.value = false;
+    console.log('showRewardPopup 已设置为 false');
+  }, 2000);
+};
+
 // 打开红包
 const openRedPacket = async () => {
   console.log('========== openRedPacket 被调用 ==========');
@@ -919,6 +962,19 @@ const handleWatchAd = async () => {
               redPacketAmount: redPacketAmount
             });
           }
+          
+          // 检查是否获得奖券
+          const ticketNumber = rewardResponse.data.ticketNumber;
+          const issueNumber = rewardResponse.data.issueNumber;
+          
+          if (ticketNumber && issueNumber) {
+            console.log('🎫 获得奖券:', {
+              ticketNumber: ticketNumber,
+              issueNumber: issueNumber
+            });
+            // 显示奖券获得提示
+            await showTicketAnimation(ticketNumber);
+          }
           // 更新设备记录
           try {
             const deviceId = getDeviceId();
@@ -1392,9 +1448,13 @@ const submitWithdraw = async () => {
         <!-- 金币奖励弹窗 -->
         <transition name="reward-popup">
           <div v-if="showRewardPopup" class="fixed inset-0 flex items-center justify-center z-9999 pointer-events-none">
-            <div class="bg-gradient-to-r from-amber-400 to-orange-500 text-white px-6 py-3 rounded-xl font-bold shadow-lg flex items-center border border-white/30 animate-bounce pointer-events-auto">
+            <div v-if="rewardAmount > 0" class="bg-gradient-to-r from-amber-400 to-orange-500 text-white px-6 py-3 rounded-xl font-bold shadow-lg flex items-center border border-white/30 animate-bounce pointer-events-auto">
               <Coins class="w-6 h-6 text-white mr-2" />
               <span class="text-xl">+{{ Math.floor(rewardAmount) }} 金币</span>
+            </div>
+            <div v-else class="bg-gradient-to-r from-purple-400 to-pink-500 text-white px-6 py-3 rounded-xl font-bold shadow-lg flex items-center border border-white/30 animate-bounce pointer-events-auto">
+              <Ticket class="w-6 h-6 text-white mr-2" />
+              <span class="text-xl">获得幸运彩票</span>
             </div>
           </div>
         </transition>
