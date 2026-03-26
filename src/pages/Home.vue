@@ -1859,7 +1859,7 @@ const submitWithdraw = async () => {
     </transition>
 
     <!-- 底部导航栏 -->
-    <div class="fixed bottom-0 left-0 right-0 bg-black/40 backdrop-blur-xl border-t border-white/5 py-3 px-6 z-50">
+    <div class="fixed bottom-0 left-0 right-0 bg-black/40 backdrop-blur-xl border-t border-white/5 py-3 px-6 z-50" style="padding-bottom: calc(3px + var(--safe-area-inset-bottom)); height: calc(60px + var(--safe-area-inset-bottom));">
       <div class="flex items-center justify-around">
         <router-link 
           to="/" 
