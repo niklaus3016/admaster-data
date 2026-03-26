@@ -109,12 +109,18 @@ const loadData = async () => {
       console.log('getLastLotteryTicket响应:', lastTicketResponse);
       if (lastTicketResponse.success && lastTicketResponse.data) {
         // 检查是否中奖（根据后端返回的数据判断）
-        const lastTicket = lastTicketResponse.data;
-        console.log('上一期彩票数据:', lastTicket);
+        const lastTicketData = lastTicketResponse.data;
+        console.log('上一期彩票数据:', lastTicketData);
+        
+        // 处理不同的数据结构
+        let lastTicket = lastTicketData;
+        if (lastTicketData.tickets && lastTicketData.tickets.length > 0) {
+          lastTicket = lastTicketData.tickets[0];
+        }
         
         // 检查后端返回的中奖状态
-        let isWinner = lastTicket.status.includes('中奖');
-        let prize = lastTicket.status;
+        let isWinner = lastTicket.status && lastTicket.status.includes('中奖');
+        let prize = lastTicket.status || '已开奖';
         console.log('初始中奖状态:', { isWinner, prize });
         
         console.log('最终中奖状态:', { isWinner, prize });
