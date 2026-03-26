@@ -1284,7 +1284,7 @@ export async function getLotteryPool(): Promise<ApiResponse<{ currentAmount: num
  * @param userId 用户ID
  * @returns 用户奖券列表
  */
-export async function getCurrentLotteryTickets(userId: string): Promise<ApiResponse<{ tickets: any[] }>> {
+export async function getCurrentLotteryTickets(userId: string): Promise<ApiResponse<{ tickets: Array<{ ticketNumber: string; issueNumber: string; status: string; validUntil: string; createdAt: string }> }>> {
   // 开发模式下使用模拟数据
   if (USE_MOCK_DATA) {
     return new Promise((resolve) => {
@@ -1319,7 +1319,7 @@ export async function getCurrentLotteryTickets(userId: string): Promise<ApiRespo
  * @param userId 用户ID
  * @returns 上一期奖券信息
  */
-export async function getLastLotteryTicket(userId: string): Promise<ApiResponse<{ ticketNumber: string; issueNumber: string; status: string; validUntil: string; createdAt: string; isWinner?: boolean; prize?: string } | null>> {
+export async function getLastLotteryTicket(userId: string): Promise<ApiResponse<{ tickets: Array<{ ticketNumber: string; issueNumber: string; status: string; validUntil: string; createdAt: string }> } | null>> {
   // 开发模式下使用模拟数据
   if (USE_MOCK_DATA) {
     return new Promise((resolve) => {
@@ -1328,11 +1328,15 @@ export async function getLastLotteryTicket(userId: string): Promise<ApiResponse<
           success: true,
           message: '获取上一期奖券成功',
           data: {
-            ticketNumber: '123456',
-            issueNumber: '2026-03-25-1774450400',
-            status: '有效',
-            validUntil: new Date(Date.now() + 86400000).toISOString(),
-            createdAt: new Date(Date.now() - 86400000).toISOString()
+            tickets: [
+              {
+                ticketNumber: '123456',
+                issueNumber: '2026-03-25-1774450400',
+                status: '中奖（一等奖）',
+                validUntil: new Date(Date.now() + 86400000).toISOString(),
+                createdAt: new Date(Date.now() - 86400000).toISOString()
+              }
+            ]
           }
         });
       }, 500);
@@ -1343,14 +1347,6 @@ export async function getLastLotteryTicket(userId: string): Promise<ApiResponse<
     const response = await fetch(`${API_BASE_URL}/api/lottery/tickets/last?userId=${userId}`);
     const data = await response.json();
     console.log('获取上一期奖券响应:', data);
-    // 处理新的接口返回格式，返回tickets数组中的第一个元素
-    if (data.success && data.data && data.data.tickets && data.data.tickets.length > 0) {
-      return {
-        success: true,
-        message: '获取上一期奖券成功',
-        data: data.data.tickets[0]
-      };
-    }
     return data;
   } catch (error) {
     console.error('获取上一期奖券失败:', error);
