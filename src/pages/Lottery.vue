@@ -3,6 +3,8 @@ import { ref, onMounted, watch, onUnmounted, computed } from 'vue';
 import { Ticket, Trophy, Sparkles, Coins, Clock, TrendingUp } from 'lucide-vue-next';
 import { useLocalStorage } from '../composables/useLocalStorage';
 import { getLotteryPool, getCurrentLotteryTickets, getLotteryHistory, getLotteryResult, generateLotteryTicket, getUserInfo, getLastLotteryTicket, getLotterySettings } from '../api/apiService';
+import { TTSPlugin } from '../plugins/TTSPlugin';
+import { Capacitor } from '@capacitor/core';
 
 // 响应式数据
 const poolStatus = ref({ currentAmount: 0, totalAmount: 0, lastDrawTime: '' });
@@ -139,14 +141,14 @@ const loadData = async () => {
 };
 
 // 模拟开奖（实际开奖由后端定时执行）
-const drawLottery = () => {
+const drawLottery = async () => {
   if (lotteryTickets.value.length === 0 || isSpinning.value) return;
   
   isSpinning.value = true;
   result.value = null;
   
   // 模拟开奖过程
-  setTimeout(() => {
+  setTimeout(async () => {
     const rand = Math.random();
     if (rand > 0.98) {
       winAmount.value = Math.floor(poolStatus.value.totalAmount * 0.5);
@@ -165,6 +167,15 @@ const drawLottery = () => {
     // 更新用户金币
     userInfo.value.currentMonthGold += winAmount.value;
     
+    // 播放中奖语音
+    if (winAmount.value > 0) {
+      await playWinSound(winAmount.value);
+      // 显示金币奖励动画
+      await showRewardAnimation(winAmount.value);
+      // 添加到最近收益记录
+      addToRecentRecords(winAmount.value);
+    }
+    
     // 添加到开奖历史
     if (winAmount.value > 0) {
       const newDraw = {
@@ -180,6 +191,58 @@ const drawLottery = () => {
     
     isSpinning.value = false;
   }, 2000);
+};
+
+// 显示金币奖励动画
+const showRewardAnimation = async (amount: number) => {
+  console.log('========== showRewardAnimation 被调用 ==========');
+  console.log('金币数量:', amount);
+  
+  // 这里可以实现一个简单的动画提示
+  // 实际项目中可以使用更复杂的动画库
+  const rewardElement = document.createElement('div');
+  rewardElement.className = 'fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-8 py-4 rounded-full shadow-lg z-50 animate-bounce';
+  rewardElement.style.fontSize = '1.5rem';
+  rewardElement.style.fontWeight = 'bold';
+  rewardElement.textContent = `+${amount.toLocaleString()} 金币`;
+  document.body.appendChild(rewardElement);
+  
+  // 2秒后移除
+  setTimeout(() => {
+    rewardElement.remove();
+  }, 2000);
+};
+
+// 添加到最近收益记录
+const addToRecentRecords = (amount: number) => {
+  console.log('========== addToRecentRecords 被调用 ==========');
+  console.log('金币数量:', amount);
+  
+  // 通过LocalStorage保存中奖记录，供Home.vue加载
+  try {
+    const storedRecords = localStorage.getItem('lotteryWinRecords');
+    let lotteryWinRecords = [];
+    
+    if (storedRecords) {
+      lotteryWinRecords = JSON.parse(storedRecords);
+    }
+    
+    const newLotteryWinRecord = {
+      id: `lottery_win_${Date.now()}`,
+      time: new Date().toLocaleString('zh-CN', {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit'
+      }),
+      amount: amount,
+      timestamp: Date.now()
+    };
+    
+    lotteryWinRecords.unshift(newLotteryWinRecord);
+    localStorage.setItem('lotteryWinRecords', JSON.stringify(lotteryWinRecords));
+    console.log('✅ 已添加中奖记录到最近收益列表:', newLotteryWinRecord);
+  } catch (error) {
+    console.error('❌ 添加中奖记录失败:', error);
+  }
 };
 
 // 更新倒计时
@@ -227,6 +290,95 @@ onUnmounted(() => {
   if (timerInterval) clearInterval(timerInterval);
   if (poolRefreshInterval) clearInterval(poolRefreshInterval);
 });
+
+// 播放中奖语音
+const playWinSound = async (amount: number) => {
+  try {
+    const gold = Math.floor(amount);
+    let message = '';
+    
+    if (gold >= 5000) {
+      message = `恭喜你中了超级大奖，获得${gold}金币！`;
+    } else if (gold >= 1000) {
+      message = `太棒了！你中了${gold}金币！`;
+    } else if (gold >= 500) {
+      message = `恭喜你中奖了，获得${gold}金币！`;
+    } else {
+      message = `恭喜你中奖了，获得${gold}金币！`;
+    }
+    
+    // 检查是否在 Android 平台
+    if (Capacitor.getPlatform() === 'android') {
+      try {
+        const result = await TTSPlugin.speak({ text: message });
+        console.log('原生 TTS 播放成功:', result);
+        // 为了确保语音播放完毕，添加一个小延迟
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (err) {
+        console.error('原生 TTS 播放失败:', err);
+        // 回退到 Web Speech API
+        await playWebSpeech(message);
+      }
+    } else {
+      // 在浏览器中使用 Web Speech API
+      await playWebSpeech(message);
+    }
+  } catch (err) {
+    console.error('语音播放失败:', err);
+  }
+};
+
+// 使用 Web Speech API 播放语音
+const playWebSpeech = (message: string): Promise<void> => {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      console.error('浏览器不支持语音合成');
+      resolve();
+      return;
+    }
+    
+    // 取消之前的语音
+    window.speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(message);
+    utterance.lang = 'zh-CN';
+    utterance.rate = 1.0;
+    utterance.pitch = 1.2;
+    utterance.volume = 1.0;
+    
+    // 语音播放完成事件
+    utterance.onend = () => {
+      console.log('语音播放完成');
+      resolve();
+    };
+    
+    // 语音播放错误事件
+    utterance.onerror = () => {
+      console.error('语音播放错误');
+      resolve();
+    };
+    
+    // 等待语音列表加载完成
+    const speak = () => {
+      const voices = window.speechSynthesis.getVoices();
+      const zhVoice = voices.find(v => v.lang.includes('zh'));
+      if (zhVoice) {
+        utterance.voice = zhVoice;
+      }
+      window.speechSynthesis.speak(utterance);
+    };
+    
+    // 检查语音列表是否已加载
+    if (window.speechSynthesis.getVoices().length > 0) {
+      speak();
+    } else {
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.onvoiceschanged = null;
+        speak();
+      };
+    }
+  });
+};
 
 // 监听开奖状态
 watch(isSpinning, (spinning) => {

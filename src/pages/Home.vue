@@ -59,6 +59,52 @@ const redPacketRecords = ref<any[]>([]);
 const isLoadingRedPacketRecords = ref(false);
 const showRedPacketRecords = ref(false);
 
+// 中奖记录
+const lotteryWinRecords = ref<any[]>([]);
+
+// 添加中奖记录到最近收益列表
+const addLotteryWinRecord = (amount: number) => {
+  console.log('========== addLotteryWinRecord 被调用 ==========');
+  console.log('金币数量:', amount);
+  
+  const newLotteryWinRecord = {
+    id: `lottery_win_${Date.now()}`,
+    time: new Date().toLocaleString('zh-CN', {
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit'
+    }),
+    amount: amount,
+    timestamp: Date.now()
+  };
+  
+  lotteryWinRecords.value.unshift(newLotteryWinRecord);
+  saveLotteryWinRecords(); // 保存到LocalStorage
+  console.log('✅ 已添加中奖记录:', newLotteryWinRecord);
+};
+
+// 从LocalStorage获取中奖记录
+const loadLotteryWinRecords = () => {
+  try {
+    const storedRecords = localStorage.getItem('lotteryWinRecords');
+    if (storedRecords) {
+      lotteryWinRecords.value = JSON.parse(storedRecords);
+      console.log('✅ 从LocalStorage加载中奖记录:', lotteryWinRecords.value.length);
+    }
+  } catch (error) {
+    console.error('❌ 加载中奖记录失败:', error);
+  }
+};
+
+// 保存中奖记录到LocalStorage
+const saveLotteryWinRecords = () => {
+  try {
+    localStorage.setItem('lotteryWinRecords', JSON.stringify(lotteryWinRecords.value));
+    console.log('✅ 保存中奖记录到LocalStorage');
+  } catch (error) {
+    console.error('❌ 保存中奖记录失败:', error);
+  }
+};
+
 // 设备状态管理
 const deviceStatus = ref({ isLimited: false, consecutiveLowValueCount: 0 });
 const deviceConfig = ref({ consecutiveLimit: 8, goldThreshold: 40 });
@@ -541,6 +587,7 @@ onMounted(async () => {
   await loadTodayGoldStats(); // 加载今日金币统计（全局）
   await loadGoldRecords(); // 加载收益记录（当前设备）
   await loadRedPacketRecords(); // 加载红包记录
+  loadLotteryWinRecords(); // 加载中奖记录
   await loadDeviceStatus(); // 加载设备状态
   await loadDeviceConfig(); // 加载设备配置
   // await loadPoolStatus(); // 加载奖金池状态（暂时隐藏，下下个版本上线）
@@ -755,7 +802,7 @@ const loadRedPacketRecords = async () => {
   }
 };
 
-// 合并金币记录和红包记录
+// 合并金币记录、红包记录和中奖记录
 const combinedRecords = computed(() => {
   // 转换金币记录，添加type字段
   const goldRecords = records.value.map(record => ({
@@ -769,9 +816,15 @@ const combinedRecords = computed(() => {
     type: 'red-packet'
   }));
   
+  // 转换中奖记录，添加type字段
+  const lotteryWinRecordsWithType = lotteryWinRecords.value.map(record => ({
+    ...record,
+    type: 'lottery-win'
+  }));
+  
   // 合并并按时间倒序排序
-  const mergedRecords = [...goldRecords, ...redPacketRecordsWithType];
-  console.log('🔄 合并记录前 - 金币记录数:', goldRecords.length, '红包记录数:', redPacketRecordsWithType.length);
+  const mergedRecords = [...goldRecords, ...redPacketRecordsWithType, ...lotteryWinRecordsWithType];
+  console.log('🔄 合并记录前 - 金币记录数:', goldRecords.length, '红包记录数:', redPacketRecordsWithType.length, '中奖记录数:', lotteryWinRecordsWithType.length);
   
   // 按时间倒序排序
   const sortedRecords = mergedRecords.sort((a, b) => {
