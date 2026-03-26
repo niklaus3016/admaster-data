@@ -594,7 +594,7 @@ const loadUserInfo = async (showLoading: boolean = true) => {
     }
     
     // 获取彩票数量
-    const ticketsResponse = await getCurrentLotteryTickets('user_8202_1772466028893');
+    const ticketsResponse = await getCurrentLotteryTickets(userId.value);
     console.log('获取彩票数量响应:', ticketsResponse);
     if (ticketsResponse.success && ticketsResponse.data) {
       lotteryTickets.value = ticketsResponse.data.tickets || [];

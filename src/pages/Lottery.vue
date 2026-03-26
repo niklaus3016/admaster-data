@@ -59,8 +59,8 @@ const loadData = async () => {
     }
 
     // 加载用户奖券
-    // 使用新的userId格式
-    const userId = 'user_8202_1772466028893';
+    // 使用当前登录用户的ID
+    const userId = localStorage.getItem('userId');
     const employeeId = localStorage.getItem('employeeId');
     if (userId) {
       const ticketsResponse = await getCurrentLotteryTickets(userId);
