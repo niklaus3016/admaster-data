@@ -1320,7 +1320,7 @@ export async function getLotteryTickets(userId: string, employeeId: string): Pro
  * @param userId 用户ID
  * @returns 上一期奖券信息
  */
-export async function getLastLotteryTicket(userId: string): Promise<ApiResponse<{ ticketNumber: string; issueNumber: string; status: string; validUntil: string; createdAt: string } | null>> {
+export async function getLastLotteryTicket(userId: string): Promise<ApiResponse<{ ticketNumber: string; issueNumber: string; status: string; validUntil: string; createdAt: string; isWinner?: boolean; prize?: string } | null>> {
   // 开发模式下使用模拟数据
   if (USE_MOCK_DATA) {
     return new Promise((resolve) => {

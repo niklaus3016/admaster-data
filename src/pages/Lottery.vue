@@ -30,10 +30,12 @@ const isLoading = ref(true);
 
 // 计算属性
 const formattedPoolAmount = computed(() => {
-  return poolStatus.value.currentAmount.toLocaleString('zh-CN', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  });
+  const amount = poolStatus.value.currentAmount;
+  if (isNaN(amount)) return '0.00';
+  const fixedAmount = amount.toFixed(2);
+  const parts = fixedAmount.split('.');
+  parts[0] = parseInt(parts[0]).toLocaleString('zh-CN');
+  return parts.join('.');
 });
 
 const formattedUserCoins = computed(() => {
@@ -88,16 +90,17 @@ const loadData = async () => {
     if (userId) {
       const lastTicketResponse = await getLastLotteryTicket(userId);
       if (lastTicketResponse.success && lastTicketResponse.data) {
-        // 检查是否中奖（这里需要根据实际的中奖逻辑判断）
+        // 检查是否中奖（根据后端返回的数据判断）
         const lastTicket = lastTicketResponse.data;
-        // 模拟中奖状态，实际应该根据后端返回的数据判断
-        const isWinner = Math.random() > 0.7; // 30%几率中奖
+        // 检查后端返回的中奖状态
+        const isWinner = (lastTicket as any).isWinner || false;
+        const prize = (lastTicket as any).prize || (isWinner ? '中奖' : undefined);
         previousTickets.value = [{
           ticketNumber: lastTicket.ticketNumber,
           createdAt: lastTicket.createdAt,
           status: lastTicket.status,
           isWinner: isWinner,
-          prize: isWinner ? '一等奖' : undefined
+          prize: prize
         }];
       } else {
         previousTickets.value = [];
@@ -183,7 +186,7 @@ onMounted(() => {
   loadData();
   updateCountdown();
   timerInterval = setInterval(updateCountdown, 1000);
-  // 每30秒自动刷新奖金池数据
+  // 每5秒自动刷新奖金池数据
   poolRefreshInterval = setInterval(() => {
     // 只刷新奖金池数据，避免频繁加载所有数据
     const poolResponse = getLotteryPool();
@@ -192,7 +195,7 @@ onMounted(() => {
         poolStatus.value = response.data;
       }
     });
-  }, 30000); // 30秒刷新一次
+  }, 5000); // 5秒刷新一次
 });
 
 onUnmounted(() => {
