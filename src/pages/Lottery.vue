@@ -62,6 +62,7 @@ const loadData = async () => {
     // 使用当前登录用户的ID
     const userId = localStorage.getItem('userId');
     const employeeId = localStorage.getItem('employeeId');
+    console.log('当前用户ID:', userId);
     if (userId) {
       const ticketsResponse = await getCurrentLotteryTickets(userId);
       console.log('getCurrentLotteryTickets响应:', ticketsResponse);
@@ -78,6 +79,9 @@ const loadData = async () => {
           userInfo.value = userResponse.data;
         }
       }
+    } else {
+      console.warn('未找到用户ID，无法获取彩票数据');
+      lotteryTickets.value = [];
     }
 
     // 加载开奖历史
