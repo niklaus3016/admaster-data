@@ -109,9 +109,9 @@ const loadData = async () => {
         
         console.log('最终中奖状态:', { isWinner, prize });
         previousTickets.value = [{
-          ticketNumber: lastTicket.ticketNumber,
-          createdAt: lastTicket.createdAt,
-          status: lastTicket.status,
+          ticketNumber: lastTicket.ticketNumber || '000000',
+          createdAt: lastTicket.createdAt || new Date().toISOString(),
+          status: lastTicket.status || '已开奖',
           isWinner: isWinner,
           prize: prize
         }];
