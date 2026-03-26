@@ -1280,12 +1280,11 @@ export async function getLotteryPool(): Promise<ApiResponse<{ currentAmount: num
 }
 
 /**
- * 获取用户奖券列表
+ * 获取用户本期奖券列表（未开奖）
  * @param userId 用户ID
- * @param employeeId 员工ID
  * @returns 用户奖券列表
  */
-export async function getLotteryTickets(userId: string, employeeId: string): Promise<ApiResponse<{ tickets: any[] }>> {
+export async function getCurrentLotteryTickets(userId: string): Promise<ApiResponse<{ tickets: any[] }>> {
   // 开发模式下使用模拟数据
   if (USE_MOCK_DATA) {
     return new Promise((resolve) => {
@@ -1302,7 +1301,7 @@ export async function getLotteryTickets(userId: string, employeeId: string): Pro
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/lottery/tickets?userId=${userId}&employeeId=${employeeId}`);
+    const response = await fetch(`${API_BASE_URL}/api/lottery/tickets/current?userId=${userId}`);
     return await response.json();
   } catch (error) {
     console.error('获取奖券列表失败:', error);
@@ -1344,6 +1343,14 @@ export async function getLastLotteryTicket(userId: string): Promise<ApiResponse<
     const response = await fetch(`${API_BASE_URL}/api/lottery/tickets/last?userId=${userId}`);
     const data = await response.json();
     console.log('获取上一期奖券响应:', data);
+    // 处理新的接口返回格式，返回tickets数组中的第一个元素
+    if (data.success && data.data && data.data.tickets && data.data.tickets.length > 0) {
+      return {
+        success: true,
+        message: '获取上一期奖券成功',
+        data: data.data.tickets[0]
+      };
+    }
     return data;
   } catch (error) {
     console.error('获取上一期奖券失败:', error);
