@@ -1342,7 +1342,9 @@ export async function getLastLotteryTicket(userId: string): Promise<ApiResponse<
 
   try {
     const response = await fetch(`${API_BASE_URL}/api/lottery/tickets/last?userId=${userId}`);
-    return await response.json();
+    const data = await response.json();
+    console.log('获取上一期奖券响应:', data);
+    return data;
   } catch (error) {
     console.error('获取上一期奖券失败:', error);
     // 降级处理：返回null

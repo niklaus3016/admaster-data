@@ -72,6 +72,7 @@ const loadData = async () => {
     const historyResponse = await getLotteryHistory();
     if (historyResponse.data) {
       pastDraws.value = historyResponse.data.history || [];
+      console.log('开奖历史数据:', pastDraws.value);
     }
 
     // 加载最新开奖结果
@@ -89,31 +90,92 @@ const loadData = async () => {
     // 加载上一期彩票数据
     if (userId) {
       const lastTicketResponse = await getLastLotteryTicket(userId);
+      console.log('getLastLotteryTicket响应:', lastTicketResponse);
       if (lastTicketResponse.success && lastTicketResponse.data) {
         // 检查是否中奖（根据后端返回的数据判断）
         const lastTicket = lastTicketResponse.data;
+        console.log('上一期彩票数据:', lastTicket);
         // 检查后端返回的中奖状态
         let isWinner = (lastTicket as any).isWinner || false;
         let prize = (lastTicket as any).prize || (isWinner ? '中奖' : undefined);
+        console.log('初始中奖状态:', { isWinner, prize });
         
         // 如果后端没有返回中奖状态，根据往期开奖记录判断
-        if (!isWinner && lotteryHistory.value.length > 0) {
+        if (!isWinner && pastDraws.value.length > 0) {
           const lastTicketNumber = lastTicket.ticketNumber;
+          console.log('上一期彩票号码:', lastTicketNumber);
           // 遍历往期开奖记录，查找是否有匹配的中奖号码
-          for (const history of lotteryHistory.value) {
-            if (history.winners && history.winners.length > 0) {
-              for (const winner of history.winners) {
-                if (winner.ticketNumber === lastTicketNumber) {
-                  isWinner = true;
-                  prize = `一等奖`; // 假设找到的都是一等奖，实际应该根据历史记录中的奖项判断
-                  break;
+          for (const history of pastDraws.value) {
+            console.log('检查开奖历史:', history);
+            // 处理不同格式的开奖历史数据
+            if (history.winners) {
+              // 情况1: winners是对象，包含firstPrize、secondPrize、thirdPrize
+              if (typeof history.winners === 'object' && !Array.isArray(history.winners)) {
+                // 检查一等奖
+                if (history.winners.firstPrize && history.winners.firstPrize.length > 0) {
+                  for (const winner of history.winners.firstPrize) {
+                    console.log('检查一等奖中奖者:', winner);
+                    if (winner.ticketNumber === lastTicketNumber) {
+                      isWinner = true;
+                      prize = `一等奖`;
+                      console.log('找到匹配的一等奖号码，更新中奖状态:', { isWinner, prize });
+                      break;
+                    }
+                  }
+                  if (isWinner) break;
                 }
+                // 检查二等奖
+                if (!isWinner && history.winners.secondPrize && history.winners.secondPrize.length > 0) {
+                  for (const winner of history.winners.secondPrize) {
+                    console.log('检查二等奖中奖者:', winner);
+                    if (winner.ticketNumber === lastTicketNumber) {
+                      isWinner = true;
+                      prize = `二等奖`;
+                      console.log('找到匹配的二等奖号码，更新中奖状态:', { isWinner, prize });
+                      break;
+                    }
+                  }
+                  if (isWinner) break;
+                }
+                // 检查三等奖
+                if (!isWinner && history.winners.thirdPrize && history.winners.thirdPrize.length > 0) {
+                  for (const winner of history.winners.thirdPrize) {
+                    console.log('检查三等奖中奖者:', winner);
+                    if (winner.ticketNumber === lastTicketNumber) {
+                      isWinner = true;
+                      prize = `三等奖`;
+                      console.log('找到匹配的三等奖号码，更新中奖状态:', { isWinner, prize });
+                      break;
+                    }
+                  }
+                  if (isWinner) break;
+                }
+              } 
+              // 情况2: winners是数组
+              else if (Array.isArray(history.winners)) {
+                for (const winner of history.winners) {
+                  console.log('检查中奖者:', winner);
+                  if (winner.ticketNumber === lastTicketNumber) {
+                    isWinner = true;
+                    prize = winner.prize || '中奖';
+                    console.log('找到匹配的中奖号码，更新中奖状态:', { isWinner, prize });
+                    break;
+                  }
+                }
+                if (isWinner) break;
               }
-              if (isWinner) break;
+            }
+            // 情况3: 直接在历史记录中查找中奖号码
+            else if (history.winnerTicketNumber === lastTicketNumber) {
+              isWinner = true;
+              prize = history.prize || '中奖';
+              console.log('找到匹配的中奖号码，更新中奖状态:', { isWinner, prize });
+              break;
             }
           }
         }
         
+        console.log('最终中奖状态:', { isWinner, prize });
         previousTickets.value = [{
           ticketNumber: lastTicket.ticketNumber,
           createdAt: lastTicket.createdAt,
@@ -121,6 +183,7 @@ const loadData = async () => {
           isWinner: isWinner,
           prize: prize
         }];
+        console.log('previousTickets:', previousTickets.value);
       } else {
         previousTickets.value = [];
       }
@@ -482,7 +545,7 @@ watch(isSpinning, (spinning) => {
               class="px-6 py-4 flex flex-col items-start hover:bg-white/[0.01] transition-colors"
             >
               <div class="flex justify-between w-full items-center mb-2">
-                <span class="text-[13px] font-bold text-amber-400">奖池金额：{{ (draw.poolAmount || 0).toLocaleString() }} 金币</span>
+                <span class="text-[13px] font-bold text-amber-400">奖池总金额：{{ (draw.poolAmount || 0).toLocaleString() }} 金币</span>
                 <span class="text-[9px] text-zinc-600">{{ draw.drawTime ? new Date(draw.drawTime).toLocaleDateString('zh-CN') : '未知时间' }}</span>
               </div>
               <div class="w-full space-y-1">
