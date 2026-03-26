@@ -60,6 +60,7 @@ const loadData = async () => {
       const ticketsResponse = await getCurrentLotteryTickets(userId);
       console.log('getCurrentLotteryTickets响应:', ticketsResponse);
       if (ticketsResponse.success && ticketsResponse.data) {
+        console.log('实际获取到的彩票数量:', ticketsResponse.data.tickets.length);
         lotteryTickets.value = ticketsResponse.data.tickets || [];
         console.log('待开奖奖券:', lotteryTickets.value);
       }
