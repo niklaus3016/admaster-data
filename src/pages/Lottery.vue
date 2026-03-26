@@ -30,7 +30,10 @@ const isLoading = ref(true);
 
 // 计算属性
 const formattedPoolAmount = computed(() => {
-  return poolStatus.value.currentAmount.toLocaleString();
+  return poolStatus.value.currentAmount.toLocaleString('zh-CN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
 });
 
 const formattedUserCoins = computed(() => {
