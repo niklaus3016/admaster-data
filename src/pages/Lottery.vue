@@ -430,7 +430,7 @@ watch(isSpinning, (spinning) => {
         <div class="mt-6 flex justify-center gap-4">
           <button @click="showRulesModal = true" class="px-3 py-1 rounded-full bg-white/5 border border-white/5 flex items-center gap-2 hover:bg-white/10 transition-colors">
             <div class="w-1.5 h-1.5 bg-amber-500 rounded-full" />
-            <span class="text-[9px] text-zinc-400 uppercase tracking-widest">开奖规则</span>
+            <span class="text-[9px] text-amber-500 uppercase tracking-widest">开奖规则</span>
             <div class="w-1.5 h-1.5 bg-amber-500 rounded-full" />
           </button>
         </div>
