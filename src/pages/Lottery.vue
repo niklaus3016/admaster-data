@@ -412,7 +412,7 @@ watch(isSpinning, (spinning) => {
       </div>
     </header>
 
-    <main class="max-w-md mx-auto px-6 mt-6 space-y-6 relative z-10">
+    <main class="max-w-md mx-auto px-6 mt-6 space-y-4 relative z-10 pb-8">
       <!-- 奖金池 -->
       <div class="relative group bg-gradient-to-br from-zinc-900 to-black p-8 rounded-[2.5rem] border border-white/5 overflow-hidden shadow-2xl text-center">
         <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
@@ -593,10 +593,10 @@ watch(isSpinning, (spinning) => {
       </div>
 
       <!-- 开奖记录 -->
-        <div class="space-y-4">
+        <div class="space-y-2">
           <h3 class="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-bold px-2">往期开奖记录（最近7期）</h3>
-        <div class="bg-white/[0.02] rounded-[2rem] border border-white/[0.05] overflow-hidden">
-          <div class="divide-y divide-white/[0.03] max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+        <div class="bg-white/[0.02] rounded-[2rem] border border-white/[0.05] overflow-hidden p-2">
+          <div class="divide-y divide-white/[0.03] max-h-[350px] overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
             <div 
               v-for="(draw, index) in pastDraws.slice(0, 7)" 
               :key="draw.issueNumber || index"
