@@ -61,6 +61,7 @@ const showRedPacketRecords = ref(false);
 
 // 中奖记录
 const lotteryWinRecords = ref<any[]>([]);
+const showLotteryWinRecordsModal = ref(false);
 
 // 添加中奖记录到最近收益列表
 const addLotteryWinRecord = (amount: number) => {
@@ -1577,13 +1578,21 @@ const submitWithdraw = async () => {
             <History class="w-3 h-3 text-zinc-500 mr-2" />
             <h2 class="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-medium">最近收益（近50条）</h2>
           </div>
-          <!-- 暂时隐藏查看全部按钮 -->
-          <!-- <button 
-            @click="showAllRecords = true"
-            class="px-3 py-1 rounded-full bg-white/5 text-[9px] text-emerald-500 uppercase tracking-widest hover:bg-white/10 transition-all font-bold border border-emerald-500/20"
-          >
-            查看全部
-          </button> -->
+          <div class="flex gap-3">
+            <button 
+              @click="showLotteryWinRecordsModal = true"
+              class="px-3 py-1 rounded-full bg-white/5 text-[9px] text-amber-500 uppercase tracking-widest hover:bg-white/10 transition-all font-bold border border-amber-500/20"
+            >
+              中奖记录
+            </button>
+            <!-- 暂时隐藏查看全部按钮 -->
+            <!-- <button 
+              @click="showAllRecords = true"
+              class="px-3 py-1 rounded-full bg-white/5 text-[9px] text-emerald-500 uppercase tracking-widest hover:bg-white/10 transition-all font-bold border border-emerald-500/20"
+            >
+              查看全部
+            </button> -->
+          </div>
         </div>
         <div class="glass-card rounded-[2rem] overflow-hidden">
           <div class="divide-y divide-white/5 max-h-[400px] overflow-y-auto no-scrollbar">
@@ -1739,6 +1748,53 @@ const submitWithdraw = async () => {
           <div class="p-8 border-t border-white/5 text-center">
             <p class="text-[10px] text-zinc-600 uppercase tracking-[0.2em]">共计 {{ redPacketRecords.length }} 条红包记录</p>
           </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- 中奖记录弹窗 -->
+    <transition 
+      enter-active-class="transition duration-300 ease-out"
+      enter-from-class="opacity-0 scale-95"
+      enter-to-class="opacity-100 scale-100"
+      leave-active-class="transition duration-200 ease-in"
+      leave-from-class="opacity-100 scale-100"
+      leave-to-class="opacity-0 scale-95"
+    >
+      <div v-if="showLotteryWinRecordsModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-6">
+        <div class="bg-gradient-to-br from-zinc-900 to-black p-6 rounded-[2rem] border border-white/5 max-w-md w-full max-h-[80vh] overflow-y-auto">
+          <div class="flex justify-between items-center mb-4">
+            <h4 class="text-[11px] uppercase tracking-[0.2em] text-amber-400 font-bold">中奖记录</h4>
+            <button @click="showLotteryWinRecordsModal = false" class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div v-if="lotteryWinRecords.length === 0" class="py-12 text-center">
+            <Trophy class="w-12 h-12 text-zinc-700 mx-auto mb-4" />
+            <p class="text-zinc-500 text-sm">暂无中奖记录</p>
+            <p class="text-zinc-600 text-xs mt-2">继续努力，下一个中奖的就是你！</p>
+          </div>
+          <div v-else class="space-y-4">
+            <div 
+              v-for="(record, index) in lotteryWinRecords" 
+              :key="record.id"
+              class="p-4 bg-white/[0.02] rounded-xl border border-white/5 hover:bg-white/[0.05] transition-colors"
+            >
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-amber-400 font-bold text-lg">+{{ record.amount }} 金币</span>
+                <span class="text-zinc-500 text-xs">{{ record.time }}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-zinc-400 text-sm">幸运彩票中奖</span>
+                <span class="text-zinc-600 text-xs">记录ID: {{ record.id }}</span>
+              </div>
+            </div>
+          </div>
+          <button @click="showLotteryWinRecordsModal = false" class="mt-6 w-full px-6 py-3 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] uppercase tracking-widest font-bold hover:opacity-90 transition-opacity">
+            我知道了
+          </button>
         </div>
       </div>
     </transition>
