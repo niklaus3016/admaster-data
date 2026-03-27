@@ -174,7 +174,7 @@ const drawLottery = async () => {
       // 显示金币奖励动画
       await showRewardAnimation(winAmount.value);
       // 添加到最近收益记录
-      addToRecentRecords(winAmount.value);
+      addToRecentRecords(winAmount.value, result.value);
     }
     
     // 添加到开奖历史
@@ -215,9 +215,10 @@ const showRewardAnimation = async (amount: number) => {
 };
 
 // 添加到最近收益记录
-const addToRecentRecords = (amount: number) => {
+const addToRecentRecords = (amount: number, prizeLevel: string) => {
   console.log('========== addToRecentRecords 被调用 ==========');
   console.log('金币数量:', amount);
+  console.log('奖项等级:', prizeLevel);
   
   // 通过LocalStorage保存中奖记录，供Home.vue加载
   try {
@@ -235,6 +236,7 @@ const addToRecentRecords = (amount: number) => {
         hour: '2-digit', minute: '2-digit'
       }),
       amount: amount,
+      prizeLevel: prizeLevel,
       timestamp: Date.now()
     };
     

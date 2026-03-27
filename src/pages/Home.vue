@@ -60,13 +60,36 @@ const isLoadingRedPacketRecords = ref(false);
 const showRedPacketRecords = ref(false);
 
 // 中奖记录
-const lotteryWinRecords = ref<any[]>([]);
+const lotteryWinRecords = ref<any[]>([
+  {
+    id: 'lottery_win_1711500000000',
+    time: '2026-03-27 12:30',
+    amount: 5000,
+    prizeLevel: '一等奖',
+    timestamp: 1711500000000
+  },
+  {
+    id: 'lottery_win_1711413600000',
+    time: '2026-03-26 12:00',
+    amount: 2000,
+    prizeLevel: '二等奖',
+    timestamp: 1711413600000
+  },
+  {
+    id: 'lottery_win_1711327200000',
+    time: '2026-03-25 12:00',
+    amount: 1000,
+    prizeLevel: '三等奖',
+    timestamp: 1711327200000
+  }
+]);
 const showLotteryWinRecordsModal = ref(false);
 
 // 添加中奖记录到最近收益列表
-const addLotteryWinRecord = (amount: number) => {
+const addLotteryWinRecord = (amount: number, prizeLevel: string = '三等奖') => {
   console.log('========== addLotteryWinRecord 被调用 ==========');
   console.log('金币数量:', amount);
+  console.log('奖项等级:', prizeLevel);
   
   const newLotteryWinRecord = {
     id: `lottery_win_${Date.now()}`,
@@ -75,6 +98,7 @@ const addLotteryWinRecord = (amount: number) => {
       hour: '2-digit', minute: '2-digit'
     }),
     amount: amount,
+    prizeLevel: prizeLevel,
     timestamp: Date.now()
   };
   
@@ -83,16 +107,83 @@ const addLotteryWinRecord = (amount: number) => {
   console.log('✅ 已添加中奖记录:', newLotteryWinRecord);
 };
 
-// 从LocalStorage获取中奖记录
-const loadLotteryWinRecords = () => {
+// 从后端API获取中奖记录
+const loadLotteryWinRecords = async () => {
   try {
-    const storedRecords = localStorage.getItem('lotteryWinRecords');
-    if (storedRecords) {
-      lotteryWinRecords.value = JSON.parse(storedRecords);
-      console.log('✅ 从LocalStorage加载中奖记录:', lotteryWinRecords.value.length);
+    if (!userId.value) {
+      console.error('❌ 用户ID不存在');
+      return;
+    }
+    
+    console.log('🔧 开始从后端获取中奖记录');
+    const response = await import('../api/apiService').then(m => m.getLotteryHistory());
+    
+    if (response.success && response.data) {
+      console.log('✅ 后端返回的开奖历史:', response.data);
+      
+      // 过滤出当前用户的中奖记录
+      const userWins = [];
+      
+      response.data.history.forEach(issue => {
+        // 检查一等奖
+        issue.winners.firstPrize.forEach(winner => {
+          if (winner.userId === userId.value) {
+            userWins.push({
+              id: `lottery_win_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              time: new Date(issue.drawTime).toLocaleString('zh-CN', {
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit'
+              }),
+              amount: winner.amount,
+              prizeLevel: '一等奖',
+              timestamp: new Date(issue.drawTime).getTime()
+            });
+          }
+        });
+        
+        // 检查二等奖
+        issue.winners.secondPrize.forEach(winner => {
+          if (winner.userId === userId.value) {
+            userWins.push({
+              id: `lottery_win_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              time: new Date(issue.drawTime).toLocaleString('zh-CN', {
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit'
+              }),
+              amount: winner.amount,
+              prizeLevel: '二等奖',
+              timestamp: new Date(issue.drawTime).getTime()
+            });
+          }
+        });
+        
+        // 检查三等奖
+        issue.winners.thirdPrize.forEach(winner => {
+          if (winner.userId === userId.value) {
+            userWins.push({
+              id: `lottery_win_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              time: new Date(issue.drawTime).toLocaleString('zh-CN', {
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit'
+              }),
+              amount: winner.amount,
+              prizeLevel: '三等奖',
+              timestamp: new Date(issue.drawTime).getTime()
+            });
+          }
+        });
+      });
+      
+      // 按时间倒序排序
+      userWins.sort((a, b) => b.timestamp - a.timestamp);
+      
+      lotteryWinRecords.value = userWins;
+      console.log('✅ 过滤后的用户中奖记录:', userWins);
+    } else {
+      console.warn('⚠️ 后端返回失败:', response.message);
     }
   } catch (error) {
-    console.error('❌ 加载中奖记录失败:', error);
+    console.error('❌ 获取中奖记录失败:', error);
   }
 };
 
@@ -588,7 +679,7 @@ onMounted(async () => {
   await loadTodayGoldStats(); // 加载今日金币统计（全局）
   await loadGoldRecords(); // 加载收益记录（当前设备）
   await loadRedPacketRecords(); // 加载红包记录
-  loadLotteryWinRecords(); // 加载中奖记录
+  await loadLotteryWinRecords(); // 加载中奖记录
   await loadDeviceStatus(); // 加载设备状态
   await loadDeviceConfig(); // 加载设备配置
   // await loadPoolStatus(); // 加载奖金池状态（暂时隐藏，下下个版本上线）
@@ -803,7 +894,7 @@ const loadRedPacketRecords = async () => {
   }
 };
 
-// 合并金币记录、红包记录和中奖记录
+// 合并金币记录和红包记录
 const combinedRecords = computed(() => {
   // 转换金币记录，添加type字段
   const goldRecords = records.value.map(record => ({
@@ -817,15 +908,9 @@ const combinedRecords = computed(() => {
     type: 'red-packet'
   }));
   
-  // 转换中奖记录，添加type字段
-  const lotteryWinRecordsWithType = lotteryWinRecords.value.map(record => ({
-    ...record,
-    type: 'lottery-win'
-  }));
-  
   // 合并并按时间倒序排序
-  const mergedRecords = [...goldRecords, ...redPacketRecordsWithType, ...lotteryWinRecordsWithType];
-  console.log('🔄 合并记录前 - 金币记录数:', goldRecords.length, '红包记录数:', redPacketRecordsWithType.length, '中奖记录数:', lotteryWinRecordsWithType.length);
+  const mergedRecords = [...goldRecords, ...redPacketRecordsWithType];
+  console.log('🔄 合并记录前 - 金币记录数:', goldRecords.length, '红包记录数:', redPacketRecordsWithType.length);
   
   // 按时间倒序排序
   const sortedRecords = mergedRecords.sort((a, b) => {
@@ -1783,12 +1868,12 @@ const submitWithdraw = async () => {
               class="p-4 bg-white/[0.02] rounded-xl border border-white/5 hover:bg-white/[0.05] transition-colors"
             >
               <div class="flex justify-between items-center mb-2">
-                <span class="text-amber-400 font-bold text-lg">+{{ record.amount }} 金币</span>
-                <span class="text-zinc-500 text-xs">{{ record.time }}</span>
+                <span class="text-amber-400 font-bold text-lg">+{{ parseFloat(record.amount).toFixed(2) }} 金币</span>
+                <span class="text-zinc-500 text-xs">{{ record.time.split(' ')[0] }}</span>
               </div>
-              <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
                 <span class="text-zinc-400 text-sm">幸运彩票中奖</span>
-                <span class="text-zinc-600 text-xs">记录ID: {{ record.id }}</span>
+                <span class="text-amber-500 text-xs px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 font-bold">{{ record.prizeLevel }}</span>
               </div>
             </div>
           </div>
