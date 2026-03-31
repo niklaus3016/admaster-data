@@ -1575,7 +1575,7 @@ const submitWithdraw = async () => {
         <!-- 设备限制提示 -->
         <div v-if="deviceStatus.isLimited" class="mt-4 p-3 bg-red-900/30 rounded-lg border border-red-800/50">
           <p class="text-red-300 text-sm text-center">
-            检测到该设备价值过低，今日已限制赚金币功能
+            检测到该设备价值过低，已限制赚金币功能，请重启后解除
           </p>
         </div>
         
