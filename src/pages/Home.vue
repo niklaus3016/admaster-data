@@ -1374,6 +1374,7 @@ const submitWithdraw = async () => {
                 <div>
                   <p class="text-zinc-500 text-[9px] uppercase tracking-wider mb-1">上月累计金币</p>
                   <p class="text-lg font-light tracking-tight text-blue-400">{{ Math.floor(lastMonthGold).toLocaleString() }}</p>
+                  <p class="text-blue-300/80 text-[8px] mt-2">预估收益≈{{ (lastMonthGold / 1000).toFixed(2) }}元</p>
                 </div>
                 <div class="flex flex-col gap-2.5">
                   <button 
