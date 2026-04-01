@@ -698,6 +698,12 @@ onMounted(async () => {
 
   // 监听页面可见性变化，页面重新可见时同步数据
   document.addEventListener('visibilitychange', handleVisibilityChange);
+  
+  // 调试预估收益显示
+  console.log('调试 - 上月累计金币:', lastMonthGold.value);
+  console.log('调试 - 上月预估收益:', (lastMonthGold.value / 1000).toFixed(2));
+  console.log('调试 - 本月累计金币:', currentMonthGold.value);
+  console.log('调试 - 本月预估收益:', (currentMonthGold.value / 1000).toFixed(2));
 });
 
 onUnmounted(() => {
@@ -1370,31 +1376,31 @@ const submitWithdraw = async () => {
           <div v-else class="grid grid-cols-2 gap-3">
             <div class="group relative glass-card rounded-[1.25rem] overflow-hidden transition-all hover:bg-white/5">
               <div class="absolute top-0 right-0 w-16 h-16 bg-blue-500/10 blur-2xl rounded-full -mr-8 -mt-8" />
-              <div class="p-4 flex justify-between items-start">
-                <div>
+              <div class="p-4">
+                <div class="flex flex-col">
                   <p class="text-zinc-500 text-[9px] uppercase tracking-wider mb-1">上月累计金币</p>
-                  <p class="text-lg font-light tracking-tight text-blue-400">{{ Math.floor(lastMonthGold).toLocaleString() }}</p>
-                  <p class="text-blue-300/80 text-[8px] mt-2">预估收益≈{{ (lastMonthGold / 1000).toFixed(2) }}元</p>
-                </div>
-                <div class="flex flex-col gap-2.5">
-                  <button 
-                    @click="withdrawEnabled ? openWithdrawModal() : null"
-                    :disabled="!withdrawEnabled"
-                    class="px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all border flex items-center justify-center gap-1"
-                    :class="withdrawEnabled 
-                      ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border-blue-500/30 cursor-pointer' 
-                      : 'bg-zinc-500/10 text-zinc-600 border-zinc-500/20 cursor-not-allowed'"
-                  >
-                    <Wallet class="w-3 h-3" />
-                    提现
-                  </button>
-                  <button 
-                    @click="openWithdrawRecordsModal"
-                    class="px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all border flex items-center justify-center gap-1 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border-blue-500/30 cursor-pointer"
-                  >
-                    <CreditCard class="w-3 h-3" />
-                    记录
-                  </button>
+                  <p class="text-lg font-light tracking-tight text-blue-400 mb-2">{{ Math.floor(lastMonthGold).toLocaleString() }}</p>
+                  <div class="flex gap-2 mb-2">
+                    <button 
+                      @click="withdrawEnabled ? openWithdrawModal() : null"
+                      :disabled="!withdrawEnabled"
+                      class="px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all border flex items-center justify-center gap-1 flex-1"
+                      :class="withdrawEnabled 
+                        ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border-blue-500/30 cursor-pointer' 
+                        : 'bg-zinc-500/10 text-zinc-600 border-zinc-500/20 cursor-not-allowed'"
+                    >
+                      <Wallet class="w-3 h-3" />
+                      提现
+                    </button>
+                    <button 
+                      @click="openWithdrawRecordsModal"
+                      class="px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all border flex items-center justify-center gap-1 flex-1 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border-blue-500/30 cursor-pointer"
+                    >
+                      <CreditCard class="w-3 h-3" />
+                      记录
+                    </button>
+                  </div>
+                  <p class="text-yellow-400 text-[12px] font-bold">预估收益≈{{ (lastMonthGold / 1000).toFixed(2) }}元</p>
                 </div>
               </div>
             </div>
