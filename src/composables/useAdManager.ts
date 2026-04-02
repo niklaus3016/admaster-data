@@ -51,13 +51,19 @@ export function useAdManager(config: AdConfig) {
   // 广告位分组配置
   const AD_GROUPS = {
     group5: [
-      '19281662', '19281663', '19281665', // 保价1000、900、800
-      '19281671', '19281677', '19306110', // 保价700、600、500
-      '19281690', '19281693', '19281696', // 保价400、300、200
-      '19281697', '19281699', '19281700', // 保价180、150、130
-      '19306127', '19306128', '19306138', // 保价110、100、90
-      '19281701', '19281711', '19281720', '19281723', '19281730', '19281746'  // 保价80、竞价、保价60、竞价、保价0、竞价
-    ] // 共21个广告位
+      '19307607', // 保价1800
+      '19281661', // 保价1500
+      '19281662', // 保价1000
+      '19281663', // 保价900
+      '19281677', // 保价600
+      '19281690', // 保价400
+      '19281696', // 保价200
+      '19281699', // 保价150
+      '19281700', // 保价130
+      '19281701', // 保价80
+      '19281711', // 竞价
+      '19281730'  // 保价0
+    ] // 共12个广告位
   };
   
   // 并行请求超时时间（毫秒）
@@ -163,27 +169,18 @@ export function useAdManager(config: AdConfig) {
 
   const generateSimulatedEcpm = (slotId: string): number => {
     const ecpmRanges: { [key: string]: [number, number] } = {
-      '19281662': [950, 1000],   // 保价1000
-      '19281663': [855, 900],    // 保价900
-      '19281665': [760, 800],    // 保价800
-      '19281671': [665, 700],    // 保价700
-      '19281677': [570, 600],    // 保价600
-      '19306110': [475, 500],    // 保价500
-      '19281690': [380, 400],    // 保价400
-      '19281693': [285, 300],    // 保价300
-      '19281696': [190, 200],    // 保价200
-      '19281697': [162, 180],    // 保价180
-      '19281699': [135, 150],    // 保价150
-      '19281700': [117, 130],    // 保价130
-      '19306127': [99, 110],     // 保价110
-      '19306128': [90, 100],     // 保价100
-      '19306138': [81, 90],      // 保价90
-      '19281701': [72, 80],      // 保价80
-      '19281711': [20, 40],      // 竞价
-      '19281720': [54, 60],      // 保价60
-      '19281723': [20, 40],      // 竞价
-      '19281730': [20, 40],      // 保价0
-      '19281746': [20, 40]       // 竞价
+      '19307607': [1710, 1800], // 保价1800
+      '19281661': [1425, 1500], // 保价1500
+      '19281662': [950, 1000],  // 保价1000
+      '19281663': [855, 900],   // 保价900
+      '19281677': [570, 600],   // 保价600
+      '19281690': [380, 400],   // 保价400
+      '19281696': [190, 200],   // 保价200
+      '19281699': [135, 150],   // 保价150
+      '19281700': [117, 130],   // 保价130
+      '19281701': [72, 80],     // 保价80
+      '19281711': [20, 40],     // 竞价
+      '19281730': [20, 40]      // 保价0
     };
 
     const range = ecpmRanges[slotId];
@@ -552,7 +549,7 @@ export function useAdManager(config: AdConfig) {
     });
   };
 
-  // 预加载下一个广告（优化策略：前3串行，中9并行分3组，后6串行）
+  // 预加载下一个广告（所有广告位串行）
   const preloadNextAd = async (): Promise<void> => {
     // 如果已经在预加载，返回现有的Promise
     if (isPreloading && preloadingPromise) {
@@ -566,7 +563,7 @@ export function useAdManager(config: AdConfig) {
     }
     
     isPreloading = true;
-    console.log('🚀 开始预加载任务（优化策略）');
+    console.log('🚀 开始预加载任务（所有广告位串行）');
     
     // 创建新的预加载Promise
     preloadingPromise = (async () => {
@@ -580,20 +577,17 @@ export function useAdManager(config: AdConfig) {
         const TOTAL_TIMEOUT = 30000; // 每轮总超时30秒
         
         const slotIds = AD_GROUPS.group5;
+        console.log(`📊 所有广告位串行：共${slotIds.length}个广告位`);
         
-        // 阶段1：前3个广告位串行
-        const firstSerialSlots = slotIds.slice(0, 3);
-        console.log(`📊 阶段1-串行：前3个广告位`);
-        
-        for (let i = 0; i < firstSerialSlots.length; i++) {
+        for (let i = 0; i < slotIds.length; i++) {
           // 检查总超时
           if (Date.now() - startTime > TOTAL_TIMEOUT) {
             console.log('⏱️ 预加载总超时（30秒），终止本轮任务');
             break;
           }
           
-          const slotId = firstSerialSlots[i];
-          console.log(`🔄 前串行 [${i + 1}/3]: ${slotId}`);
+          const slotId = slotIds[i];
+          console.log(`🔄 串行 [${i + 1}/${slotIds.length}]: ${slotId}`);
           
           const isReady = await preloadSingleSlot(slotId);
           
@@ -603,90 +597,14 @@ export function useAdManager(config: AdConfig) {
               isReady: true,
               loadedAt: Date.now()
             };
-            console.log(`🎉 前串行预加载成功: ${slotId}`);
+            console.log(`🎉 串行预加载成功: ${slotId}`);
             foundAd = true;
             break;
           }
           
           // 广告位之间延迟300ms
-          if (i < firstSerialSlots.length - 1) {
+          if (i < slotIds.length - 1) {
             await new Promise(resolve => setTimeout(resolve, 300));
-          }
-        }
-        
-        // 阶段2：中间12个广告位，每3个一组并行请求
-        if (!foundAd) {
-          const middleSlots = slotIds.slice(3, 15); // 中间12个广告位
-          const parallelGroups = [];
-          for (let i = 0; i < middleSlots.length; i += 3) {
-            parallelGroups.push(middleSlots.slice(i, i + 3));
-          }
-          
-          console.log(`📊 阶段2-并行：${parallelGroups.length}组，每组3个广告位`);
-          
-          for (let groupIndex = 0; groupIndex < parallelGroups.length; groupIndex++) {
-            // 检查总超时
-            if (Date.now() - startTime > TOTAL_TIMEOUT) {
-              console.log('⏱️ 预加载总超时（30秒），终止本轮任务');
-              break;
-            }
-            
-            const group = parallelGroups[groupIndex];
-            console.log(`🔄 并行组 [${groupIndex + 1}/${parallelGroups.length}]: ${group.join(', ')}`);
-            
-            // 并行请求3个广告位（第一个成功就返回）
-            const result = await preloadParallelGroup(group);
-            
-            if (result.success && result.slotId) {
-              preloadedAd = {
-                slotId: result.slotId,
-                isReady: true,
-                loadedAt: Date.now()
-              };
-              console.log(`🎉 并行预加载成功: ${result.slotId}`);
-              foundAd = true;
-              break;
-            }
-            
-            // 组间延迟300ms
-            if (groupIndex < parallelGroups.length - 1) {
-              await new Promise(resolve => setTimeout(resolve, 300));
-            }
-          }
-        }
-        
-        // 阶段3：最后6个广告位串行
-        if (!foundAd) {
-          const lastSerialSlots = slotIds.slice(15); // 最后6个广告位
-          console.log(`📊 阶段3-串行：最后6个广告位`);
-          
-          for (let i = 0; i < lastSerialSlots.length; i++) {
-            // 检查总超时
-            if (Date.now() - startTime > TOTAL_TIMEOUT) {
-              console.log('⏱️ 预加载总超时（30秒），终止本轮任务');
-              break;
-            }
-            
-            const slotId = lastSerialSlots[i];
-            console.log(`🔄 后串行 [${i + 1}/6]: ${slotId}`);
-            
-            const isReady = await preloadSingleSlot(slotId);
-            
-            if (isReady) {
-              preloadedAd = {
-                slotId: slotId,
-                isReady: true,
-                loadedAt: Date.now()
-              };
-              console.log(`🎉 后串行预加载成功: ${slotId}`);
-              foundAd = true;
-              break;
-            }
-            
-            // 广告位之间延迟300ms
-            if (i < lastSerialSlots.length - 1) {
-              await new Promise(resolve => setTimeout(resolve, 300));
-            }
           }
         }
         
@@ -1183,14 +1101,14 @@ export function useAdManager(config: AdConfig) {
           return;
         }
       } else {
-        console.log('❌ 预加载失败，直接请求最后3个广告位');
-        // 预加载失败，直接请求最后3个广告位串行
-        const lastThreeSlots = AD_GROUPS.group5.slice(12);
-        console.log('🔄 直接请求最后3个广告位:', lastThreeSlots);
+        console.log('❌ 预加载失败，直接请求所有广告位');
+        // 预加载失败，直接请求所有广告位串行
+        const allSlots = AD_GROUPS.group5;
+        console.log('🔄 直接请求所有广告位:', allSlots);
         
-        for (let i = 0; i < lastThreeSlots.length; i++) {
-          const slotId = lastThreeSlots[i];
-          console.log(`🔄 紧急加载 [${i + 1}/3]: ${slotId}`);
+        for (let i = 0; i < allSlots.length; i++) {
+          const slotId = allSlots[i];
+          console.log(`🔄 紧急加载 [${i + 1}/${allSlots.length}]: ${slotId}`);
           
           const isReady = await preloadSingleSlot(slotId);
           
@@ -1218,12 +1136,12 @@ export function useAdManager(config: AdConfig) {
           }
           
           // 广告位之间延迟300ms
-          if (i < lastThreeSlots.length - 1) {
+          if (i < allSlots.length - 1) {
             await new Promise(resolve => setTimeout(resolve, 300));
           }
         }
         
-        console.log('❌ 最后3个广告位也加载失败');
+        console.log('❌ 所有广告位都加载失败');
         isProcessing = false;
         reject(new Error('暂无广告'));
         return;
