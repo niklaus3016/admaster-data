@@ -608,6 +608,75 @@ export async function claimDailyBonus(userId: string, employeeId: string): Promi
   }
 }
 
+// 周目标相关接口
+
+interface WeeklyTargetInfo {
+  weeklyTarget: number;
+  weeklyCompleted: number;
+  weeklyStartDate: string;
+  weeklyEndDate: string;
+  daysRemaining: number;
+  progress: number;
+  hasClaimedBonus: boolean;
+}
+
+/**
+ * 获取周目标进度
+ * @returns 周目标进度信息
+ */
+export async function getWeeklyBonusProgress(): Promise<ApiResponse<WeeklyTargetInfo>> {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/api/weeklyBonus/progress`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : ''
+      }
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('获取周目标进度失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: {
+        weeklyTarget: 0,
+        weeklyCompleted: 0,
+        weeklyStartDate: '',
+        weeklyEndDate: '',
+        daysRemaining: 0,
+        progress: 0,
+        hasClaimedBonus: false
+      }
+    };
+  }
+}
+
+/**
+ * 领取周奖励
+ * @returns 领取结果
+ */
+export async function claimWeeklyBonus(): Promise<ApiResponse<{ gold: number; currentMonthGold: number }>> {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/api/weeklyBonus/claim`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : ''
+      }
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('领取周奖励失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+    };
+  }
+}
+
 // 提现开关状态
 interface WithdrawStatus {
   enabled: boolean;
@@ -1237,6 +1306,165 @@ export async function getDeviceConfig(): Promise<ApiResponse<{ consecutiveLimit:
       success: false,
       message: '网络错误，请稍后重试',
       data: { consecutiveLimit: 8, goldThreshold: 40 }
+    };
+  }
+}
+
+// 手机核销相关接口
+
+interface VerificationRecord {
+  id: string;
+  amount: number;
+  status: string;
+  date: string;
+  invoiceUrl?: string;
+}
+
+interface VerificationResponse {
+  success: boolean;
+  message: string;
+  verificationId: string;
+}
+
+interface VerificationRecordsResponse {
+  success: boolean;
+  data: {
+    records: VerificationRecord[];
+    total: number;
+  };
+}
+
+interface VerificationDetailResponse {
+  success: boolean;
+  data: {
+    id: string;
+    amount: number;
+    status: string;
+    date: string;
+    invoiceUrl: string;
+  };
+}
+
+/**
+ * 提交核销申请
+ * @param amount 核销金额
+ * @param invoiceFile 发票文件
+ * @returns 核销申请结果
+ */
+export async function submitVerification(amount: number, invoiceFile: File): Promise<ApiResponse<{ verificationId: string }>> {
+  try {
+    const token = localStorage.getItem('token');
+    const formData = new FormData();
+    formData.append('amount', amount.toString());
+    formData.append('invoiceFile', invoiceFile);
+    
+    const response = await fetch(`${API_BASE_URL}/api/verification/submit`, {
+      method: 'POST',
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : ''
+      },
+      body: formData
+    });
+    
+    return await response.json();
+  } catch (error) {
+    console.error('提交核销申请失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试'
+    };
+  }
+}
+
+/**
+ * 获取核销记录
+ * @param page 页码
+ * @param limit 每页数量
+ * @param status 状态筛选
+ * @returns 核销记录列表
+ */
+export async function getVerificationRecords(page: number = 1, limit: number = 10, status?: string): Promise<ApiResponse<{ records: VerificationRecord[]; total: number }>> {
+  try {
+    const token = localStorage.getItem('token');
+    let url = `${API_BASE_URL}/api/verification/records?page=${page}&limit=${limit}`;
+    if (status) {
+      url += `&status=${status}`;
+    }
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : ''
+      }
+    });
+    
+    return await response.json();
+  } catch (error) {
+    console.error('获取核销记录失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: {
+        records: [],
+        total: 0
+      }
+    };
+  }
+}
+
+/**
+ * 获取核销详情
+ * @param id 核销记录ID
+ * @returns 核销详情
+ */
+export async function getVerificationDetail(id: string): Promise<ApiResponse<{ id: string; amount: number; status: string; date: string; invoiceUrl: string }>> {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/api/verification/records/${id}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : ''
+      }
+    });
+    
+    return await response.json();
+  } catch (error) {
+    console.error('获取核销详情失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试'
+    };
+  }
+}
+
+/**
+ * 获取用户金币信息（使用新接口）
+ * @returns 用户金币信息
+ */
+export async function getUserGoldInfo(): Promise<ApiResponse<{ currentMonthGold: number; lastMonthGold: number; totalGold: number }>> {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/api/user/gold`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : ''
+      }
+    });
+    
+    return await response.json();
+  } catch (error) {
+    console.error('获取用户金币信息失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: {
+        currentMonthGold: 0,
+        lastMonthGold: 0,
+        totalGold: 0
+      }
     };
   }
 }

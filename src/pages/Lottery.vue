@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, onUnmounted, computed } from 'vue';
-import { Ticket, Trophy, Sparkles, Coins, Clock, TrendingUp } from 'lucide-vue-next';
+import { Ticket, Trophy, Sparkles, Coins, Clock, TrendingUp, Smartphone } from 'lucide-vue-next';
 import { useLocalStorage } from '../composables/useLocalStorage';
 import { getLotteryPool, getCurrentLotteryTickets, getLotteryHistory, getLotteryResult, generateLotteryTicket, getUserInfo, getLastLotteryTicket, getLotterySettings } from '../api/apiService';
 import { TTSPlugin } from '../plugins/TTSPlugin';
@@ -743,6 +743,14 @@ watch(isSpinning, (spinning) => {
           <div v-if="lotteryTickets.length > 0" class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
             {{ lotteryTickets.length }}
           </div>
+        </router-link>
+        <router-link 
+          to="/phone-verification" 
+          class="flex flex-col items-center transition-all duration-300"
+          :class="$route.path === '/phone-verification' ? 'text-emerald-400 scale-105' : 'text-zinc-400 hover:text-zinc-300'"
+        >
+          <Smartphone class="w-6 h-6 mb-1" />
+          <span class="text-xs font-medium">手机核销</span>
         </router-link>
       </div>
     </div>

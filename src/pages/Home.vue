@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { Coins, History, PlayCircle, LogOut, TrendingUp, Wallet, CreditCard, Trophy, Gift, Ticket } from 'lucide-vue-next';
-import { getUserInfo, rewardGold, getGoldLogs, getTodayGoldStats, recordLogin, getLoginStats, submitWithdrawRequest, getWithdrawStatus, getWithdrawRecords, claimDailyBonus, recordActivity, getPoolStatus, recordAdView, getUserTickets, getUserRedPacketRecords, claimRedPacket, getDeviceStatus, updateDeviceRecord, getDeviceConfig, getCurrentLotteryTickets, type WithdrawRecord } from '../api/apiService';
+import { Coins, History, PlayCircle, LogOut, TrendingUp, Wallet, CreditCard, Trophy, Gift, Ticket, Smartphone } from 'lucide-vue-next';
+import { getUserInfo, rewardGold, getGoldLogs, getTodayGoldStats, recordLogin, getLoginStats, submitWithdrawRequest, getWithdrawStatus, getWithdrawRecords, getWeeklyBonusProgress, claimWeeklyBonus, recordActivity, getPoolStatus, recordAdView, getUserTickets, getUserRedPacketRecords, claimRedPacket, getDeviceStatus, updateDeviceRecord, getDeviceConfig, getCurrentLotteryTickets, type WithdrawRecord } from '../api/apiService';
 import { useAdManager } from '../composables/useAdManager';
 import { TTSPlugin } from '../plugins/TTSPlugin';
 import { Capacitor } from '@capacitor/core';
@@ -23,7 +23,13 @@ const lastMonthGold = ref(0);
 const todayCoins = ref(0);
 const todayRecordCount = ref(0);
 const yesterdayRecordCount = ref(0);
-const todayTarget = ref(100000);
+// 周目标任务
+const weeklyTarget = ref(100);
+const weeklyCompleted = ref(0);
+const weeklyStartDate = ref('');
+const weeklyEndDate = ref('');
+const daysRemaining = ref(0);
+const weeklyProgress = ref(0);
 const bonusGold = ref(0);  // 额外金币奖励
 const hasClaimedBonus = ref(false);  // 是否已领取额外金币
 const isClaimingBonus = ref(false);  // 是否正在领取额外金币
@@ -731,12 +737,14 @@ const loadUserInfo = async (showLoading: boolean = true) => {
     if (response.success && response.data) {
       currentMonthGold.value = Number(response.data.currentMonthGold) || 0;
       lastMonthGold.value = Number(response.data.lastMonthGold) || 0;
-      todayTarget.value = Number(response.data.todayTarget) || 0;
       bonusGold.value = response.data.bonusGold !== undefined && response.data.bonusGold !== null ? Number(response.data.bonusGold) : 0;
       hasClaimedBonus.value = Boolean(response.data.hasClaimedBonus);
     } else {
       error.value = response.message || '获取金币信息失败';
     }
+    
+    // 加载周目标信息
+    await loadWeeklyTargetInfo();
     
     // 获取彩票数量
     const ticketsResponse = await getCurrentLotteryTickets(userId.value);
@@ -751,6 +759,25 @@ const loadUserInfo = async (showLoading: boolean = true) => {
     if (showLoading) {
       isLoading.value = false;
     }
+  }
+};
+
+// 加载周目标信息
+const loadWeeklyTargetInfo = async () => {
+  try {
+    const response = await getWeeklyBonusProgress();
+    console.log('周目标进度响应:', response);
+    if (response.success && response.data) {
+      weeklyTarget.value = Number(response.data.weeklyTarget) || 100;
+      weeklyCompleted.value = Number(response.data.weeklyCompleted) || 0;
+      weeklyStartDate.value = response.data.weeklyStartDate || '';
+      weeklyEndDate.value = response.data.weeklyEndDate || '';
+      daysRemaining.value = Number(response.data.daysRemaining) || 0;
+      weeklyProgress.value = Number(response.data.progress) || 0;
+      hasClaimedBonus.value = Boolean(response.data.hasClaimedBonus);
+    }
+  } catch (err) {
+    console.error('获取周目标进度失败:', err);
   }
 };
 
@@ -947,7 +974,7 @@ const deviceRating = computed(() => {
   if (typeof avg === 'number') {
     if (avg > 100) return '优秀';
     if (avg >= 50) return '正常';
-    return '异常';
+    return '较低';
   }
   return '-';
 });
@@ -960,7 +987,7 @@ const deviceRatingColor = computed(() => {
       return 'text-emerald-400';
     case '正常':
       return 'text-amber-400';
-    case '异常':
+    case '较低':
       return 'text-red-400';
     default:
       return 'text-zinc-400';
@@ -1166,15 +1193,15 @@ const handleWatchAd = async () => {
   }
 };
 
-// 领取今日目标额外金币
+// 领取周目标额外金币
 const handleClaimBonus = async () => {
   if (!userId.value || !empId.value) return;
   
   isClaimingBonus.value = true;
   
   try {
-    const response = await claimDailyBonus(userId.value, empId.value);
-    console.log('领取每日奖励响应:', response);
+    const response = await claimWeeklyBonus();
+    console.log('领取周奖励响应:', response);
     if (response.success && response.data) {
       const earned = response.data.gold;
       currentMonthGold.value = response.data.currentMonthGold;
@@ -1184,8 +1211,10 @@ const handleClaimBonus = async () => {
       // 重新加载今日金币统计（全局）和收益记录（当前设备）
       await loadTodayGoldStats();
       await loadGoldRecords();
+      // 重新加载周目标信息
+      await loadWeeklyTargetInfo();
     } else {
-      console.warn('领取每日奖励失败:', response.message);
+      console.warn('领取周奖励失败:', response.message);
       error.value = response.message || '领取失败';
     }
   } catch (err) {
@@ -1416,12 +1445,12 @@ const submitWithdraw = async () => {
               <div class="p-4">
                 <div 
                   class="absolute top-4 right-4 px-2 py-0.5 rounded-full text-[8px] font-bold tracking-widest border"
-                  :class="todayTarget > 0 ? (todayCoins >= todayTarget ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20') : 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'"
+                  :class="weeklyTarget > 0 ? (weeklyCompleted >= weeklyTarget ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20') : 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'"
                 >
-                  {{ todayTarget > 0 ? (todayCoins >= todayTarget ? '已完成' : '未完成') : '未设置' }}
+                  {{ weeklyTarget > 0 ? (weeklyCompleted >= weeklyTarget ? '已完成' : '未完成') : '未设置' }}
                 </div>
-                <p class="text-zinc-500 text-[9px] uppercase tracking-wider mb-1">今日目标任务</p>
-                <p class="text-lg font-light tracking-tight text-purple-400">{{ todayTarget > 0 ? todayTarget.toLocaleString() : '未设置' }}</p>
+                <p class="text-zinc-500 text-[9px] uppercase tracking-wider mb-1">本周目标任务</p>
+                <p class="text-lg font-light tracking-tight text-purple-400">{{ weeklyTarget > 0 ? `${weeklyTarget.toLocaleString()} 条` : '未设置' }}</p>
               </div>
             </div>
             <div class="group relative glass-card rounded-[1.25rem] overflow-hidden transition-all hover:bg-white/5">
@@ -1442,27 +1471,24 @@ const submitWithdraw = async () => {
           </div>
       </div>
 
-      <!-- 今日目标进度条和额外金币奖励 -->
-      <div v-if="todayTarget >= 0" class="px-4 py-2">
+      <!-- 周目标进度条和额外金币奖励 -->
+      <div v-if="weeklyTarget >= 0" class="px-4 py-2">
         <div class="flex items-center">
           <!-- 进度条 - 占3/4 -->
           <div class="w-3/4 space-y-2 mr-3">
             <div class="flex justify-between items-center text-[9px]">
-              <span class="text-zinc-500 uppercase tracking-wider">今日目标进度</span>
-              <span class="text-purple-400 font-bold">{{ todayTarget > 0 ? `${Math.min(100, Math.floor((todayCoins / todayTarget) * 100))}%` : '未设置' }}</span>
+              <span class="text-zinc-500 uppercase tracking-wider">本周目标进度</span>
+              <span class="text-purple-400 font-bold">{{ weeklyTarget > 0 ? `${Math.min(100, weeklyProgress)}%` : '未设置' }}</span>
             </div>
             <div class="h-2 bg-zinc-800/50 rounded-full overflow-hidden border border-white/5">
               <div 
               class="h-full bg-gradient-to-r from-purple-500 to-emerald-500 rounded-full transition-all duration-500 ease-out"
-              :style="{ width: todayTarget > 0 ? `${Math.min(100, (todayCoins / todayTarget) * 100)}%` : '0%' }"
+              :style="{ width: weeklyTarget > 0 ? `${Math.min(100, weeklyProgress)}%` : '0%' }"
             />
             </div>
             <div class="flex justify-between text-[8px] text-zinc-600">
-              <span>{{ Math.floor(todayCoins).toLocaleString() }} 金币</span>
-              <span>目标 {{ todayTarget.toLocaleString() }} 金币</span>
-            </div>
-            <div v-if="todayTarget > 0 && !hasClaimedBonus" class="text-[7px] text-zinc-500 text-center mt-1">
-              {{ todayCoins >= todayTarget ? '✓ 已达标可领取' : `✗ 还差 ${Math.floor(todayTarget - todayCoins).toLocaleString()} 金币` }}
+              <span>{{ weeklyCompleted.toLocaleString() }} 条{{ weeklyTarget > 0 && !hasClaimedBonus ? (weeklyCompleted >= weeklyTarget ? '（已达标可领取）' : `（还差 ${Math.floor(weeklyTarget - weeklyCompleted).toLocaleString()} 条）`) : '' }}</span>
+              <span>目标 {{ weeklyTarget.toLocaleString() }} 条</span>
             </div>
           </div>
 
@@ -1480,31 +1506,31 @@ const submitWithdraw = async () => {
             <button
               v-else-if="bonusGold > 0"
               @click="handleClaimBonus"
-              :disabled="isClaimingBonus || todayCoins < todayTarget || todayTarget === 0"
+              :disabled="isClaimingBonus || weeklyCompleted < weeklyTarget || weeklyTarget === 0"
               class="w-full h-full py-1.5 px-2 rounded-lg font-bold text-[9px] uppercase tracking-widest transition-all border flex flex-col items-center justify-center relative overflow-hidden group"
               :class="[
-                    isClaimingBonus || todayCoins < todayTarget || todayTarget === 0
+                    isClaimingBonus || weeklyCompleted < weeklyTarget || weeklyTarget === 0
                       ? 'bg-zinc-800/50 border-zinc-700 text-zinc-600 cursor-not-allowed' 
                       : 'bg-gradient-to-br from-amber-400 via-orange-500 to-red-500 text-white border-amber-300/50 shadow-[0_0_20px_rgba(245,158,11,0.4),0_0_40px_rgba(245,158,11,0.2)] hover:shadow-[0_0_30px_rgba(245,158,11,0.6),0_0_60px_rgba(245,158,11,0.3)] hover:scale-[1.05] active:scale-[0.95]'
                   ]"
             >
               <!-- 动态背景光效 -->
               <div 
-                v-if="!isClaimingBonus && todayCoins >= todayTarget && todayTarget > 0"
+                v-if="!isClaimingBonus && weeklyCompleted >= weeklyTarget && weeklyTarget > 0"
                 class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[shimmer_2s_infinite]"
               />
               <!-- 脉冲光圈 -->
               <div 
-                v-if="!isClaimingBonus && todayCoins >= todayTarget && todayTarget > 0"
+                v-if="!isClaimingBonus && weeklyCompleted >= weeklyTarget && weeklyTarget > 0"
                 class="absolute inset-0 rounded-lg animate-pulse bg-gradient-to-r from-amber-500/20 via-orange-500/30 to-red-500/20"
               />
               <!-- 灰色脉冲光圈（未完成目标或未设置目标时） -->
               <div 
-                v-if="!isClaimingBonus && (todayCoins < todayTarget || todayTarget === 0)"
+                v-if="!isClaimingBonus && (weeklyCompleted < weeklyTarget || weeklyTarget === 0)"
                 class="absolute inset-0 rounded-lg animate-pulse bg-gradient-to-r from-zinc-500/10 via-zinc-600/20 to-zinc-500/10"
               />
               <!-- 图标 -->
-              <Coins class="w-3 h-3 relative z-10 mb-0.5" :class="{ 'animate-spin': isClaimingBonus, 'animate-bounce': !isClaimingBonus && todayCoins >= todayTarget && todayTarget > 0 }" />
+              <Coins class="w-3 h-3 relative z-10 mb-0.5" :class="{ 'animate-spin': isClaimingBonus, 'animate-bounce': !isClaimingBonus && weeklyCompleted >= weeklyTarget && weeklyTarget > 0 }" />
               <span class="text-center leading-tight relative z-10">{{ isClaimingBonus ? '领取中...' : `奖${bonusGold}金币` }}</span>
             </button>
           </div>
@@ -2079,6 +2105,14 @@ const submitWithdraw = async () => {
           <div v-if="lotteryTickets.length > 0" class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
             {{ lotteryTickets.length }}
           </div>
+        </router-link>
+        <router-link 
+          to="/phone-verification" 
+          class="flex flex-col items-center transition-all duration-300"
+          :class="$route.path === '/phone-verification' ? 'text-emerald-400 scale-105' : 'text-zinc-400 hover:text-zinc-300'"
+        >
+          <Smartphone class="w-6 h-6 mb-1" />
+          <span class="text-xs font-medium">手机核销</span>
         </router-link>
       </div>
     </div>
