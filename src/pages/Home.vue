@@ -29,7 +29,10 @@ const weeklyCompleted = ref(0);
 const weeklyStartDate = ref('');
 const weeklyEndDate = ref('');
 const daysRemaining = ref(0);
-const weeklyProgress = ref(0);
+const weeklyProgress = computed(() => {
+  if (weeklyTarget.value === 0) return 0;
+  return Math.min(Math.round((weeklyCompleted.value / weeklyTarget.value) * 100), 100);
+});
 const bonusGold = ref(0);  // 额外金币奖励
 const hasClaimedBonus = ref(false);  // 是否已领取额外金币
 const isClaimingBonus = ref(false);  // 是否正在领取额外金币
@@ -335,11 +338,11 @@ const showRewardAnimation = async (amount: number) => {
   await playRewardSound(amount);
   console.log('playRewardSound 已调用');
   
-  // 1秒后隐藏
+  // 语音播放完成后，等待2秒再隐藏弹窗，确保用户能看到奖励金额
   rewardTimeout = setTimeout(() => {
     showRewardPopup.value = false;
     console.log('showRewardPopup 已设置为 false');
-  }, 1000);
+  }, 2000);
 };
 
 // 显示红包弹窗
@@ -765,16 +768,28 @@ const loadUserInfo = async (showLoading: boolean = true) => {
 // 加载周目标信息
 const loadWeeklyTargetInfo = async () => {
   try {
-    const response = await getWeeklyBonusProgress();
-    console.log('周目标进度响应:', response);
-    if (response.success && response.data) {
-      weeklyTarget.value = Number(response.data.weeklyTarget) || 100;
-      weeklyCompleted.value = Number(response.data.weeklyCompleted) || 0;
-      weeklyStartDate.value = response.data.weeklyStartDate || '';
-      weeklyEndDate.value = response.data.weeklyEndDate || '';
-      daysRemaining.value = Number(response.data.daysRemaining) || 0;
-      weeklyProgress.value = Number(response.data.progress) || 0;
-      hasClaimedBonus.value = Boolean(response.data.hasClaimedBonus);
+    const API_BASE_URL = 'https://wfqmaepvjkdd.sealoshzh.site';
+    const token = localStorage.getItem('token');
+    
+    // 调用周进度接口获取完整信息
+    const response = await fetch(`${API_BASE_URL}/api/weeklyBonus/progress`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : ''
+      }
+    });
+    
+    const result = await response.json();
+    console.log('周进度响应:', result);
+    
+    if (result.success && result.data) {
+      // 使用接口返回的targetCount作为周目标值
+      weeklyTarget.value = Number(result.data.targetCount) || 100;
+      // 使用接口返回的currentCount作为周已完成条数
+      weeklyCompleted.value = Number(result.data.currentCount) || 0;
+      // 使用接口返回的isClaimed作为是否已领取奖励
+      hasClaimedBonus.value = Boolean(result.data.isClaimed);
     }
   } catch (err) {
     console.error('获取周目标进度失败:', err);
@@ -1203,11 +1218,31 @@ const handleClaimBonus = async () => {
     const response = await claimWeeklyBonus();
     console.log('领取周奖励响应:', response);
     if (response.success && response.data) {
-      const earned = response.data.gold;
-      currentMonthGold.value = response.data.currentMonthGold;
+      // 使用后端返回的bonusCoins字段
+      const earned = (response.data as any).bonusCoins || response.data.gold || 0;
+      // 检查currentMonthGold是否是有效数字
+      if (typeof response.data.currentMonthGold === 'number' && !isNaN(response.data.currentMonthGold)) {
+        currentMonthGold.value = response.data.currentMonthGold;
+      }
       hasClaimedBonus.value = true;
       // 显示金币奖励动画和语音
-      showRewardAnimation(earned);
+      await showRewardAnimation(earned);
+      
+      // 检查是否获得彩票
+      const ticketNumber = (response.data as any).ticketNumber;
+      const issueNumber = (response.data as any).issueNumber;
+      
+      if (ticketNumber && issueNumber && typeof ticketNumber === 'string' && typeof issueNumber === 'string' && ticketNumber.trim() !== '' && issueNumber.trim() !== '') {
+        console.log('🎫 周奖励获得彩票:', {
+          ticketNumber: ticketNumber,
+          issueNumber: issueNumber
+        });
+        // 显示彩票获得提示
+        await showTicketAnimation(ticketNumber);
+      }
+      
+      // 重新加载用户信息（包括金币信息）
+      await loadUserInfo(false);
       // 重新加载今日金币统计（全局）和收益记录（当前设备）
       await loadTodayGoldStats();
       await loadGoldRecords();
@@ -1510,7 +1545,7 @@ const submitWithdraw = async () => {
               class="w-full h-full py-1.5 px-2 rounded-lg font-bold text-[9px] uppercase tracking-widest transition-all border flex flex-col items-center justify-center relative overflow-hidden group"
               :class="[
                     isClaimingBonus || weeklyCompleted < weeklyTarget || weeklyTarget === 0
-                      ? 'bg-zinc-800/50 border-zinc-700 text-zinc-600 cursor-not-allowed' 
+                      ? 'bg-zinc-800/50 border-zinc-700 text-yellow-400 cursor-not-allowed' 
                       : 'bg-gradient-to-br from-amber-400 via-orange-500 to-red-500 text-white border-amber-300/50 shadow-[0_0_20px_rgba(245,158,11,0.4),0_0_40px_rgba(245,158,11,0.2)] hover:shadow-[0_0_30px_rgba(245,158,11,0.6),0_0_60px_rgba(245,158,11,0.3)] hover:scale-[1.05] active:scale-[0.95]'
                   ]"
             >
@@ -1529,9 +1564,9 @@ const submitWithdraw = async () => {
                 v-if="!isClaimingBonus && (weeklyCompleted < weeklyTarget || weeklyTarget === 0)"
                 class="absolute inset-0 rounded-lg animate-pulse bg-gradient-to-r from-zinc-500/10 via-zinc-600/20 to-zinc-500/10"
               />
-              <!-- 图标 -->
-              <Coins class="w-3 h-3 relative z-10 mb-0.5" :class="{ 'animate-spin': isClaimingBonus, 'animate-bounce': !isClaimingBonus && weeklyCompleted >= weeklyTarget && weeklyTarget > 0 }" />
-              <span class="text-center leading-tight relative z-10">{{ isClaimingBonus ? '领取中...' : `奖${bonusGold}金币` }}</span>
+              <!-- 奖励文字 -->
+              <span class="text-center leading-tight relative z-10">{{ isClaimingBonus ? '领取中...' : '奖金币' }}</span>
+              <span class="text-center leading-tight relative z-10 text-xs">{{ isClaimingBonus ? '' : `${bonusGold.toLocaleString()}` }}</span>
             </button>
           </div>
         </div>
@@ -1629,8 +1664,8 @@ const submitWithdraw = async () => {
         <!-- 金币奖励弹窗 -->
         <transition name="reward-popup">
           <div v-if="showRewardPopup" class="fixed inset-0 flex items-center justify-center z-9999 pointer-events-none">
-            <div v-if="rewardAmount > 0" class="bg-gradient-to-r from-amber-400 to-orange-500 text-white px-6 py-3 rounded-xl font-bold shadow-lg flex items-center border border-white/30 animate-bounce pointer-events-auto">
-              <Coins class="w-6 h-6 text-white mr-2" />
+            <div v-if="rewardAmount > 0" class="bg-gradient-to-r from-amber-400 to-orange-500 text-white px-6 py-4 rounded-xl font-bold shadow-lg flex flex-col items-center justify-center border border-white/30 animate-bounce pointer-events-auto">
+              <span class="text-lg">奖励</span>
               <span class="text-xl">+{{ Math.floor(rewardAmount) }} 金币</span>
             </div>
             <div v-else class="bg-gradient-to-r from-purple-400 to-pink-500 text-white px-6 py-3 rounded-xl font-bold shadow-lg flex items-center border border-white/30 animate-bounce pointer-events-auto">
