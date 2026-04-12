@@ -677,6 +677,166 @@ export async function claimWeeklyBonus(): Promise<ApiResponse<{ gold: number; cu
   }
 }
 
+// 福利抽奖相关接口
+
+interface WelfareLotteryInfo {
+  balance: number;
+  chances: number;
+}
+
+interface WelfareLotteryResult {
+  id: string;
+  name: string;
+  value: number;
+  type: string;
+}
+
+interface WelfareLotteryRecord {
+  id: string;
+  time: string;
+  name: string;
+  value: number;
+  type: string;
+}
+
+/**
+ * 获取福利抽奖信息
+ * @param userId 用户ID
+ * @param employeeId 员工号
+ * @returns 福利抽奖信息
+ */
+export async function getWelfareLotteryInfo(userId: string, employeeId: string): Promise<ApiResponse<WelfareLotteryInfo>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/welfare-lottery/info`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userId, employeeId }),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('获取福利抽奖信息失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: {
+        balance: 0,
+        chances: 0
+      }
+    };
+  }
+}
+
+/**
+ * 领取福利抽奖
+ * @param userId 用户ID
+ * @param employeeId 员工号
+ * @returns 抽奖结果
+ */
+export async function claimWelfareLottery(userId: string, employeeId: string): Promise<ApiResponse<{ result: WelfareLotteryResult }>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/welfare-lottery/claim`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userId, employeeId }),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('领取福利抽奖失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+    };
+  }
+}
+
+/**
+ * 获取福利抽奖记录
+ * @param userId 用户ID
+ * @param employeeId 员工号
+ * @returns 抽奖记录
+ */
+export async function getWelfareLotteryRecords(userId: string, employeeId: string): Promise<ApiResponse<{ records: WelfareLotteryRecord[] }>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/welfare-lottery/records`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userId, employeeId }),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('获取福利抽奖记录失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: {
+        records: []
+      }
+    };
+  }
+}
+
+/**
+ * 获取福利钱包余额
+ * @param userId 用户ID
+ * @param employeeId 员工号
+ * @returns 钱包余额
+ */
+export async function getWelfareWalletBalance(userId: string, employeeId: string): Promise<ApiResponse<{ balance: number }>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/welfare-wallet/balance`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userId, employeeId }),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('获取福利钱包余额失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: {
+        balance: 0
+      }
+    };
+  }
+}
+
+/**
+ * 福利钱包提现
+ * @param userId 用户ID
+ * @param employeeId 员工号
+ * @param amount 提现金额
+ * @param alipayAccount 支付宝账号
+ * @param alipayName 支付宝姓名
+ * @returns 提现结果
+ */
+export async function withdrawWelfareFunds(userId: string, employeeId: string, amount: number, alipayAccount: string, alipayName: string): Promise<ApiResponse<{ success: boolean }>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/welfare-wallet/withdraw`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userId, employeeId, amount, alipayAccount, alipayName }),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('福利钱包提现失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+    };
+  }
+}
+
 // 提现开关状态
 interface WithdrawStatus {
   enabled: boolean;

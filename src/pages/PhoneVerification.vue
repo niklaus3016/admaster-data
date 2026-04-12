@@ -426,6 +426,16 @@ onMounted(async () => {
           <span class="text-xs font-medium">幸运彩票</span>
         </router-link>
         <router-link 
+          to="/welfare-lottery" 
+          class="flex flex-col items-center transition-all duration-300"
+          :class="$route.path === '/welfare-lottery' ? 'text-emerald-400 scale-105' : 'text-zinc-400 hover:text-zinc-300'"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span class="text-xs font-medium">福利抽奖</span>
+        </router-link>
+        <router-link 
           to="/phone-verification" 
           class="flex flex-col items-center transition-all duration-300"
           :class="$route.path === '/phone-verification' ? 'text-emerald-400 scale-105' : 'text-zinc-400 hover:text-zinc-300'"
