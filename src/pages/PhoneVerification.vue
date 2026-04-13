@@ -20,6 +20,8 @@ const selectedFile = ref<File | null>(null);
 const imagePreviewUrl = ref<string | null>(null);
 const isSubmitting = ref(false);
 const submitSuccess = ref(false);
+const alipayName = ref('');
+const alipayAccount = ref('');
 
 // 核销记录
 const showVerificationRecordsModal = ref(false);
@@ -46,6 +48,8 @@ const canVerify = computed(() => {
   if (isNaN(amount) || amount <= 0) return false;
   if (amount > 1500) return false;
   if (!selectedFile.value) return false;
+  if (!alipayName.value || alipayName.value.trim() === '') return false;
+  if (!alipayAccount.value || alipayAccount.value.trim() === '') return false;
   return amount <= parseFloat(maxVerificationAmount.value);
 });
 
@@ -124,7 +128,7 @@ const handleVerifySubmit = async () => {
   
   try {
     const amount = parseFloat(invoiceAmount.value);
-    const response = await submitVerification(amount, selectedFile.value);
+    const response = await submitVerification(amount, selectedFile.value, alipayName.value, alipayAccount.value);
     
     if (response.success) {
       submitSuccess.value = true;
@@ -135,6 +139,8 @@ const handleVerifySubmit = async () => {
         invoiceAmount.value = '';
         selectedFile.value = null;
         imagePreviewUrl.value = null;
+        alipayName.value = '';
+        alipayAccount.value = '';
         // 重置文件输入
         const fileInput = document.getElementById('invoice-file') as HTMLInputElement;
         if (fileInput) {
@@ -151,6 +157,60 @@ const handleVerifySubmit = async () => {
     error.value = '网络错误，请稍后重试';
   } finally {
     isSubmitting.value = false;
+  }
+};
+
+// 复制到剪贴板
+const copyToClipboard = async (text: string) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    // 可以添加一个简单的提示，比如显示"复制成功"
+    console.log('复制成功:', text);
+  } catch (err) {
+    console.error('复制失败:', err);
+    // 降级处理：使用传统的复制方法
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+      document.execCommand('copy');
+      console.log('复制成功:', text);
+    } catch (err) {
+      console.error('复制失败:', err);
+    }
+    document.body.removeChild(textarea);
+  }
+};
+
+// 格式化时间为北京时间
+const formatLocalTime = (time: string) => {
+  if (!time) return '';
+  
+  try {
+    // 创建Date对象
+    const date = new Date(time);
+    
+    // 检查是否为有效日期
+    if (isNaN(date.getTime())) {
+      console.error('无效的日期格式:', time);
+      return time;
+    }
+    
+    // 直接使用本地时间（浏览器会自动处理时区）
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  } catch (err) {
+    console.error('时间格式化失败:', err);
+    return time;
   }
 };
 
@@ -329,12 +389,37 @@ onMounted(async () => {
             <div class="flex items-start">
               <AlertCircle class="w-4 h-4 text-amber-400 mr-2 mt-0.5 flex-shrink-0" />
               <div class="text-sm text-amber-200 space-y-2">
-                <p>1. 请确保上传的发票真实有效</p>
-                <p>2. 核销金额不能超过可核销金额</p>
+                <p>1. 发票抬头必须与页面最下方显示的开票信息一致，否则无效</p>
+                <p>2. 请确保上传的发票真实有效</p>
                 <p>3. 发票金额不能超过1500元</p>
                 <p>4. 提交后，财务将在3个工作日内处理</p>
                 <p>5. 核销成功后，相应的金币将被扣除</p>
               </div>
+            </div>
+          </div>
+          
+          <!-- 支付宝信息 -->
+          <div class="space-y-4">
+            <!-- 支付宝姓名 -->
+            <div class="space-y-2">
+              <label class="text-[10px] text-amber-400 uppercase tracking-wider">收款人支付宝姓名</label>
+              <input 
+                v-model="alipayName"
+                type="text"
+                placeholder="请输入收款人支付宝姓名"
+                class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 transition-all"
+              />
+            </div>
+            
+            <!-- 支付宝账号 -->
+            <div class="space-y-2">
+              <label class="text-[10px] text-amber-400 uppercase tracking-wider">收款人支付宝帐号</label>
+              <input 
+                v-model="alipayAccount"
+                type="text"
+                placeholder="请输入收款人支付宝帐号"
+                class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 transition-all"
+              />
             </div>
           </div>
           
@@ -360,6 +445,41 @@ onMounted(async () => {
           </div>
         </div>
       </div>
+
+      <!-- 开票信息 -->
+      <div class="glass-card rounded-[1.25rem] p-6">
+        <div class="text-sm text-amber-400 font-medium mb-3">开票信息</div>
+        <div class="text-sm text-zinc-400 space-y-2">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center flex-1">
+              <span class="text-zinc-600 mr-2 w-12">抬头：</span>
+              <span class="text-zinc-300">光年跃迁（温州）科技有限公司</span>
+            </div>
+            <button 
+              @click="copyToClipboard('光年跃迁（温州）科技有限公司')"
+              class="ml-2 px-2 py-1 bg-white/5 hover:bg-white/10 rounded-lg text-zinc-400 hover:text-white transition-all flex items-center"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </button>
+          </div>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center flex-1">
+              <span class="text-zinc-600 mr-2 w-12">税号：</span>
+              <span class="text-zinc-300 font-mono">91330383MAK7800T0E</span>
+            </div>
+            <button 
+              @click="copyToClipboard('91330383MAK7800T0E')"
+              class="ml-2 px-2 py-1 bg-white/5 hover:bg-white/10 rounded-lg text-zinc-400 hover:text-white transition-all flex items-center"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
     </main>
 
     <!-- 核销记录模态框 -->
@@ -374,19 +494,36 @@ onMounted(async () => {
           </button>
         </div>
         <div class="space-y-3 max-h-[60vh] overflow-y-auto">
-          <div v-for="record in verificationRecords" :key="record.id" class="p-4 bg-white/5 rounded-lg border border-white/10">
-            <div class="flex justify-between items-center mb-2">
-              <span class="text-sm font-medium text-white">{{ record.date }}</span>
-              <span 
-                class="text-xs font-bold px-2 py-1 rounded-full"
-                :class="record.status === '已通过' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'"
-              >
-                {{ record.status }}
-              </span>
+          <div v-for="record in verificationRecords" :key="record.id" class="p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-all duration-300">
+            <div class="flex justify-between items-start mb-3">
+              <div class="flex flex-col">
+                <span class="text-sm font-medium text-white mb-2">{{ formatLocalTime(record.date) }}</span>
+                <span 
+                  class="text-xs font-bold px-3 py-1 rounded-full w-fit"
+                  :class="{
+                    'bg-emerald-500/20 text-emerald-400': record.status === '已通过' || record.status === '已打款' || record.status === '已处理' || record.status === 'approved',
+                    'bg-amber-500/20 text-amber-400': record.status === '待处理' || record.status === 'pending',
+                    'bg-red-500/20 text-red-400': record.status === '已拒绝' || record.status === 'rejected'
+                  }"
+                >
+                  {{ record.status === 'pending' ? '待处理' : record.status === 'rejected' ? '已拒绝' : record.status === '已处理' ? '已打款' : record.status === 'approved' ? '已打款' : record.status }}
+                </span>
+              </div>
+              <div class="text-right">
+                <span class="text-zinc-400 text-xs">核销金额</span>
+                <p class="text-lg font-bold text-amber-400 mt-1">¥{{ record.amount }}</p>
+              </div>
             </div>
-            <div class="text-right">
-              <span class="text-zinc-400 text-xs">核销金额</span>
-              <p class="text-lg font-bold text-white">¥{{ record.amount }}</p>
+            <div class="flex flex-col space-y-1 mt-2">
+              <div class="text-xs text-white">
+                收款人：{{ record.alipayName || '未知' }}
+              </div>
+              <div class="text-xs text-white">
+                支付宝账号：{{ record.alipayAccount || '未知' }}
+              </div>
+              <div v-if="record.status === '已拒绝' || record.status === 'rejected'" class="text-xs text-red-400 mt-2">
+                拒绝原因：{{ record.rejectReason || '暂无原因' }}
+              </div>
             </div>
           </div>
           <div v-if="verificationRecords.length === 0" class="text-center py-8 text-zinc-500 text-sm">

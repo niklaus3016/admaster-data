@@ -1479,6 +1479,9 @@ interface VerificationRecord {
   status: string;
   date: string;
   invoiceUrl?: string;
+  alipayName?: string;
+  alipayAccount?: string;
+  rejectReason?: string;
 }
 
 interface VerificationResponse {
@@ -1512,12 +1515,14 @@ interface VerificationDetailResponse {
  * @param invoiceFile 发票文件
  * @returns 核销申请结果
  */
-export async function submitVerification(amount: number, invoiceFile: File): Promise<ApiResponse<{ verificationId: string }>> {
+export async function submitVerification(amount: number, invoiceFile: File, alipayName: string, alipayAccount: string): Promise<ApiResponse<{ verificationId: string }>> {
   try {
     const token = localStorage.getItem('token');
     const formData = new FormData();
     formData.append('amount', amount.toString());
     formData.append('invoiceFile', invoiceFile);
+    formData.append('alipayName', alipayName);
+    formData.append('alipayAccount', alipayAccount);
     
     const response = await fetch(`${API_BASE_URL}/api/verification/submit`, {
       method: 'POST',
