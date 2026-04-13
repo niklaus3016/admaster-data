@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { Smartphone, Upload, AlertCircle, Coins, Wallet, CreditCard } from 'lucide-vue-next';
+import { Smartphone, Upload, AlertCircle, Coins, Wallet, CreditCard, TrendingUp, Ticket, Gift } from 'lucide-vue-next';
 import { getUserGoldInfo, submitVerification, getVerificationRecords } from '../api/apiService';
 
 const router = useRouter();
@@ -26,9 +26,9 @@ const alipayAccount = ref('');
 // 核销记录
 const showVerificationRecordsModal = ref(false);
 const verificationRecords = ref([
-  { id: '1', amount: 1200, status: '已通过', date: '2024-04-10' },
-  { id: '2', amount: 950, status: '处理中', date: '2024-04-05' },
-  { id: '3', amount: 1500, status: '已通过', date: '2024-03-28' },
+  { id: '1', amount: 1200, status: '已通过', date: '2024-04-10', alipayName: '测试用户', alipayAccount: 'test@example.com', rejectReason: '' },
+  { id: '2', amount: 950, status: '处理中', date: '2024-04-05', alipayName: '测试用户', alipayAccount: 'test@example.com', rejectReason: '' },
+  { id: '3', amount: 1500, status: '已通过', date: '2024-03-28', alipayName: '测试用户', alipayAccount: 'test@example.com', rejectReason: '' },
 ]);
 
 // 计算可用核销金币
@@ -110,7 +110,12 @@ const openVerificationRecordsModal = async () => {
   try {
     const response = await getVerificationRecords(1, 20);
     if (response.success && response.data) {
-      verificationRecords.value = response.data.records;
+      verificationRecords.value = response.data.records.map(record => ({
+        ...record,
+        alipayName: record.alipayName || '未知',
+        alipayAccount: record.alipayAccount || '未知',
+        rejectReason: record.rejectReason || ''
+      }));
     }
   } catch (err) {
     console.error('获取核销记录失败:', err);
@@ -547,19 +552,15 @@ onMounted(async () => {
           class="flex flex-col items-center transition-all duration-300"
           :class="$route.path === '/' ? 'text-emerald-400 scale-105' : 'text-zinc-400 hover:text-zinc-300'"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-          </svg>
+          <TrendingUp class="w-6 h-6 mb-1" />
           <span class="text-xs font-medium">电子手工</span>
         </router-link>
         <router-link 
           to="/lottery" 
-          class="flex flex-col items-center transition-all duration-300"
+          class="flex flex-col items-center transition-all duration-300 relative"
           :class="$route.path === '/lottery' ? 'text-emerald-400 scale-105' : 'text-zinc-400 hover:text-zinc-300'"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
+          <Ticket class="w-6 h-6 mb-1" />
           <span class="text-xs font-medium">幸运彩票</span>
         </router-link>
         <router-link 
@@ -567,9 +568,7 @@ onMounted(async () => {
           class="flex flex-col items-center transition-all duration-300"
           :class="$route.path === '/welfare-lottery' ? 'text-emerald-400 scale-105' : 'text-zinc-400 hover:text-zinc-300'"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+          <Gift class="w-6 h-6 mb-1" />
           <span class="text-xs font-medium">福利抽奖</span>
         </router-link>
         <router-link 

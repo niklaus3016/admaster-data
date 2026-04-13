@@ -2146,7 +2146,7 @@ const submitWithdraw = async () => {
           class="flex flex-col items-center transition-all duration-300"
           :class="$route.path === '/welfare-lottery' ? 'text-emerald-400 scale-105' : 'text-zinc-400 hover:text-zinc-300'"
         >
-          <Trophy class="w-6 h-6 mb-1" />
+          <Gift class="w-6 h-6 mb-1" />
           <span class="text-xs font-medium">福利抽奖</span>
         </router-link>
         <router-link 

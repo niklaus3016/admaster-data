@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, onUnmounted, computed } from 'vue';
-import { Ticket, Trophy, Sparkles, Coins, Clock, TrendingUp, Smartphone } from 'lucide-vue-next';
+import { Ticket, Trophy, Sparkles, Coins, Clock, TrendingUp, Smartphone, Gift } from 'lucide-vue-next';
 import { useLocalStorage } from '../composables/useLocalStorage';
 import { getLotteryPool, getCurrentLotteryTickets, getLotteryHistory, getLotteryResult, generateLotteryTicket, getUserInfo, getLastLotteryTicket, getLotterySettings } from '../api/apiService';
 import { TTSPlugin } from '../plugins/TTSPlugin';
@@ -749,7 +749,7 @@ watch(isSpinning, (spinning) => {
           class="flex flex-col items-center transition-all duration-300"
           :class="$route.path === '/welfare-lottery' ? 'text-emerald-400 scale-105' : 'text-zinc-400 hover:text-zinc-300'"
         >
-          <Trophy class="w-6 h-6 mb-1" />
+          <Gift class="w-6 h-6 mb-1" />
           <span class="text-xs font-medium">福利抽奖</span>
         </router-link>
         <router-link 

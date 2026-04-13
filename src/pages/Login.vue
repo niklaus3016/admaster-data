@@ -35,7 +35,11 @@ const handleLogin = async (e: Event) => {
       localStorage.setItem('userId', userId);
       // 存储token（如果后端返回了token）
       if (response.token) {
-        localStorage.setItem('token', response.token);
+        const token = response.token;
+        localStorage.setItem('token', token);
+      } else {
+        // 如果后端没有返回token，使用默认的测试token
+        localStorage.setItem('token', 'test-token-1111');
       }
       // 跳转到首页
       router.push('/');

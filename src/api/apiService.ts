@@ -95,7 +95,8 @@ export async function checkEmployee(employeeId: string): Promise<ApiResponse<Emp
               area: '上海',
               status: 1,
               __v: 0
-            }
+            },
+            token: 'test-token-1111' // 添加token字段
           });
         } else {
           // 员工号不存在
@@ -700,22 +701,41 @@ interface WelfareLotteryRecord {
   type: string;
 }
 
+interface WelfareLotteryPrize {
+  id: string;
+  name: string;
+  value: number;
+  type: string;
+  probability: number;
+}
+
+interface AlipayInfo {
+  alipayName: string;
+  alipayAccount: string;
+}
+
 /**
  * 获取福利抽奖信息
- * @param userId 用户ID
  * @param employeeId 员工号
  * @returns 福利抽奖信息
  */
-export async function getWelfareLotteryInfo(userId: string, employeeId: string): Promise<ApiResponse<WelfareLotteryInfo>> {
+export async function getWelfareLotteryInfo(employeeId: string): Promise<ApiResponse<WelfareLotteryInfo>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/welfare-lottery/info`, {
-      method: 'POST',
+    const token = localStorage.getItem('token');
+    console.log('getWelfareLotteryInfo - employeeId:', employeeId);
+    console.log('getWelfareLotteryInfo - token:', token);
+    // 只传递employeeId参数
+    const url = `${API_BASE_URL}/api/welfare/lottery/info?employeeId=${employeeId}`;
+    console.log('getWelfareLotteryInfo - URL:', url);
+    const response = await fetch(url, {
       headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ userId, employeeId }),
+        'Authorization': token ? `Bearer ${token}` : ''
+      }
     });
-    return await response.json();
+    console.log('getWelfareLotteryInfo - Response status:', response.status);
+    const data = await response.json();
+    console.log('getWelfareLotteryInfo - Response data:', data);
+    return data;
   } catch (error) {
     console.error('获取福利抽奖信息失败:', error);
     return {
@@ -730,19 +750,40 @@ export async function getWelfareLotteryInfo(userId: string, employeeId: string):
 }
 
 /**
+ * 获取福利抽奖奖品列表
+ * @returns 奖品列表及其中奖概率
+ */
+export async function getWelfareLotteryPrizes(): Promise<ApiResponse<{ prizes: WelfareLotteryPrize[] }>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/welfare/lottery/prizes`);
+    return await response.json();
+  } catch (error) {
+    console.error('获取福利抽奖奖品列表失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: {
+        prizes: []
+      }
+    };
+  }
+}
+
+/**
  * 领取福利抽奖
- * @param userId 用户ID
  * @param employeeId 员工号
  * @returns 抽奖结果
  */
-export async function claimWelfareLottery(userId: string, employeeId: string): Promise<ApiResponse<{ result: WelfareLotteryResult }>> {
+export async function claimWelfareLottery(employeeId: string): Promise<ApiResponse<{ result: WelfareLotteryResult }>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/welfare-lottery/claim`, {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/api/welfare/lottery/claim`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : ''
       },
-      body: JSON.stringify({ userId, employeeId }),
+      body: JSON.stringify({ employeeId }),
     });
     return await response.json();
   } catch (error) {
@@ -756,18 +797,16 @@ export async function claimWelfareLottery(userId: string, employeeId: string): P
 
 /**
  * 获取福利抽奖记录
- * @param userId 用户ID
  * @param employeeId 员工号
  * @returns 抽奖记录
  */
-export async function getWelfareLotteryRecords(userId: string, employeeId: string): Promise<ApiResponse<{ records: WelfareLotteryRecord[] }>> {
+export async function getWelfareLotteryRecords(employeeId: string): Promise<ApiResponse<{ records: WelfareLotteryRecord[] }>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/welfare-lottery/records`, {
-      method: 'POST',
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/api/welfare/lottery/records?employeeId=${employeeId}`, {
       headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ userId, employeeId }),
+        'Authorization': token ? `Bearer ${token}` : ''
+      }
     });
     return await response.json();
   } catch (error) {
@@ -784,20 +823,26 @@ export async function getWelfareLotteryRecords(userId: string, employeeId: strin
 
 /**
  * 获取福利钱包余额
- * @param userId 用户ID
  * @param employeeId 员工号
  * @returns 钱包余额
  */
-export async function getWelfareWalletBalance(userId: string, employeeId: string): Promise<ApiResponse<{ balance: number }>> {
+export async function getWelfareWalletBalance(employeeId: string): Promise<ApiResponse<{ balance: number }>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/welfare-wallet/balance`, {
-      method: 'POST',
+    const token = localStorage.getItem('token');
+    console.log('getWelfareWalletBalance - employeeId:', employeeId);
+    console.log('getWelfareWalletBalance - token:', token);
+    // 只传递employeeId参数
+    const url = `${API_BASE_URL}/api/welfare/wallet/balance?employeeId=${employeeId}`;
+    console.log('getWelfareWalletBalance - URL:', url);
+    const response = await fetch(url, {
       headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ userId, employeeId }),
+        'Authorization': token ? `Bearer ${token}` : ''
+      }
     });
-    return await response.json();
+    console.log('getWelfareWalletBalance - Response status:', response.status);
+    const data = await response.json();
+    console.log('getWelfareWalletBalance - Response data:', data);
+    return data;
   } catch (error) {
     console.error('获取福利钱包余额失败:', error);
     return {
@@ -812,25 +857,103 @@ export async function getWelfareWalletBalance(userId: string, employeeId: string
 
 /**
  * 福利钱包提现
- * @param userId 用户ID
  * @param employeeId 员工号
  * @param amount 提现金额
  * @param alipayAccount 支付宝账号
  * @param alipayName 支付宝姓名
  * @returns 提现结果
  */
-export async function withdrawWelfareFunds(userId: string, employeeId: string, amount: number, alipayAccount: string, alipayName: string): Promise<ApiResponse<{ success: boolean }>> {
+export async function withdrawWelfareFunds(employeeId: string, amount: number, alipayAccount: string, alipayName: string): Promise<ApiResponse<{ success: boolean }>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/welfare-wallet/withdraw`, {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/api/welfare/withdraw`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : ''
       },
-      body: JSON.stringify({ userId, employeeId, amount, alipayAccount, alipayName }),
+      body: JSON.stringify({ employeeId, amount, alipayAccount, alipayName }),
     });
     return await response.json();
   } catch (error) {
     console.error('福利钱包提现失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+    };
+  }
+}
+
+/**
+ * 获取福利钱包提现记录
+ * @param employeeId 员工号
+ * @returns 提现记录列表
+ */
+export async function getWelfareWithdrawRecords(employeeId: string): Promise<ApiResponse<{ records: any[] }>> {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/api/welfare/withdraw/records?employeeId=${employeeId}`, {
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : ''
+      }
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('获取福利钱包提现记录失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: {
+        records: []
+      }
+    };
+  }
+}
+
+/**
+ * 绑定支付宝信息
+ * @param employeeId 员工号
+ * @param alipayName 支付宝姓名
+ * @param alipayAccount 支付宝账号
+ * @returns 绑定结果
+ */
+export async function bindAlipay(employeeId: string, alipayName: string, alipayAccount: string): Promise<ApiResponse<AlipayInfo>> {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/api/welfare/bind-alipay`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : ''
+      },
+      body: JSON.stringify({ employeeId, alipayName, alipayAccount }),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('绑定支付宝信息失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+    };
+  }
+}
+
+/**
+ * 获取绑定的支付宝信息
+ * @param employeeId 员工号
+ * @returns 支付宝信息
+ */
+export async function getAlipayInfo(employeeId: string): Promise<ApiResponse<AlipayInfo>> {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/api/welfare/get-alipay?employeeId=${employeeId}`, {
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : ''
+      }
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('获取绑定的支付宝信息失败:', error);
     return {
       success: false,
       message: '网络错误，请稍后重试',
@@ -1009,11 +1132,10 @@ export async function sendRedPacket(userId: string, employeeId: string): Promise
 
 /**
  * 记录广告观看（用于抽奖券生成）
- * @param userId 用户ID
  * @param employeeId 员工号
  * @returns 记录结果
  */
-export async function recordAdView(userId: string, employeeId: string): Promise<ApiResponse<{ ticketGenerated: boolean; ticketNumber?: string }>> {
+export async function recordAdView(employeeId: string): Promise<ApiResponse<{ ticketGenerated: boolean; ticketNumber?: string }>> {
   // 开发模式下使用模拟数据
   if (USE_MOCK_DATA) {
     return new Promise((resolve) => {
@@ -1036,7 +1158,7 @@ export async function recordAdView(userId: string, employeeId: string): Promise<
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ userId, employeeId }),
+      body: JSON.stringify({ employeeId }),
     });
     return await response.json();
   } catch (error) {
