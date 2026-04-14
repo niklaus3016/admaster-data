@@ -473,6 +473,13 @@ const getPrizeIcon = (type: string) => {
     <main class="max-w-md mx-auto px-6 mt-8 space-y-10 relative z-10">
       <!-- 钱包卡片 -->
       <section class="relative">
+        <!-- 预览提示框 -->
+        <div class="mb-4 p-3 rounded-lg bg-gradient-to-r from-red-500/20 to-orange-500/20 border border-red-500/30 animate-pulse">
+          <p class="text-xs font-bold text-center text-red-400 tracking-wide">
+            此页面仅作为预览使用，福利抽奖功能暂未开放，预计5月正式上线，敬请期待！
+          </p>
+        </div>
+        
         <div class="absolute -inset-1 bg-gradient-to-r from-amber-500/20 via-blue-500/20 to-purple-500/20 blur-xl rounded-[2.5rem] opacity-50" />
         <div class="relative bg-gradient-to-br from-zinc-900 to-black border border-white/10 p-6 rounded-[2.5rem] overflow-hidden shadow-2xl">
           <!-- 碳纤维纹理 -->
@@ -618,7 +625,7 @@ const getPrizeIcon = (type: string) => {
         </div>
 
         <!-- 工业风进度条 -->
-        <div class="w-full max-w-[280px] space-y-4">
+        <div v-if="false" class="w-full max-w-[280px] space-y-4">
           <div class="flex justify-between items-end px-1">
             <div class="flex flex-col">
               <span class="text-[10px] text-zinc-500 uppercase tracking-[0.4em] font-black mb-1">系统进度</span>
@@ -629,7 +636,7 @@ const getPrizeIcon = (type: string) => {
             </div>
             <div class="text-right">
               <span class="text-2xl font-black font-mono text-white tabular-nums">{{ adProgress }}</span>
-              <span class="text-xs text-zinc-600 font-bold ml-1">/ 500</span>
+              <span class="text-xs text-zinc-600 font-bold ml-1">/ 99999</span>
             </div>
           </div>
           
@@ -646,7 +653,7 @@ const getPrizeIcon = (type: string) => {
             <div class="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none z-10" />
             <div 
               class="h-full bg-gradient-to-r from-blue-600 via-purple-600 to-amber-500 rounded-full transition-all duration-1000 ease-out relative"
-              :style="{ width: `${(adProgress / 500) * 100}%` }"
+              :style="{ width: `${(adProgress / 99999) * 100}%` }"
             >
               <!-- 扫光动画 -->
               <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
@@ -654,7 +661,7 @@ const getPrizeIcon = (type: string) => {
           </div>
           
           <p class="text-[9px] text-zinc-500 text-center uppercase tracking-[0.2em] font-bold leading-relaxed">
-            每观看 500 个广告可获得 <span class="text-amber-500">1 次高级抽奖机会</span>
+            每观看 99999 个广告可获得 <span class="text-amber-500">1 次高级抽奖机会</span>
           </p>
         </div>
       </section>
