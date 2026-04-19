@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { Coins, History, PlayCircle, LogOut, TrendingUp, Wallet, CreditCard, Trophy, Gift, Ticket, Smartphone } from 'lucide-vue-next';
-import { getUserInfo, rewardGold, getGoldLogs, getTodayGoldStats, recordLogin, getLoginStats, submitWithdrawRequest, getWithdrawStatus, getWithdrawRecords, getWeeklyBonusProgress, claimWeeklyBonus, recordActivity, getPoolStatus, recordAdView, getUserTickets, getUserRedPacketRecords, claimRedPacket, getDeviceStatus, updateDeviceRecord, getDeviceConfig, getCurrentLotteryTickets, type WithdrawRecord } from '../api/apiService';
+import { Coins, History, PlayCircle, LogOut, TrendingUp, Wallet, CreditCard, Trophy, Gift, Ticket, Smartphone, Crown, Medal } from 'lucide-vue-next';
+import { getUserInfo, rewardGold, getGoldLogs, getTodayGoldStats, recordLogin, getLoginStats, submitWithdrawRequest, getWithdrawStatus, getWithdrawRecords, getWeeklyBonusProgress, claimWeeklyBonus, recordActivity, getPoolStatus, recordAdView, getUserTickets, getUserRedPacketRecords, claimRedPacket, getDeviceStatus, updateDeviceRecord, getDeviceConfig, getCurrentLotteryTickets, getTodayRanking, getMonthTopDaily, type WithdrawRecord } from '../api/apiService';
 import { useAdManager } from '../composables/useAdManager';
 import { TTSPlugin } from '../plugins/TTSPlugin';
 import { Capacitor } from '@capacitor/core';
@@ -508,6 +508,13 @@ const showWithdrawRecordsModal = ref(false);
 const withdrawRecords = ref<WithdrawRecord[]>([]);
 const isLoadingWithdrawRecords = ref(false);
 
+// 排行榜相关
+const showLeaderboard = ref(false);
+const dailyLeaderboard = ref<any[]>([]);
+const monthlyTopUser = ref<any>(null);
+const isLoadingRanking = ref(false);
+const isRankingFirstLoad = ref(true); // 标记是否首次加载（用于控制loading显示）
+
 // 登录天数统计
 const loginDays = ref(0);
 
@@ -691,6 +698,7 @@ onMounted(async () => {
   await loadLotteryWinRecords(); // 加载中奖记录
   await loadDeviceStatus(); // 加载设备状态
   await loadDeviceConfig(); // 加载设备配置
+  await loadRankingData(); // 预加载排行榜数据（后台静默加载）
   // await loadPoolStatus(); // 加载奖金池状态（暂时隐藏，下下个版本上线）
 
   // 记录用户活动（进入首页）
@@ -702,6 +710,7 @@ onMounted(async () => {
     console.log('🔄 定时同步数据看板...');
     await loadUserInfo(false); // 定时同步时不显示加载状态
     await loadTodayGoldStats(); // 同步今日金币统计（全局）
+    await loadRankingData(); // 定时同步排行榜数据
     // await loadPoolStatus(); // 同步奖金池状态（暂时隐藏，下下个版本上线）
   }, 30000);
 
@@ -1314,6 +1323,83 @@ const loadWithdrawRecords = async () => {
   }
 };
 
+// 加载排行榜数据
+const loadRankingData = async (showLoading: boolean = true) => {
+  const startTime = Date.now();
+  console.log('🔄 开始加载排行榜数据...');
+  
+  // 只有首次打开弹窗或明确要求显示loading时才显示loading
+  if (showLoading && isRankingFirstLoad.value) {
+    isLoadingRanking.value = true;
+  }
+  
+  try {
+    // 并行请求两个接口
+    const apiStartTime = Date.now();
+    console.log('🔄 API请求开始时间:', apiStartTime);
+    
+    const [todayResponse, monthResponse] = await Promise.all([
+      getTodayRanking(),
+      getMonthTopDaily()
+    ]);
+    
+    const apiEndTime = Date.now();
+    console.log('✅ API请求完成，耗时:', apiEndTime - apiStartTime, 'ms');
+    console.log('📊 今日排行榜数据:', todayResponse);
+    console.log('📊 本月最高数据:', monthResponse);
+    
+    // 处理今日排行榜数据，添加rank字段
+    if (todayResponse.success && todayResponse.data) {
+      dailyLeaderboard.value = (todayResponse.data.ranking || []).map((item: any, index: number) => ({
+        ...item,
+        rank: index + 1,
+        empId: item.employeeId,
+        totalCoins: Math.round(item.earnings * 1000),
+        adCount: item.count,
+        avgCoins: item.avgGold
+      }));
+    }
+    
+    // 处理本月单日最高数据
+    if (monthResponse.success && monthResponse.data && monthResponse.data.topDaily) {
+      const top = monthResponse.data.topDaily;
+      monthlyTopUser.value = {
+        date: top.date,
+        empId: top.employeeId,
+        totalCoins: Math.round(top.earnings * 1000),
+        adCount: top.count,
+        avgCoins: top.avgGold
+      };
+    } else {
+      monthlyTopUser.value = null;
+    }
+    
+    // 数据加载完成后，标记首次加载已完成
+    isRankingFirstLoad.value = false;
+    
+    const endTime = Date.now();
+    console.log('✅ 排行榜数据加载完成，总耗时:', endTime - startTime, 'ms');
+  } catch (error) {
+    console.error('❌ 加载排行榜数据失败:', error);
+  } finally {
+    isLoadingRanking.value = false;
+  }
+};
+
+// 监听排行榜弹窗打开，自动加载数据
+watch(showLeaderboard, (newValue) => {
+  if (newValue) {
+    // 每次打开弹窗时强制加载最新数据
+    loadRankingData(true);
+  }
+});
+
+// 刷新排行榜数据（供按钮调用）
+const refreshRankingData = () => {
+  isRankingFirstLoad.value = true; // 重置首次加载标记以显示loading
+  loadRankingData(true);
+};
+
 // 格式化日期（使用北京时间）
 const formatDate = (dateStr: string) => {
   const date = new Date(dateStr);
@@ -1732,6 +1818,13 @@ const submitWithdraw = async () => {
           </div>
           <div class="flex gap-3">
             <button 
+              @click="showLeaderboard = true"
+              class="px-3 py-1 rounded-full bg-white/5 text-[9px] text-blue-500 uppercase tracking-widest hover:bg-white/10 transition-all font-bold border border-blue-500/20 flex items-center gap-2"
+            >
+              <Trophy class="w-3 h-3" />
+              排行榜
+            </button>
+            <button 
               @click="showLotteryWinRecordsModal = true"
               class="px-3 py-1 rounded-full bg-white/5 text-[9px] text-amber-500 uppercase tracking-widest hover:bg-white/10 transition-all font-bold border border-amber-500/20"
             >
@@ -1899,6 +1992,171 @@ const submitWithdraw = async () => {
           
           <div class="p-8 border-t border-white/5 text-center">
             <p class="text-[10px] text-zinc-600 uppercase tracking-[0.2em]">共计 {{ redPacketRecords.length }} 条红包记录</p>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- 排行榜弹窗 -->
+    <!-- Leaderboard Modal -->
+    <transition name="modal">
+      <div v-if="showLeaderboard" class="fixed inset-0 z-[100] flex items-end justify-center sm:items-center p-0 sm:p-6">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" @click="showLeaderboard = false" />
+        <div class="relative w-full max-w-md bg-[#0f0f11] border-t sm:border border-white/10 rounded-t-[3rem] sm:rounded-[3rem] overflow-hidden flex flex-col max-h-[90vh]">
+          
+          <!-- 头部标题 -->
+          <div class="px-8 py-6 border-b border-white/5 flex justify-between items-center sticky top-0 bg-[#0f0f11] z-10">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 bg-amber-500/10 rounded-full flex items-center justify-center">
+                <Trophy class="w-4 h-4 text-amber-500" />
+              </div>
+              <h3 class="text-sm font-bold uppercase tracking-widest">今日收益排行榜</h3>
+            </div>
+            <button 
+              @click="showLeaderboard = false" 
+              class="flex items-center gap-2 px-3 py-2 rounded-full bg-white/5 text-zinc-500 hover:text-white"
+              title="关闭"
+            >
+              <LogOut class="w-4 h-4 rotate-90" />
+              <span class="text-[9px] text-zinc-500 whitespace-nowrap">关闭</span>
+            </button>
+          </div>
+
+          <!-- 滚动列表内容 -->
+          <div class="flex-1 overflow-y-auto no-scrollbar p-6 space-y-8">
+            
+            <!-- 加载状态 -->
+            <div v-if="isLoadingRanking" class="py-12 text-center">
+              <div class="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p class="text-zinc-500 text-sm">加载排行榜数据中...</p>
+            </div>
+            
+            <template v-else>
+              <!-- 本月单日最高收益记录 (置顶卡片) -->
+              <div v-if="monthlyTopUser" class="relative group">
+                <div class="absolute -inset-0.5 bg-gradient-to-r from-amber-500 to-orange-600 rounded-3xl blur opacity-30 group-hover:opacity-50 transition duration-1000"></div>
+                <div class="relative bg-zinc-900 rounded-3xl border border-amber-500/30 overflow-hidden shadow-[0_0_30px_rgba(245,158,11,0.1)]">
+                  <div class="bg-amber-500/10 px-6 py-3 flex flex-col items-center justify-center gap-1 border-b border-amber-500/20 relative z-10">
+                    <div class="flex items-center justify-center gap-3">
+                      <Crown class="w-4 h-4 text-amber-500 opacity-50" />
+                      <span class="text-xs text-amber-500 font-black uppercase tracking-[0.3em]">本月单日最高收益记录</span>
+                      <Crown class="w-4 h-4 text-amber-500 opacity-50" />
+                    </div>
+                    <span v-if="monthlyTopUser.date" class="text-[11px] text-amber-500/80 font-black tracking-[0.2em]">{{ monthlyTopUser.date }}</span>
+                  </div>
+                  <div class="p-6 flex items-center justify-between relative z-10">
+                    <div class="flex items-center gap-4">
+                      <div class="w-12 h-12 bg-gradient-to-br from-amber-400 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-500/20">
+                        <Medal class="w-7 h-7 text-white" />
+                      </div>
+                      <div class="flex flex-col">
+                        <span class="text-xs text-zinc-500 uppercase font-bold tracking-widest">员工ID</span>
+                        <span class="text-base font-black text-white">{{ monthlyTopUser.empId }}</span>
+                      </div>
+                    </div>
+                    <div class="flex flex-col items-end">
+                      <span class="text-[9px] text-amber-500 uppercase font-black tracking-widest">单日收益</span>
+                      <span class="text-2xl font-black text-amber-400 tabular-nums drop-shadow-[0_0_15px_rgba(245,158,11,0.5)]">¥ {{ (monthlyTopUser.totalCoins / 1000).toFixed(2) }}</span>
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-2 border-t border-white/5 bg-white/[0.02]">
+                    <div class="px-6 py-3 border-r border-white/5 flex items-center justify-between">
+                      <span class="text-xs text-white uppercase font-bold">总条数</span>
+                      <span class="text-xs font-bold text-emerald-400">{{ monthlyTopUser.adCount }} 条</span>
+                    </div>
+                    <div class="px-6 py-3 flex items-center justify-between">
+                      <span class="text-xs text-white uppercase font-bold">平均金币</span>
+                      <span class="text-xs font-bold text-emerald-400">{{ Number(monthlyTopUser.avgCoins).toFixed(2) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 今日收益排行 TOP 10 列表 -->
+              <div class="space-y-6 pt-2">
+                <!-- 列表副标题 -->
+                <div class="flex items-center gap-4 px-4">
+                  <div class="h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+                  <h4 class="text-[11px] font-black text-white uppercase tracking-[0.4em] whitespace-nowrap drop-shadow-sm">今日收益排行 TOP 10</h4>
+                  <div class="h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+                </div>
+
+                <!-- TOP 10 列表项循环 -->
+                <div v-if="dailyLeaderboard.length === 0" class="py-12 text-center">
+                  <TrendingUp class="w-12 h-12 text-zinc-700 mx-auto mb-4" />
+                  <p class="text-zinc-500 text-sm">暂无排行数据</p>
+                  <p class="text-zinc-600 text-xs mt-2">今日数据将在5分钟后更新</p>
+                </div>
+                <div v-else class="space-y-4">
+                  <div v-for="user in dailyLeaderboard" :key="user.rank" 
+                    class="relative px-6 py-4 rounded-2xl border transition-all hover:scale-[1.01]"
+                    :class="[ 
+                      user.rank === 1 ? 'bg-gradient-to-r from-amber-500/10 to-amber-600/5 border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.1)]' : 
+                      user.rank === 2 ? 'bg-gradient-to-r from-zinc-400/10 to-zinc-500/5 border-zinc-400/40 shadow-[0_0_20px_rgba(161,161,170,0.1)]' : 
+                      user.rank === 3 ? 'bg-gradient-to-r from-orange-600/10 to-orange-700/5 border-orange-600/40 shadow-[0_0_20px_rgba(234,88,12,0.1)]' : 
+                      'bg-white/[0.02] border-white/[0.05]' 
+                    ]"
+                  >
+                    <div class="flex items-center justify-between w-full">
+                      <div class="flex items-center gap-4 flex-1">
+                        <!-- 名次徽章 (前三名特殊样式) -->
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center font-black text-sm relative" 
+                          :class="[ 
+                            user.rank === 1 ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-black shadow-lg shadow-amber-500/40 ring-2 ring-amber-500/20' : 
+                            user.rank === 2 ? 'bg-gradient-to-br from-zinc-200 to-zinc-400 text-black shadow-lg shadow-zinc-400/40 ring-2 ring-zinc-400/20' : 
+                            user.rank === 3 ? 'bg-gradient-to-br from-orange-400 to-orange-600 text-black shadow-lg shadow-orange-500/40 ring-2 ring-orange-500/20' : 
+                            'bg-zinc-800 text-zinc-400' 
+                          ]"
+                        >
+                          <!-- 冠军特有小皇冠图标 -->
+                          <Crown v-if="user.rank === 1" class="absolute -top-2 -right-1 w-3 h-3 text-amber-500 rotate-[15deg] drop-shadow-[0_0_5px_rgba(245,158,11,1)]" />
+                          {{ user.rank }}
+                        </div>
+
+                        <!-- 员工ID & 指标数据 -->
+                        <div class="flex items-center gap-3 flex-1">
+                          <div class="flex flex-col min-w-[60px]">
+                            <span class="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">员工ID</span>
+                            <span class="text-sm font-black text-white">{{ user.empId }}</span>
+                          </div>
+                          
+                          <!-- 分隔线 & 指标 -->
+                          <div class="flex flex-col border-l border-white/5 pl-3 gap-0.5 flex-1">
+                            <div class="flex items-baseline gap-1">
+                              <span class="text-[10px] font-bold text-emerald-400/80">{{ user.adCount }}</span>
+                              <span class="text-[8px] text-white uppercase font-medium">条数</span>
+                            </div>
+                            <div class="flex items-baseline gap-1">
+                              <span 
+                                class="text-[10px] font-bold tabular-nums" 
+                                :class="[
+                                  Number(user.avgCoins) > 100 ? 'text-emerald-400/80' :
+                                  Number(user.avgCoins) >= 50 ? 'text-amber-400/80' :
+                                  'text-red-400/80'
+                                ]"
+                              >{{ Number(user.avgCoins).toFixed(2) }}</span>
+                              <span class="text-[8px] text-white uppercase font-medium">平均</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- 收益显示区 (绿色字体 + 垂直分隔线) -->
+                      <div class="flex items-baseline gap-1 border-l border-white/5 pl-4 ml-4 w-[100px] justify-end">
+                        <span class="text-base font-black tabular-nums text-emerald-400">
+                          ¥ {{ (user.totalCoins / 1000).toFixed(2) }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+          
+          <!-- 底部脚注 -->
+          <div class="p-8 border-t border-white/5 text-center">
+            <p class="text-[10px] text-zinc-600 uppercase tracking-[0.2em]">排行榜每5分钟自动更新一次</p>
           </div>
         </div>
       </div>

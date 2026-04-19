@@ -1363,6 +1363,74 @@ export async function getRedPacketRecords(employeeId?: string, page: number = 1,
   }
 }
 
+// 排行榜相关接口
+interface RankingRecord {
+  employeeId: string;
+  earnings: number;
+  count: number;
+  avgGold: number;
+}
+
+interface MonthTopDaily {
+  date: string;
+  employeeId: string;
+  earnings: number;
+  count: number;
+  avgGold: number;
+}
+
+/**
+ * 获取今日收益排行榜前10名
+ * @returns 今日收益排行榜
+ */
+export async function getTodayRanking(): Promise<ApiResponse<{ ranking: RankingRecord[] }>> {
+  try {
+    console.log('🔧 API - getTodayRanking 开始');
+    console.log('   URL:', `${API_BASE_URL}/api/ranking/today-ranking`);
+
+    const response = await fetch(`${API_BASE_URL}/api/ranking/today-ranking`);
+    const data = await response.json();
+    
+    console.log('✅ API - getTodayRanking 完成:', data);
+    return data;
+  } catch (error) {
+    console.error('❌ API - getTodayRanking 失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: {
+        ranking: []
+      }
+    };
+  }
+}
+
+/**
+ * 获取本月单日收益最高用户
+ * @returns 本月单日收益最高用户
+ */
+export async function getMonthTopDaily(): Promise<ApiResponse<{ topDaily: MonthTopDaily }>> {
+  try {
+    console.log('🔧 API - getMonthTopDaily 开始');
+    console.log('   URL:', `${API_BASE_URL}/api/ranking/month-top-daily`);
+
+    const response = await fetch(`${API_BASE_URL}/api/ranking/month-top-daily`);
+    const data = await response.json();
+    
+    console.log('✅ API - getMonthTopDaily 完成:', data);
+    return data;
+  } catch (error) {
+    console.error('❌ API - getMonthTopDaily 失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: {
+        topDaily: null
+      }
+    };
+  }
+}
+
 /**
  * 获取用户个人红包记录
  * @param userId 用户ID
