@@ -11,6 +11,7 @@ public class MainActivity extends BridgeActivity {
         // 注册插件
         registerPlugin(BaiduAdPlugin.class);
         registerPlugin(TTSPlugin.class);
+        registerPlugin(SecurityCheckPlugin.class);
         
         super.onCreate(savedInstanceState);
         
