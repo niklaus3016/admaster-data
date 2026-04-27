@@ -1,4 +1,4 @@
-package com.yuexuxingzuo.app;
+package com.jianxuqingdan.app;
 
 import android.app.Application;
 import android.content.Context;
@@ -11,7 +11,7 @@ import com.baidu.mobads.sdk.api.MobadsPermissionSettings;
 public class MainApplication extends Application {
 
     private static final String TAG = "MainApplication";
-    private static final String APP_ID = "d423b637";
+    private static final String APP_ID = "f556cd6b";
 
     @Override
     public void onCreate() {
@@ -42,7 +42,7 @@ public class MainApplication extends Application {
             Log.d(TAG, "开始初始化百度广告SDK，App ID: " + APP_ID);
             
             BDAdConfig bdAdConfig = new BDAdConfig.Builder()
-                    .setAppName("月序星座")
+                    .setAppName("简序清单")
                     .setAppsid(APP_ID)
                     .setBDAdInitListener(new BDAdConfig.BDAdInitListener() {
                         @Override
