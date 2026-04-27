@@ -623,14 +623,21 @@ const loadWithdrawStatus = async () => {
   try {
     const response = await getWithdrawStatus();
     console.log('提现状态响应:', response);
-    // 后端返回的数据结构: {success: true, enabled: true}
-    // enabled字段在根级别，不在data对象中
+    // 后端返回的数据结构: {success: true, enabled: {enabled: true, message: "提现功能已开启"}}
+    // enabled可能是布尔值，也可能是对象 {enabled: true, message: "..."}
     if (response.success) {
-      // 处理后端返回的enabled字段，可能是布尔值或字符串
-      const enabledValue = (response as any).enabled;
-      console.log('提现开关原始值:', enabledValue, '类型:', typeof enabledValue);
-      // 转换为布尔值
-      withdrawEnabled.value = enabledValue === true || enabledValue === 'true' || enabledValue === 1 || enabledValue === '1';
+      const enabledData = (response as any).enabled;
+      console.log('提现开关原始值:', enabledData, '类型:', typeof enabledData);
+      // 处理enabled可能是对象或布尔值的情况
+      let enabledValue: boolean;
+      if (typeof enabledData === 'object' && enabledData !== null) {
+        enabledValue = enabledData.enabled === true || enabledData.enabled === 'true' || enabledData.enabled === 1 || enabledData.enabled === '1';
+        console.log('提现开关（对象解析）:', enabledValue);
+      } else {
+        enabledValue = enabledData === true || enabledData === 'true' || enabledData === 1 || enabledData === '1';
+        console.log('提现开关（直接解析）:', enabledValue);
+      }
+      withdrawEnabled.value = enabledValue;
       console.log('提现开关最终状态:', withdrawEnabled.value);
     } else {
       console.log('提现状态获取失败');
@@ -643,7 +650,7 @@ const loadWithdrawStatus = async () => {
 };
 
 const adConfig = {
-  appId: '2882303761520513658',
+  appId: '2882303761520516456',
   slotIds: [
     '19281661', // 保价1500
     '19281662', // 保价1000
@@ -684,7 +691,17 @@ const handleVisibilityChange = async () => {
 };
 
 onMounted(async () => {
+  console.log('🏠 首页初始化 - localStorage:', {
+    empId: localStorage.getItem('empId'),
+    userId: localStorage.getItem('userId')
+  });
+  console.log('🏠 首页初始化 - ref values:', {
+    empId: empId.value,
+    userId: userId.value
+  });
+  
   if (!empId.value || !userId.value) {
+    console.warn('🔴 用户未登录，跳转到登录页');
     router.push('/login');
     return;
   }
@@ -1304,20 +1321,31 @@ const closeWithdrawRecordsModal = () => {
 
 // 加载提现记录
 const loadWithdrawRecords = async () => {
-  if (!userId.value) return;
+  // 优先使用 empId（员工号）查询，后端接口实际按员工号匹配
+  console.log('💡 加载提现记录 - userId:', userId.value, ', empId:', empId.value);
+  const queryUserId = empId.value || userId.value;
+  if (!queryUserId) {
+    console.warn('❌ 没有可用的用户ID，无法查询提现记录');
+    return;
+  }
+  console.log('🔍 正在查询提现记录，参数 userId:', queryUserId);
   isLoadingWithdrawRecords.value = true;
   try {
-    const response = await getWithdrawRecords(userId.value);
-    console.log('提现记录响应:', response);
+    const response = await getWithdrawRecords(queryUserId);
+    console.log('📥 提现记录响应:', response);
     if (response.success && response.data) {
       withdrawRecords.value = response.data;
-      // 打印第一条记录的详细信息
+      console.log('✅ 成功加载', response.data.length, '条提现记录');
       if (response.data.length > 0) {
-        console.log('第一条提现记录:', response.data[0]);
+        console.log('📋 第一条提现记录:', response.data[0]);
       }
+    } else {
+      withdrawRecords.value = [];
+      console.log('⚠️ 接口返回数据为空或失败');
     }
   } catch (err) {
-    console.error('加载提现记录失败:', err);
+    console.error('❌ 加载提现记录失败:', err);
+    withdrawRecords.value = [];
   } finally {
     isLoadingWithdrawRecords.value = false;
   }
@@ -1400,24 +1428,48 @@ const refreshRankingData = () => {
   loadRankingData(true);
 };
 
-// 格式化日期（使用北京时间）
+// 格式化日期（使用北京时间，UTC+8）
 const formatDate = (dateStr: string) => {
   const date = new Date(dateStr);
-  const beijingTime = new Date(date.getTime() + 8 * 60 * 60 * 1000);
-  return `${beijingTime.getFullYear()}-${String(beijingTime.getMonth() + 1).padStart(2, '0')}-${String(beijingTime.getDate()).padStart(2, '0')} ${String(beijingTime.getHours()).padStart(2, '0')}:${String(beijingTime.getMinutes()).padStart(2, '0')}`;
+  // 使用UTC方法直接处理，避免本地时区干扰
+  const utcYear = date.getUTCFullYear();
+  const utcMonth = date.getUTCMonth() + 1;
+  const utcDay = date.getUTCDate();
+  const utcHour = date.getUTCHours() + 8; // 转换为北京时间
+  
+  // 处理跨天情况
+  let year = utcYear;
+  let month = utcMonth;
+  let day = utcDay;
+  let hour = utcHour;
+  
+  if (hour >= 24) {
+    hour -= 24;
+    day += 1;
+    if (day > [31, 28 + (year % 4 === 0 && year % 100 !== 0 || year % 400 === 0 ? 1 : 0), 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1]) {
+      day = 1;
+      month += 1;
+      if (month > 12) {
+        month = 1;
+        year += 1;
+      }
+    }
+  }
+  
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')} ${String(hour).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')}`;
 };
 
 // 获取状态样式
 const getStatusStyle = (status: number) => {
   switch (status) {
     case 0:
-      return { text: '待打款', class: 'text-amber-400 bg-amber-500/10 border-amber-500/20' };
+      return { text: '待打款', class: 'text-amber-400 bg-amber-500/10 border-amber-500/20', amountClass: 'text-amber-400' };
     case 1:
-      return { text: '已打款', class: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' };
+      return { text: '已打款', class: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20', amountClass: 'text-emerald-400' };
     case 2:
-      return { text: '已拒绝', class: 'text-red-400 bg-red-500/10 border-red-500/20' };
+      return { text: '已拒绝', class: 'text-red-400 bg-red-500/10 border-red-500/20', amountClass: 'text-red-400' };
     default:
-      return { text: '未知状态', class: 'text-zinc-400 bg-zinc-500/10 border-zinc-500/20' };
+      return { text: '未知状态', class: 'text-zinc-400 bg-zinc-500/10 border-zinc-500/20', amountClass: 'text-zinc-400' };
   }
 };
 
@@ -2355,21 +2407,38 @@ const submitWithdraw = async () => {
               <div 
                 v-for="record in withdrawRecords" 
                 :key="record._id" 
-                class="glass-card rounded-2xl p-4"
+                class="glass-card rounded-2xl p-5"
               >
-                <div class="flex justify-between items-start mb-3">
-                  <div class="flex-1">
-                    <p class="text-sm font-bold text-white">{{ record.amount }} 元</p>
-                    <p class="text-[10px] text-zinc-500 mt-1">{{ record.alipayAccount }} ({{ record.alipayName }})</p>
+                <div class="flex justify-between items-start">
+                  <div class="flex-1 space-y-2">
+                    <div class="flex items-center">
+                      <span class="text-xs text-blue-400 mr-2">支付宝账号：</span>
+                      <span class="text-xs text-white">{{ record.alipayAccount }}</span>
+                    </div>
+                    <div class="flex items-center">
+                      <span class="text-xs text-blue-400 mr-2">支付宝姓名：</span>
+                      <span class="text-xs text-white">{{ record.alipayName }}</span>
+                    </div>
+                    <div class="flex items-center">
+                      <span class="text-xs text-blue-400 mr-2">提现日期：</span>
+                      <span class="text-xs text-white">{{ formatDate(record.createTime) }}</span>
+                    </div>
                   </div>
-                  <div 
-                    class="px-3 py-1 rounded-full text-[8px] font-bold tracking-wider border"
-                    :class="getStatusStyle(record.status).class"
-                  >
-                    {{ getStatusStyle(record.status).text }}
+                  <div class="text-right ml-4 space-y-2">
+                    <div class="flex items-baseline justify-end">
+                      <span class="text-2xl font-bold" :class="getStatusStyle(record.status).amountClass">{{ record.amount }}</span>
+                      <span class="text-xs" :class="getStatusStyle(record.status).amountClass">元</span>
+                    </div>
+                    <div class="flex justify-end">
+                      <div 
+                        class="px-3 py-1 rounded-full text-[8px] font-bold tracking-wider border"
+                        :class="getStatusStyle(record.status).class"
+                      >
+                        {{ getStatusStyle(record.status).text }}
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <p class="text-[10px] text-zinc-600">{{ formatDate(record.createTime) }}</p>
               </div>
             </div>
           </div>
