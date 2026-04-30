@@ -30,7 +30,7 @@ public class MainActivity extends BridgeActivity {
     }
     
     @Override
-    protected void onResume() {
+    public void onResume() {
         super.onResume();
         // 每次回到前台都检测，但有间隔限制
         if (shouldCheckRisk) {

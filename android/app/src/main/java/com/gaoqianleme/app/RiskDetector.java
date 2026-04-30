@@ -191,8 +191,7 @@ public class RiskDetector {
             AccessibilityManager accessibilityManager = 
                 (AccessibilityManager) context.getSystemService(Context.ACCESSIBILITY_SERVICE);
             if (accessibilityManager != null && accessibilityManager.isEnabled()) {
-                return accessibilityManager.getEnabledAccessibilityServiceList(
-                    AccessibilityManager.FEEDBACK_ALL_MASK).size() > 0;
+                return accessibilityManager.getEnabledAccessibilityServiceList(-1).size() > 0;
             }
         } catch (Exception e) {
             return false;
