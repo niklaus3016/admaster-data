@@ -10,13 +10,15 @@ import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
     private boolean shouldCheckRisk = true;
+    private long lastCheckTime = 0;
+    private static final long CHECK_INTERVAL = 60 * 1000; // 1分钟
     
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
         // 冷启动风控检测
-        performRiskCheck("coldStart");
+        performRiskCheck("coldStart", true);
         
         // 注册插件
         registerPlugin(BaiduAdPlugin.class);
@@ -30,21 +32,32 @@ public class MainActivity extends BridgeActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // 每次回到前台都检测
+        // 每次回到前台都检测，但有间隔限制
         if (shouldCheckRisk) {
-            performRiskCheck("resume");
+            performRiskCheck("resume", false);
         }
     }
     
-    private void performRiskCheck(String trigger) {
+    private void performRiskCheck(String trigger, boolean forceCheck) {
+        long currentTime = System.currentTimeMillis();
+        
+        // 如果不是强制检测，检查间隔
+        if (!forceCheck) {
+            if (currentTime - lastCheckTime < CHECK_INTERVAL) {
+                return;
+            }
+        }
+        
         RiskDetector.RiskResult result = RiskDetector.checkAllRisks(this);
         if (result.hasRisk) {
             showRiskDialog(result.riskDescription);
         }
+        
+        lastCheckTime = currentTime;
     }
     
     public void performRiskCheckFromFrontend() {
-        performRiskCheck("frontend");
+        performRiskCheck("frontend", true);
     }
     
     private void showRiskDialog(String riskDesc) {
