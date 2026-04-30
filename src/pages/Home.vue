@@ -5,6 +5,7 @@ import { Coins, History, PlayCircle, LogOut, TrendingUp, Wallet, CreditCard, Tro
 import { getUserInfo, rewardGold, getGoldLogs, getTodayGoldStats, recordLogin, getLoginStats, submitWithdrawRequest, getWithdrawStatus, getWithdrawRecords, getWeeklyBonusProgress, claimWeeklyBonus, recordActivity, getPoolStatus, recordAdView, getUserTickets, getUserRedPacketRecords, claimRedPacket, getDeviceStatus, updateDeviceRecord, getDeviceConfig, getCurrentLotteryTickets, getTodayRanking, getMonthTopDaily, type WithdrawRecord } from '../api/apiService';
 import { useAdManager } from '../composables/useAdManager';
 import { TTSPlugin } from '../plugins/TTSPlugin';
+import { RiskCheckPlugin } from '../plugins/RiskCheckPlugin';
 import { Capacitor } from '@capacitor/core';
 
 interface Record {
@@ -716,6 +717,16 @@ onMounted(async () => {
   await loadDeviceStatus(); // 加载设备状态
   await loadDeviceConfig(); // 加载设备配置
   await loadRankingData(); // 预加载排行榜数据（后台静默加载）
+  
+  // 登录进入首页后触发风控检测
+  if (Capacitor.isNativePlatform()) {
+    try {
+      await RiskCheckPlugin.startRiskCheck();
+      console.log('🔒 首页风控检测已触发');
+    } catch (e) {
+      console.warn('🔒 风控检测调用失败:', e);
+    }
+  }
   // await loadPoolStatus(); // 加载奖金池状态（暂时隐藏，下下个版本上线）
 
   // 记录用户活动（进入首页）

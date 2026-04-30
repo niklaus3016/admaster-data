@@ -3,19 +3,86 @@ package com.jianxuqingdan.app;
 import android.os.Bundle;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.content.Intent;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
+    private boolean shouldCheckRisk = true;
+    
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        
+        // 冷启动风控检测
+        performRiskCheck("coldStart");
+        
         // 注册插件
         registerPlugin(BaiduAdPlugin.class);
         registerPlugin(TTSPlugin.class);
-        
-        super.onCreate(savedInstanceState);
+        registerPlugin(RiskCheckPlugin.class);
         
         // 配置 WebView 以支持现代 CSS 特性
         configureWebView();
+    }
+    
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // 每次回到前台都检测
+        if (shouldCheckRisk) {
+            performRiskCheck("resume");
+        }
+    }
+    
+    private void performRiskCheck(String trigger) {
+        RiskDetector.RiskResult result = RiskDetector.checkAllRisks(this);
+        if (result.hasRisk) {
+            showRiskDialog(result.riskDescription);
+        }
+    }
+    
+    public void performRiskCheckFromFrontend() {
+        performRiskCheck("frontend");
+    }
+    
+    private void showRiskDialog(String riskDesc) {
+        shouldCheckRisk = false;
+        
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("风险环境提示");
+        builder.setMessage(
+            "检测到当前设备开启开发者调试/投屏/多开/外挂工具等风险环境，\n" +
+            "为保障账号安全与活动公平，请关闭相关功能后重启APP；\n" +
+            "仍存在风险将无法正常使用本应用。\n\n" +
+            "检测到的风险：" + riskDesc
+        );
+        builder.setCancelable(false);
+        
+        builder.setPositiveButton("关闭并退出", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                finish();
+                android.os.Process.killProcess(android.os.Process.myPid());
+                System.exit(0);
+            }
+        });
+        
+        builder.setNegativeButton("重启校验", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                Intent intent = getPackageManager().getLaunchIntentForPackage(getPackageName());
+                if (intent != null) {
+                    intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intent);
+                }
+                finish();
+            }
+        });
+        
+        AlertDialog dialog = builder.create();
+        dialog.show();
     }
     
     private void configureWebView() {
