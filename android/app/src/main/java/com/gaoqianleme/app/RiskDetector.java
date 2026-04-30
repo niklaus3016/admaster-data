@@ -3,10 +3,12 @@ package com.jianxuqingdan.app;
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.hardware.display.DisplayManager;
 import android.os.Build;
 import android.provider.Settings;
 import android.app.ActivityManager;
 import android.view.accessibility.AccessibilityManager;
+import android.view.Display;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -63,7 +65,16 @@ public class RiskDetector {
             risks.add("检测到投屏/录屏环境");
         }
 
-        // 检测5：模拟器 + 云手机 + 应用多开/分身
+        // 检测5：悬浮窗权限（辅助检测）
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (Settings.canDrawOverlays(context)) {
+                    risks.add("悬浮窗权限已授予");
+                }
+            }
+        } catch (Exception ignored) {}
+
+        // 检测6：模拟器 + 云手机 + 应用多开/分身
         if (isEmulator()) {
             risks.add("检测到模拟器环境");
         }
@@ -228,16 +239,71 @@ public class RiskDetector {
 
     private static boolean isScreenCastingActive(Context context) {
         try {
-            // 检测1：检查常见投屏软件是否安装
+            // ============================================
+            // 检测1：系统无线投屏 - 虚拟显示器/外接显示器
+            // ============================================
+            DisplayManager displayManager = (DisplayManager) context.getSystemService(Context.DISPLAY_SERVICE);
+            if (displayManager != null) {
+                Display[] displays = displayManager.getDisplays();
+                for (Display display : displays) {
+                    int displayId = display.getDisplayId();
+                    // 检查是否有虚拟显示器或外接显示器
+                    if (displayId != Display.DEFAULT_DISPLAY) {
+                        // 检查显示器名称，看是否包含投屏相关关键词
+                        String name = display.getName();
+                        if (name != null) {
+                            String lowerName = name.toLowerCase();
+                            if (lowerName.contains("cast") || 
+                                lowerName.contains("mirror") || 
+                                lowerName.contains("virtual") || 
+                                lowerName.contains("display")) {
+                                return true;
+                            }
+                        }
+                        return true; // 只要有非默认显示器，就认为在投屏
+                    }
+                }
+            }
+            
+            // ============================================
+            // 检测2：USB调试 + ADB连接 + Scrcpy
+            // ============================================
+            if (isUsbDebuggingEnabled(context)) {
+                // USB调试已开启，进一步检查ADB连接和Scrcpy
+                // 检查Scrcpy相关进程
+                String[] scrcpyKeywords = {"scrcpy", "adb", "usbdebug"};
+                ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+                if (am != null) {
+                    List<ActivityManager.RunningAppProcessInfo> processes = am.getRunningAppProcesses();
+                    for (ActivityManager.RunningAppProcessInfo process : processes) {
+                        String processName = process.processName.toLowerCase();
+                        for (String keyword : scrcpyKeywords) {
+                            if (processName.contains(keyword)) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // ============================================
+            // 检测3：第三方投屏APP黑名单
+            // ============================================
             String[] castingPackages = {
                 "com.hpplay.sdk.source", // 乐播投屏
                 "com.hpplay.app",
+                "com.sand.airdroid", // AirDroid
+                "com.sand.airdroidcast", // AirDroid Cast
                 "com.xiaomi.mirror", // 小米投屏
                 "com.huawei.castscreen", // 华为投屏
                 "com.samsung.castscreen", // 三星投屏
                 "com.letv.castscreen", // 乐视投屏
                 "com.airplay.android", // AirPlay
-                "tv.danmaku.bili" // 哔哩哔哩投屏
+                "tv.danmaku.bili", // 哔哩哔哩投屏
+                "com.apowersoft.mirror", // 傲软投屏
+                "com.ijiami.screenmirror", // 幕享
+                "com.teamviewer.teamviewer", // TeamViewer
+                "com.anydesk.anydeskandroid" // AnyDesk
             };
             
             PackageManager pm = context.getPackageManager();
@@ -257,7 +323,9 @@ public class RiskDetector {
                 } catch (PackageManager.NameNotFoundException ignored) {}
             }
             
-            // 检测2：检查服务类名关键词
+            // ============================================
+            // 检测4：服务类名关键词
+            // ============================================
             ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
             if (am != null) {
                 List<ActivityManager.RunningServiceInfo> services = am.getRunningServices(100);
@@ -271,6 +339,15 @@ public class RiskDetector {
                     }
                 }
             }
+            
+            // ============================================
+            // 检测5：悬浮窗/录屏权限
+            // ============================================
+            if (Settings.canDrawOverlays(context)) {
+                // 悬浮窗权限已授予，可能有自动点击器
+                // 作为辅助检测项，如果同时有其他风险项，更确定
+            }
+            
         } catch (Exception e) {
             return false;
         }
