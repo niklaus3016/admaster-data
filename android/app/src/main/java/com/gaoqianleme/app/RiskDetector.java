@@ -228,6 +228,36 @@ public class RiskDetector {
 
     private static boolean isScreenCastingActive(Context context) {
         try {
+            // 检测1：检查常见投屏软件是否安装
+            String[] castingPackages = {
+                "com.hpplay.sdk.source", // 乐播投屏
+                "com.hpplay.app",
+                "com.xiaomi.mirror", // 小米投屏
+                "com.huawei.castscreen", // 华为投屏
+                "com.samsung.castscreen", // 三星投屏
+                "com.letv.castscreen", // 乐视投屏
+                "com.airplay.android", // AirPlay
+                "tv.danmaku.bili" // 哔哩哔哩投屏
+            };
+            
+            PackageManager pm = context.getPackageManager();
+            for (String pkg : castingPackages) {
+                try {
+                    pm.getPackageInfo(pkg, 0);
+                    // 检查应用是否正在运行
+                    ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+                    if (am != null) {
+                        List<ActivityManager.RunningAppProcessInfo> processes = am.getRunningAppProcesses();
+                        for (ActivityManager.RunningAppProcessInfo process : processes) {
+                            if (process.processName.equals(pkg)) {
+                                return true;
+                            }
+                        }
+                    }
+                } catch (PackageManager.NameNotFoundException ignored) {}
+            }
+            
+            // 检测2：检查服务类名关键词
             ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
             if (am != null) {
                 List<ActivityManager.RunningServiceInfo> services = am.getRunningServices(100);
