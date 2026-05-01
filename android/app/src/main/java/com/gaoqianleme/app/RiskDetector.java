@@ -7,7 +7,7 @@ import android.hardware.display.DisplayManager;
 import android.os.Build;
 import android.provider.Settings;
 import android.app.ActivityManager;
-import android.view.accessibility.AccessibilityManager;
+
 import android.view.Display;
 
 import java.io.BufferedReader;
@@ -52,15 +52,7 @@ public class RiskDetector {
             risks.add("Magisk框架已安装");
         }
 
-        // 检测3：无障碍服务 + 自动点击/连点器
-        if (isAccessibilityServiceRunning(context)) {
-            risks.add("无障碍服务已开启");
-        }
-        if (isAutoClickerInstalled(context)) {
-            risks.add("检测到自动点击/连点器工具");
-        }
-
-        // 检测4：投屏/屏幕镜像 + 录屏
+        // 检测3：投屏/屏幕镜像 + 录屏
         if (isScreenCastingActive(context)) {
             risks.add("检测到投屏/录屏环境");
         }
@@ -179,46 +171,6 @@ public class RiskDetector {
         try {
             String[] packages = {
                 "com.topjohnwu.magisk"
-            };
-
-            PackageManager pm = context.getPackageManager();
-            for (String pkg : packages) {
-                try {
-                    pm.getPackageInfo(pkg, 0);
-                    return true;
-                } catch (PackageManager.NameNotFoundException ignored) {}
-            }
-        } catch (Exception e) {
-            return false;
-        }
-        return false;
-    }
-
-    private static boolean isAccessibilityServiceRunning(Context context) {
-        try {
-            AccessibilityManager accessibilityManager = 
-                (AccessibilityManager) context.getSystemService(Context.ACCESSIBILITY_SERVICE);
-            if (accessibilityManager != null && accessibilityManager.isEnabled()) {
-                return accessibilityManager.getEnabledAccessibilityServiceList(-1).size() > 0;
-            }
-        } catch (Exception e) {
-            return false;
-        }
-        return false;
-    }
-
-    private static boolean isAutoClickerInstalled(Context context) {
-        try {
-            String[] packages = {
-                "com.truedevelopersstudio.automatictap.autoclicker",
-                "com.samsung.accessory",
-                "com.touchsprite.android",
-                "com.gamehelper",
-                "com.an.autoclicker",
-                "com.kaydev.autoclicker",
-                "autoclicker.clicker.fast.tap",
-                "cn.auto.clicker",
-                "com.auto.clicker.tap"
             };
 
             PackageManager pm = context.getPackageManager();
