@@ -74,12 +74,9 @@ public class RiskDetector {
             }
         } catch (Exception ignored) {}
 
-        // 检测6：模拟器 + 云手机 + 应用多开/分身
+        // 检测6：模拟器 + 应用多开/分身
         if (isEmulator()) {
             risks.add("检测到模拟器环境");
-        }
-        if (isCloudPhone(context)) {
-            risks.add("检测到云手机环境");
         }
         if (isAppCloned(context)) {
             risks.add("检测到应用多开/分身环境");
@@ -380,36 +377,6 @@ public class RiskDetector {
 
             if (Build.FINGERPRINT.contains("generic")) {
                 return true;
-            }
-        } catch (Exception e) {
-            return false;
-        }
-        return false;
-    }
-
-    private static boolean isCloudPhone(Context context) {
-        try {
-            String[] cloudPackages = {
-                "com.xiaomi.cloud", "com.huawei.cloud", 
-                "com.taobao.taobao", "com.aliyun.gslb", 
-                "com.netease.nis.eagleeye", "com.hihonor.cloud",
-                "com.aweme.cloudphone", "com.baidu.cloudgame"
-            };
-
-            PackageManager pm = context.getPackageManager();
-            for (String pkg : cloudPackages) {
-                try {
-                    pm.getPackageInfo(pkg, 0);
-                    return true;
-                } catch (PackageManager.NameNotFoundException ignored) {}
-            }
-
-            String[] cloudKeywords = {"cloud", "vps", "virtual", "android-on"};
-            String manufacturer = Build.MANUFACTURER.toLowerCase();
-            for (String keyword : cloudKeywords) {
-                if (manufacturer.contains(keyword)) {
-                    return true;
-                }
             }
         } catch (Exception e) {
             return false;
