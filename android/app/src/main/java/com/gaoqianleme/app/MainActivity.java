@@ -15,15 +15,15 @@ public class MainActivity extends BridgeActivity {
     
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        // 注册插件（保持原来的顺序）
+        registerPlugin(BaiduAdPlugin.class);
+        registerPlugin(TTSPlugin.class);
+        registerPlugin(RiskCheckPlugin.class);
+        
         super.onCreate(savedInstanceState);
         
         // 冷启动风控检测
         performRiskCheck("coldStart", true);
-        
-        // 注册插件
-        registerPlugin(BaiduAdPlugin.class);
-        registerPlugin(TTSPlugin.class);
-        registerPlugin(RiskCheckPlugin.class);
         
         // 配置 WebView 以支持现代 CSS 特性
         configureWebView();
