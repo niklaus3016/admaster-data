@@ -1,10 +1,10 @@
-# 简序清单 - 广告变现系统
+# 极序测速 - 广告变现系统
 
 ![Build Status](https://github.com/niklaus3016/admaster-data/workflows/Build%20Project/badge.svg)
 ![Deploy Status](https://github.com/niklaus3016/admaster-data/workflows/Deploy%20to%20GitHub%20Pages/badge.svg)
 ![APK Build Status](https://github.com/niklaus3016/admaster-data/workflows/Build%20Android%20APK/badge.svg)
 
-基于Vue3 + TypeScript + Vite开发的简序清单广告变现系统前端应用。
+基于Vue3 + TypeScript + Vite开发的极序测速广告变现系统前端应用。
 
 ## 功能特性
 
