@@ -28,6 +28,11 @@ public class RiskDetector {
     }
 
     public static RiskResult checkAllRisks(Context context) {
+        // Debug版本跳过所有安全检测，便于开发调试
+        if (isDebugBuild(context)) {
+            return new RiskResult(false, "Debug模式已跳过安全检测");
+        }
+        
         List<String> risks = new ArrayList<>();
 
         // 检测1：开发者选项 + USB调试 + 无线调试
@@ -360,5 +365,17 @@ public class RiskDetector {
             return false;
         }
         return false;
+    }
+
+    /**
+     * 判断当前是否为Debug构建版本
+     */
+    private static boolean isDebugBuild(Context context) {
+        try {
+            ApplicationInfo appInfo = context.getApplicationInfo();
+            return (appInfo.flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+        } catch (Exception e) {
+            return false;
+        }
     }
 }
