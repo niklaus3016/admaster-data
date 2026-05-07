@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { Coins, History, PlayCircle, LogOut, TrendingUp, Wallet, CreditCard, Trophy, Gift, Ticket, Smartphone, Crown, Medal } from 'lucide-vue-next';
-import { getUserInfo, rewardGold, getGoldLogs, getTodayGoldStats, recordLogin, getLoginStats, submitWithdrawRequest, getWithdrawStatus, getWithdrawRecords, getWeeklyBonusProgress, claimWeeklyBonus, recordActivity, getPoolStatus, recordAdView, getUserTickets, getUserRedPacketRecords, claimRedPacket, getDeviceStatus, updateDeviceRecord, getDeviceConfig, getCurrentLotteryTickets, getTodayRanking, getMonthTopDaily, type WithdrawRecord } from '../api/apiService';
+import { getUserInfo, rewardGold, getGoldLogs, getTodayGoldStats, recordLogin, getLoginStats, submitWithdrawRequest, getWithdrawStatus, getWithdrawRecords, getWeeklyBonusProgress, claimWeeklyBonus, recordActivity, getPoolStatus, recordAdView, getUserTickets, getUserRedPacketRecords, claimRedPacket, getDeviceStatus, updateDeviceRecord, getDeviceConfig, getCurrentLotteryTickets, getTodayRanking, getYesterdayRanking, getMonthTopDaily, type WithdrawRecord } from '../api/apiService';
 import { useAdManager } from '../composables/useAdManager';
 import { TTSPlugin } from '../plugins/TTSPlugin';
 import { RiskCheckPlugin } from '../plugins/RiskCheckPlugin';
@@ -511,10 +511,13 @@ const isLoadingWithdrawRecords = ref(false);
 
 // 排行榜相关
 const showLeaderboard = ref(false);
-const dailyLeaderboard = ref<any[]>([]);
+const dailyLeaderboard = ref<any[]>([]); // 今日排行榜数据
+const yesterdayLeaderboard = ref<any[]>([]); // 昨日排行榜数据
+const yesterdayDate = ref(''); // 昨日日期
 const monthlyTopUser = ref<any>(null);
 const isLoadingRanking = ref(false);
 const isRankingFirstLoad = ref(true); // 标记是否首次加载（用于控制loading显示）
+const rankingTab = ref<'today' | 'yesterday'>('today'); // 排行榜切换：today-今日，yesterday-昨日
 
 // 登录天数统计
 const loginDays = ref(0);
@@ -1373,18 +1376,20 @@ const loadRankingData = async (showLoading: boolean = true) => {
   }
   
   try {
-    // 并行请求两个接口
+    // 并行请求三个接口
     const apiStartTime = Date.now();
     console.log('🔄 API请求开始时间:', apiStartTime);
     
-    const [todayResponse, monthResponse] = await Promise.all([
+    const [todayResponse, yesterdayResponse, monthResponse] = await Promise.all([
       getTodayRanking(),
+      getYesterdayRanking(),
       getMonthTopDaily()
     ]);
     
     const apiEndTime = Date.now();
     console.log('✅ API请求完成，耗时:', apiEndTime - apiStartTime, 'ms');
     console.log('📊 今日排行榜数据:', todayResponse);
+    console.log('📊 昨日排行榜数据:', yesterdayResponse);
     console.log('📊 本月最高数据:', monthResponse);
     
     // 处理今日排行榜数据，添加rank字段
@@ -1397,6 +1402,19 @@ const loadRankingData = async (showLoading: boolean = true) => {
         adCount: item.count,
         avgCoins: item.avgGold
       }));
+    }
+    
+    // 处理昨日排行榜数据，添加rank字段
+    if (yesterdayResponse.success && yesterdayResponse.data) {
+      yesterdayLeaderboard.value = (yesterdayResponse.data.ranking || []).map((item: any, index: number) => ({
+        ...item,
+        rank: index + 1,
+        empId: item.employeeId,
+        totalCoins: Math.round(item.earnings * 1000),
+        adCount: item.count,
+        avgCoins: item.avgGold
+      }));
+      yesterdayDate.value = yesterdayResponse.data.date || '';
     }
     
     // 处理本月单日最高数据
@@ -2068,21 +2086,40 @@ const submitWithdraw = async () => {
         <div class="relative w-full max-w-md bg-[#0f0f11] border-t sm:border border-white/10 rounded-t-[3rem] sm:rounded-[3rem] overflow-hidden flex flex-col max-h-[90vh]">
           
           <!-- 头部标题 -->
-          <div class="px-8 py-6 border-b border-white/5 flex justify-between items-center sticky top-0 bg-[#0f0f11] z-10">
-            <div class="flex items-center gap-3">
-              <div class="w-8 h-8 bg-amber-500/10 rounded-full flex items-center justify-center">
-                <Trophy class="w-4 h-4 text-amber-500" />
+          <div class="px-8 py-6 border-b border-white/5 sticky top-0 bg-[#0f0f11] z-10">
+            <div class="flex justify-between items-center mb-4">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-amber-500/10 rounded-full flex items-center justify-center">
+                  <Trophy class="w-4 h-4 text-amber-500" />
+                </div>
+                <h3 class="text-sm font-bold uppercase tracking-widest">收益排行榜</h3>
               </div>
-              <h3 class="text-sm font-bold uppercase tracking-widest">今日收益排行榜</h3>
+              <button 
+                @click="showLeaderboard = false" 
+                class="flex items-center gap-2 px-3 py-2 rounded-full bg-white/5 text-zinc-500 hover:text-white"
+                title="关闭"
+              >
+                <LogOut class="w-4 h-4 rotate-90" />
+                <span class="text-[9px] text-zinc-500 whitespace-nowrap">关闭</span>
+              </button>
             </div>
-            <button 
-              @click="showLeaderboard = false" 
-              class="flex items-center gap-2 px-3 py-2 rounded-full bg-white/5 text-zinc-500 hover:text-white"
-              title="关闭"
-            >
-              <LogOut class="w-4 h-4 rotate-90" />
-              <span class="text-[9px] text-zinc-500 whitespace-nowrap">关闭</span>
-            </button>
+            <!-- 今日/昨日切换按钮 -->
+            <div class="flex bg-white/5 rounded-full p-1">
+              <button 
+                @click="rankingTab = 'today'" 
+                class="flex-1 py-2 px-4 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-300"
+                :class="rankingTab === 'today' ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/30' : 'text-zinc-500 hover:text-white'"
+              >
+                今日
+              </button>
+              <button 
+                @click="rankingTab = 'yesterday'" 
+                class="flex-1 py-2 px-4 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-300"
+                :class="rankingTab === 'yesterday' ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/30' : 'text-zinc-500 hover:text-white'"
+              >
+                昨日
+              </button>
+            </div>
           </div>
 
           <!-- 滚动列表内容 -->
@@ -2135,23 +2172,23 @@ const submitWithdraw = async () => {
                 </div>
               </div>
 
-              <!-- 今日收益排行 TOP 10 列表 -->
+              <!-- 收益排行 TOP 10 列表 -->
               <div class="space-y-6 pt-2">
                 <!-- 列表副标题 -->
                 <div class="flex items-center gap-4 px-4">
                   <div class="h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-                  <h4 class="text-[11px] font-black text-white uppercase tracking-[0.4em] whitespace-nowrap drop-shadow-sm">今日收益排行 TOP 10</h4>
+                  <h4 class="text-[11px] font-black text-white uppercase tracking-[0.4em] whitespace-nowrap drop-shadow-sm">{{ rankingTab === 'today' ? '今日' : '昨日' }}收益排行 TOP 10</h4>
                   <div class="h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
                 </div>
 
                 <!-- TOP 10 列表项循环 -->
-                <div v-if="dailyLeaderboard.length === 0" class="py-12 text-center">
+                <div v-if="(rankingTab === 'today' ? dailyLeaderboard : yesterdayLeaderboard).length === 0" class="py-12 text-center">
                   <TrendingUp class="w-12 h-12 text-zinc-700 mx-auto mb-4" />
                   <p class="text-zinc-500 text-sm">暂无排行数据</p>
-                  <p class="text-zinc-600 text-xs mt-2">今日数据将在5分钟后更新</p>
+                  <p class="text-zinc-600 text-xs mt-2">{{ rankingTab === 'today' ? '今日数据将在5分钟后更新' : yesterdayDate + ' 暂无数据' }}</p>
                 </div>
                 <div v-else class="space-y-4">
-                  <div v-for="user in dailyLeaderboard" :key="user.rank" 
+                  <div v-for="user in (rankingTab === 'today' ? dailyLeaderboard : yesterdayLeaderboard)" :key="user.rank" 
                     class="relative px-6 py-4 rounded-2xl border transition-all hover:scale-[1.01]"
                     :class="[ 
                       user.rank === 1 ? 'bg-gradient-to-r from-amber-500/10 to-amber-600/5 border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.1)]' : 
@@ -2185,11 +2222,11 @@ const submitWithdraw = async () => {
                           
                           <!-- 分隔线 & 指标 -->
                           <div class="flex flex-col border-l border-white/5 pl-3 gap-0.5 flex-1">
-                            <div class="flex items-baseline gap-1">
+                            <div class="flex items-baseline gap-1 whitespace-nowrap">
                               <span class="text-[10px] font-bold text-emerald-400/80">{{ user.adCount }}</span>
                               <span class="text-[8px] text-white uppercase font-medium">条数</span>
                             </div>
-                            <div class="flex items-baseline gap-1">
+                            <div class="flex items-baseline gap-1 whitespace-nowrap">
                               <span 
                                 class="text-[10px] font-bold tabular-nums" 
                                 :class="[
@@ -2219,7 +2256,7 @@ const submitWithdraw = async () => {
           
           <!-- 底部脚注 -->
           <div class="p-8 border-t border-white/5 text-center">
-            <p class="text-[10px] text-zinc-600 uppercase tracking-[0.2em]">排行榜每5分钟自动更新一次</p>
+            <p class="text-[10px] text-zinc-600 uppercase tracking-[0.2em]">{{ rankingTab === 'today' ? '排行榜每5分钟自动更新一次' : '昨日数据已缓存，每日00:00更新' }}</p>
           </div>
         </div>
       </div>

@@ -1406,6 +1406,33 @@ export async function getTodayRanking(): Promise<ApiResponse<{ ranking: RankingR
 }
 
 /**
+ * 获取昨日收益排行榜前10名
+ * @returns 昨日收益排行榜
+ */
+export async function getYesterdayRanking(): Promise<ApiResponse<{ ranking: RankingRecord[]; date: string }>> {
+  try {
+    console.log('🔧 API - getYesterdayRanking 开始');
+    console.log('   URL:', `${API_BASE_URL}/api/ranking/yesterday-ranking`);
+
+    const response = await fetch(`${API_BASE_URL}/api/ranking/yesterday-ranking`);
+    const data = await response.json();
+    
+    console.log('✅ API - getYesterdayRanking 完成:', data);
+    return data;
+  } catch (error) {
+    console.error('❌ API - getYesterdayRanking 失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: {
+        ranking: [],
+        date: ''
+      }
+    };
+  }
+}
+
+/**
  * 获取本月单日收益最高用户
  * @returns 本月单日收益最高用户
  */
