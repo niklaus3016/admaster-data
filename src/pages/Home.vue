@@ -518,6 +518,8 @@ const monthlyTopUser = ref<any>(null);
 const isLoadingRanking = ref(false);
 const isRankingFirstLoad = ref(true); // 标记是否首次加载（用于控制loading显示）
 const rankingTab = ref<'today' | 'yesterday'>('today'); // 排行榜切换：today-今日，yesterday-昨日
+const lastRankingLoadTime = ref(0); // 上次加载排行榜数据的时间戳
+const RANKING_CACHE_DURATION = 300000; // 排行榜缓存有效期：5分钟（与今日排行榜更新频率一致）
 
 // 登录天数统计
 const loginDays = ref(0);
@@ -719,7 +721,9 @@ onMounted(async () => {
   await loadLotteryWinRecords(); // 加载中奖记录
   await loadDeviceStatus(); // 加载设备状态
   await loadDeviceConfig(); // 加载设备配置
-  await loadRankingData(); // 预加载排行榜数据（后台静默加载）
+  
+  // 排行榜数据改为异步加载，不阻塞广告SDK初始化
+  loadRankingData(false).catch(console.error);
   
   // 登录进入首页后触发风控检测
   if (Capacitor.isNativePlatform()) {
@@ -736,12 +740,12 @@ onMounted(async () => {
   await recordUserActivity();
 
   // 启动定时同步，每30秒同步一次数据看板（金币余额、今日金币等全局数据）
-  // 只有最近收益记录保持设备独立，不参与同步
+  // 排行榜数据已改为按需加载（5分钟缓存），不再参与定时同步
   syncInterval = setInterval(async () => {
     console.log('🔄 定时同步数据看板...');
     await loadUserInfo(false); // 定时同步时不显示加载状态
     await loadTodayGoldStats(); // 同步今日金币统计（全局）
-    await loadRankingData(); // 定时同步排行榜数据
+    // await loadRankingData(); // 排行榜数据改为按需加载，由缓存机制控制
     // await loadPoolStatus(); // 同步奖金池状态（暂时隐藏，下下个版本上线）
   }, 30000);
 
@@ -1366,9 +1370,16 @@ const loadWithdrawRecords = async () => {
 };
 
 // 加载排行榜数据
-const loadRankingData = async (showLoading: boolean = true) => {
+const loadRankingData = async (showLoading: boolean = true, forceRefresh: boolean = false) => {
   const startTime = Date.now();
   console.log('🔄 开始加载排行榜数据...');
+  
+  // 检查缓存：如果数据在缓存期内且不是强制刷新，则跳过加载
+  const now = Date.now();
+  if (!forceRefresh && now - lastRankingLoadTime.value < RANKING_CACHE_DURATION) {
+    console.log('📋 排行榜数据仍在缓存期内（5分钟），跳过加载');
+    return;
+  }
   
   // 只有首次打开弹窗或明确要求显示loading时才显示loading
   if (showLoading && isRankingFirstLoad.value) {
@@ -1431,8 +1442,9 @@ const loadRankingData = async (showLoading: boolean = true) => {
       monthlyTopUser.value = null;
     }
     
-    // 数据加载完成后，标记首次加载已完成
+    // 数据加载完成后，标记首次加载已完成并更新缓存时间
     isRankingFirstLoad.value = false;
+    lastRankingLoadTime.value = Date.now(); // 更新缓存时间戳
     
     const endTime = Date.now();
     console.log('✅ 排行榜数据加载完成，总耗时:', endTime - startTime, 'ms');
@@ -1443,18 +1455,18 @@ const loadRankingData = async (showLoading: boolean = true) => {
   }
 };
 
-// 监听排行榜弹窗打开，自动加载数据
+// 监听排行榜弹窗打开，自动加载数据（使用缓存机制）
 watch(showLeaderboard, (newValue) => {
   if (newValue) {
-    // 每次打开弹窗时强制加载最新数据
+    // 打开弹窗时加载数据（受缓存控制，5分钟内不会重复请求）
     loadRankingData(true);
   }
 });
 
-// 刷新排行榜数据（供按钮调用）
+// 刷新排行榜数据（供按钮调用，强制刷新）
 const refreshRankingData = () => {
   isRankingFirstLoad.value = true; // 重置首次加载标记以显示loading
-  loadRankingData(true);
+  loadRankingData(true, true); // 第二个参数为true表示强制刷新
 };
 
 // 格式化日期（使用北京时间，UTC+8）
