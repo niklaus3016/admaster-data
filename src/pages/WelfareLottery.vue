@@ -70,14 +70,16 @@ let spinAudioPlaying = false;
 // 播放转盘音效
 const playSpinSound = async () => {
   try {
+    console.log('🎵 开始播放转盘音效');
     await AudioPlugin.play({ 
       filePath: 'gxcjyy', 
       volume: 0.8,
-      loop: false 
+      loop: true  // 循环播放，直到转盘停止
     });
     spinAudioPlaying = true;
+    console.log('🎵 转盘音效播放成功');
   } catch (err) {
-    console.log('音效播放失败:', err);
+    console.error('🎵 音效播放失败:', err);
   }
 };
 
