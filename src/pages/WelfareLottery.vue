@@ -295,7 +295,21 @@ const formatTime = (timeString: string) => {
 
 // 处理抽奖
 const handleSpin = async () => {
-  if (!empId.value || !canSpin.value) return;
+  console.log('🎲 handleSpin 被调用');
+  console.log('🎲 empId:', empId.value);
+  console.log('🎲 walletChances:', walletChances.value);
+  console.log('🎲 isSpinning:', isSpinning.value);
+  console.log('🎲 canSpin:', canSpin.value);
+  
+  if (!empId.value) {
+    console.error('❌ empId 为空，无法抽奖');
+    return;
+  }
+  
+  if (!canSpin.value) {
+    console.error('❌ canSpin 为 false，无法抽奖');
+    return;
+  }
   
   isSpinning.value = true;
   error.value = '';
