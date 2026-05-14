@@ -154,9 +154,14 @@ const loadWelfareInfo = async () => {
 };
 
 // 加载抽奖进度状态
-const loadWalletStatus = async () => {
+const loadWalletStatus = async (retryCount = 0) => {
   try {
+    const token = localStorage.getItem('token');
+    console.log(`[抽奖状态] 加载中 - empId: ${empId.value}, token存在: ${!!token}, 重试次数: ${retryCount}`);
+    
     const response = await getWelfareWalletStatus();
+    console.log(`[抽奖状态] 接口返回 - success: ${response.success}, data:`, response.data);
+    
     if (response.success && response.data) {
       todayAdCount.value = response.data.todayAdCount;
       walletChances.value = response.data.chances;
@@ -168,9 +173,22 @@ const loadWalletStatus = async () => {
         { adCount: 2000, giveChances: 2 },
         { adCount: 3000, giveChances: 3 }
       ];
+      
+      // 记录异常情况：广告次数为0但nextThreshold也为null
+      if (response.data.todayAdCount === 0 && response.data.nextThreshold === null) {
+        console.warn(`[抽奖状态异常] 用户 ${empId.value}: todayAdCount=0 且 nextThreshold=null`);
+      }
+    } else {
+      console.error(`[抽奖状态] 接口返回失败 - success: ${response.success}, message: ${response.message}`);
+      // 尝试重试一次
+      if (retryCount < 1) {
+        console.log('[抽奖状态] 尝试重试...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        await loadWalletStatus(retryCount + 1);
+      }
     }
   } catch (err) {
-    console.error('获取抽奖进度状态失败:', err);
+    console.error('[抽奖状态] 获取抽奖进度状态失败:', err);
     // 使用默认阈值配置
     thresholds.value = [
       { adCount: 1000, giveChances: 1 },
