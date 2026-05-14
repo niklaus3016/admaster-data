@@ -96,7 +96,7 @@ const stopSpinSound = async () => {
 };
 
 // 计算属性
-const canSpin = computed(() => lotteryChances.value > 0 && !isSpinning.value);
+const canSpin = computed(() => walletChances.value > 0 && !isSpinning.value);
 
 // 计算剩余提现次数
 const remainingWithdraws = computed(() => maxDailyWithdraws - dailyWithdrawCount.value);
@@ -333,7 +333,7 @@ const handleSpin = async () => {
       rotation.value = targetRotation;
       
       // 减少抽奖机会
-      lotteryChances.value -= 1;
+      walletChances.value -= 1;
       
       // 如果中奖，更新余额
       if (result.type !== 'encourage' && result.value > 0) {
@@ -640,7 +640,7 @@ const getPrizeName = (name: string) => {
         </div>
       </div>
       <div class="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 flex items-center gap-2">
-        <span class="text-xs font-mono text-blue-400">{{ lotteryChances }}</span>
+        <span class="text-xs font-mono text-blue-400">{{ walletChances }}</span>
         <Sparkles class="w-3 h-3 text-purple-500" />
       </div>
     </header>
@@ -769,25 +769,25 @@ const getPrizeName = (name: string) => {
             <div class="absolute inset-0 m-auto w-24 h-24 z-30">
               <button 
                 @click="handleSpin"
-                :disabled="isSpinning || lotteryChances <= 0"
+                :disabled="isSpinning || walletChances <= 0"
                 class="w-full h-full rounded-full border-4 shadow-[0_10px_30px_rgba(0,0,0,0.5),inset_0_2px_5px_rgba(255,255,255,0.1)] flex items-center justify-center active:translate-y-1 active:shadow-inner transition-all disabled:grayscale disabled:opacity-50 disabled:active:translate-y-0 group overflow-hidden"
                 :class="{
-                  'bg-gradient-to-b from-zinc-700 to-zinc-900 border-zinc-800': lotteryChances <= 0 || isSpinning,
-                  'bg-gradient-to-b from-blue-500 to-purple-600 border-red-600 shadow-[0_10px_30px_rgba(220,38,38,0.4),inset_0_2px_5px_rgba(255,255,255,0.2)]': lotteryChances > 0 && !isSpinning
+                  'bg-gradient-to-b from-zinc-700 to-zinc-900 border-zinc-800': walletChances <= 0 || isSpinning,
+                  'bg-gradient-to-b from-blue-500 to-purple-600 border-red-600 shadow-[0_10px_30px_rgba(220,38,38,0.4),inset_0_2px_5px_rgba(255,255,255,0.2)]': walletChances > 0 && !isSpinning
                 }"
               >
                 <!-- 按钮发光 -->
                 <div class="absolute inset-0 bg-amber-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
                 <div class="relative z-10 flex flex-col items-center">
                   <Zap class="w-5 h-5 mb-1" :class="{
-                    'text-amber-400 animate-bounce': !isSpinning && lotteryChances > 0,
-                    'text-zinc-400': lotteryChances <= 0 || isSpinning
+                    'text-amber-400 animate-bounce': !isSpinning && walletChances > 0,
+                    'text-zinc-400': walletChances <= 0 || isSpinning
                   }" />
                   <span class="text-[10px] font-black uppercase tracking-[0.2em]" :class="{
-                    'text-amber-400': !isSpinning && lotteryChances > 0,
-                    'text-zinc-400': lotteryChances <= 0 || isSpinning
+                    'text-amber-400': !isSpinning && walletChances > 0,
+                    'text-zinc-400': walletChances <= 0 || isSpinning
                   }">
-                    {{ isSpinning ? '抽奖中' : (lotteryChances > 0 ? '开始抽奖' : '没有机会') }}
+                    {{ isSpinning ? '抽奖中' : (walletChances > 0 ? '开始抽奖' : '没有机会') }}
                   </span>
                 </div>
               </button>
@@ -1577,10 +1577,10 @@ const getPrizeName = (name: string) => {
           <span class="text-xs font-medium">福利抽奖</span>
           <!-- 抽奖机会红点标记 -->
           <span 
-            v-if="lotteryChances > 0"
+            v-if="walletChances > 0"
             class="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center px-1 shadow-[0_0_10px_rgba(239,68,68,0.6)] animate-pulse"
           >
-            {{ lotteryChances > 99 ? '99+' : lotteryChances }}
+            {{ walletChances > 99 ? '99+' : walletChances }}
           </span>
         </router-link>
         <router-link 
