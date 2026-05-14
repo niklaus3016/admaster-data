@@ -19,7 +19,8 @@ public class AudioPlugin extends Plugin {
     @PluginMethod
     public void play(PluginCall call) {
         String filePath = call.getString("filePath");
-        float volume = (float) call.getDouble("volume", 0.5);
+        Double volumeValue = call.getDouble("volume", 0.5);
+        float volume = volumeValue != null ? volumeValue.floatValue() : 0.5f;
         boolean loop = call.getBoolean("loop", false);
 
         if (filePath == null || filePath.isEmpty()) {
@@ -97,7 +98,8 @@ public class AudioPlugin extends Plugin {
 
     @PluginMethod
     public void setVolume(PluginCall call) {
-        float volume = (float) call.getDouble("volume", 0.5);
+        Double volumeValue = call.getDouble("volume", 0.5);
+        float volume = volumeValue != null ? volumeValue.floatValue() : 0.5f;
         if (mediaPlayer != null) {
             mediaPlayer.setVolume(volume, volume);
             Log.d(TAG, "设置音量: " + volume);
@@ -107,12 +109,4 @@ public class AudioPlugin extends Plugin {
         }
     }
 
-    @Override
-    public void cleanup() {
-        super.cleanup();
-        if (mediaPlayer != null) {
-            mediaPlayer.release();
-            mediaPlayer = null;
-        }
-    }
 }
