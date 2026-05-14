@@ -1,6 +1,7 @@
 package com.feixugeshui.app;
 
 import android.content.Context;
+import android.content.res.AssetFileDescriptor;
 import android.media.MediaPlayer;
 import android.util.Log;
 import com.getcapacitor.JSObject;
@@ -41,31 +42,28 @@ public class AudioPlugin extends Plugin {
                 mediaPlayer = null;
             }
 
-            // 获取资源ID
-            int resourceId = context.getResources().getIdentifier(
-                filePath.replace(".m4a", "").replace(".mp3", "").replace(".wav", ""),
-                "raw",
-                context.getPackageName()
-            );
-
-            if (resourceId == 0) {
-                call.reject("找不到音频文件: " + filePath);
-                return;
+            // 构建完整的文件名
+            String fullFileName = filePath;
+            if (!filePath.endsWith(".m4a") && !filePath.endsWith(".mp3") && !filePath.endsWith(".wav")) {
+                fullFileName = filePath + ".m4a";
             }
 
-            // 创建新的播放器
-            mediaPlayer = MediaPlayer.create(context, resourceId);
-            if (mediaPlayer == null) {
-                call.reject("创建播放器失败");
-                return;
-            }
-
+            // 尝试从 assets 加载
+            mediaPlayer = new MediaPlayer();
+            AssetFileDescriptor afd = context.getAssets().openFd(fullFileName);
+            mediaPlayer.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
+            afd.close();
+            
+            mediaPlayer.prepare();
             mediaPlayer.setVolume(volume, volume);
             mediaPlayer.setLooping(loop);
             mediaPlayer.start();
 
-            Log.d(TAG, "开始播放音频: " + filePath);
+            Log.d(TAG, "开始播放音频: " + fullFileName);
             call.resolve();
+        } catch (IOException e) {
+            Log.e(TAG, "找不到音频文件: " + filePath, e);
+            call.reject("找不到音频文件: " + filePath);
         } catch (Exception e) {
             Log.e(TAG, "播放音频失败", e);
             call.reject("播放音频失败: " + e.getMessage());
@@ -108,5 +106,4 @@ public class AudioPlugin extends Plugin {
             call.reject("没有正在播放的音频");
         }
     }
-
 }
