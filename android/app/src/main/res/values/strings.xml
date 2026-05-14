@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">极序测速</string>
-    <string name="title_activity_main">极序测速</string>
-    <string name="package_name">com.jixucesu.app</string>
-    <string name="custom_url_scheme">com.jixucesu.app</string>
+    <string name="app_name">飞序个税助手</string>
+    <string name="title_activity_main">飞序个税助手</string>
+    <string name="package_name">com.feixugeshui.app</string>
+    <string name="custom_url_scheme">com.feixugeshui.app</string>
 </resources>
