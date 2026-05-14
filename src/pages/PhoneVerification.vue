@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Smartphone, Upload, AlertCircle, Coins, Wallet, CreditCard, TrendingUp, Ticket, Gift } from 'lucide-vue-next';
-import { getUserGoldInfo, submitVerification, getVerificationRecords } from '../api/apiService';
+import { getUserGoldInfo, submitVerification, getVerificationRecords, getWelfareLotteryInfo, getCurrentLotteryTickets } from '../api/apiService';
 
 const router = useRouter();
 const empId = ref(localStorage.getItem('empId') || '');
@@ -13,6 +13,10 @@ const currentMonthGold = ref(0);
 const lastMonthGold = ref(0);
 const isLoading = ref(false);
 const error = ref('');
+
+// 福利抽奖次数
+const welfareLotteryChances = ref(0);
+const lotteryTicketsCount = ref(0); // 幸运彩票数量
 
 // 核销表单
 const invoiceAmount = ref('');
@@ -234,7 +238,37 @@ onMounted(async () => {
   }
   
   await loadUserInfo();
+  await loadWelfareLotteryChances();
+  await loadLotteryTicketsCount();
 });
+
+// 加载福利抽奖次数
+const loadWelfareLotteryChances = async () => {
+  if (!empId.value) return;
+  
+  try {
+    const response = await getWelfareLotteryInfo(empId.value);
+    if (response.success && response.data) {
+      welfareLotteryChances.value = Number(response.data.chances) || 0;
+    }
+  } catch (error) {
+    console.error('加载福利抽奖次数失败:', error);
+  }
+};
+
+// 加载幸运彩票数量
+const loadLotteryTicketsCount = async () => {
+  if (!userId.value) return;
+  
+  try {
+    const response = await getCurrentLotteryTickets(userId.value);
+    if (response.success && response.data) {
+      lotteryTicketsCount.value = response.data.tickets.length || 0;
+    }
+  } catch (error) {
+    console.error('加载幸运彩票数量失败:', error);
+  }
+};
 </script>
 
 <template>
@@ -562,14 +596,27 @@ onMounted(async () => {
         >
           <Ticket class="w-6 h-6 mb-1" />
           <span class="text-xs font-medium">幸运彩票</span>
+          <!-- 幸运彩票红点标记 -->
+          <span 
+            v-if="lotteryTicketsCount > 0"
+            class="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center px-1 shadow-[0_0_10px_rgba(239,68,68,0.6)] animate-pulse"
+          >
+            {{ lotteryTicketsCount > 99 ? '99+' : lotteryTicketsCount }}
+          </span>
         </router-link>
         <router-link 
           to="/welfare-lottery" 
-          class="flex flex-col items-center transition-all duration-300"
+          class="flex flex-col items-center transition-all duration-300 relative"
           :class="$route.path === '/welfare-lottery' ? 'text-emerald-400 scale-105' : 'text-zinc-400 hover:text-zinc-300'"
         >
           <Gift class="w-6 h-6 mb-1" />
           <span class="text-xs font-medium">福利抽奖</span>
+          <span 
+            v-if="welfareLotteryChances > 0" 
+            class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center"
+          >
+            {{ welfareLotteryChances > 99 ? '99+' : welfareLotteryChances }}
+          </span>
         </router-link>
         <router-link 
           to="/phone-verification" 

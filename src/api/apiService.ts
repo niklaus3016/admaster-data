@@ -771,10 +771,51 @@ export async function getWelfareLotteryPrizes(): Promise<ApiResponse<{ prizes: W
 
 /**
  * 领取福利抽奖
+ * @param userId 用户ID
  * @param employeeId 员工号
  * @returns 抽奖结果
  */
-export async function claimWelfareLottery(employeeId: string): Promise<ApiResponse<{ result: WelfareLotteryResult }>> {
+export async function claimWelfareLottery(userId: string, employeeId: string): Promise<ApiResponse<{ result: WelfareLotteryResult }>> {
+  // 开发模式下使用模拟数据
+  if (USE_MOCK_DATA) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        // 模拟抽奖概率
+        const prizes = [
+          { id: '1', name: '1克黄金', value: 500, type: 'gold', probability: 2 },
+          { id: '2', name: '1.68元', value: 1.68, type: 'cash', probability: 20 },
+          { id: '3', name: '88.8元', value: 88.8, type: 'cash', probability: 5 },
+          { id: '4', name: '6.88元', value: 6.88, type: 'cash', probability: 15 },
+          { id: '5', name: '千元手机', value: 1000, type: 'phone', probability: 1 },
+          { id: '6', name: '16.8元', value: 16.8, type: 'cash', probability: 12 },
+          { id: '7', name: '66.8元', value: 66.8, type: 'cash', probability: 8 },
+          { id: '8', name: '再接再厉', value: 0, type: 'encourage', probability: 37 },
+        ];
+        
+        // 根据概率随机抽取奖品
+        const random = Math.random() * 100;
+        let cumulative = 0;
+        let selectedPrize = prizes[7]; // 默认再接再厉
+        
+        for (const prize of prizes) {
+          cumulative += prize.probability;
+          if (random <= cumulative) {
+            selectedPrize = prize;
+            break;
+          }
+        }
+        
+        resolve({
+          success: true,
+          message: '抽奖成功',
+          data: {
+            result: selectedPrize
+          }
+        });
+      }, 500);
+    });
+  }
+  
   try {
     const token = localStorage.getItem('token');
     const response = await fetch(`${API_BASE_URL}/api/welfare/lottery/claim`, {
@@ -783,7 +824,7 @@ export async function claimWelfareLottery(employeeId: string): Promise<ApiRespon
         'Content-Type': 'application/json',
         'Authorization': token ? `Bearer ${token}` : ''
       },
-      body: JSON.stringify({ employeeId }),
+      body: JSON.stringify({ userId, employeeId }),
     });
     return await response.json();
   } catch (error) {
@@ -865,7 +906,9 @@ export async function getWelfareWalletBalance(employeeId: string): Promise<ApiRe
  */
 export async function withdrawWelfareFunds(employeeId: string, amount: number, alipayAccount: string, alipayName: string): Promise<ApiResponse<{ success: boolean }>> {
   try {
+    console.log('withdrawWelfareFunds - 请求参数:', { employeeId, amount, alipayAccount, alipayName });
     const token = localStorage.getItem('token');
+    console.log('withdrawWelfareFunds - token:', token);
     const response = await fetch(`${API_BASE_URL}/api/welfare/withdraw`, {
       method: 'POST',
       headers: {
@@ -874,7 +917,9 @@ export async function withdrawWelfareFunds(employeeId: string, amount: number, a
       },
       body: JSON.stringify({ employeeId, amount, alipayAccount, alipayName }),
     });
-    return await response.json();
+    const result = await response.json();
+    console.log('withdrawWelfareFunds - 响应:', result);
+    return result;
   } catch (error) {
     console.error('福利钱包提现失败:', error);
     return {
@@ -905,6 +950,50 @@ export async function getWelfareWithdrawRecords(employeeId: string): Promise<Api
       message: '网络错误，请稍后重试',
       data: {
         records: []
+      }
+    };
+  }
+}
+
+/**
+ * 获取用户抽奖状态（进度条数据）
+ * @returns 用户抽奖状态
+ */
+export interface ThresholdConfig {
+  adCount: number;
+  giveChances: number;
+}
+
+export interface WelfareWalletStatus {
+  todayAdCount: number;
+  chances: number;
+  nextThreshold: {
+    adCount: number;
+    giveChances: number;
+  } | null;
+  remaining: number;
+  thresholds?: ThresholdConfig[];
+}
+
+export async function getWelfareWalletStatus(): Promise<ApiResponse<WelfareWalletStatus>> {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/api/welfare/wallet/status`, {
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : ''
+      }
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('获取用户抽奖状态失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      data: {
+        todayAdCount: 0,
+        chances: 0,
+        nextThreshold: null,
+        remaining: 0
       }
     };
   }

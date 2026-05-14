@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { Coins, History, PlayCircle, LogOut, TrendingUp, Wallet, CreditCard, Trophy, Gift, Ticket, Smartphone, Crown, Medal } from 'lucide-vue-next';
-import { getUserInfo, rewardGold, getGoldLogs, getTodayGoldStats, recordLogin, getLoginStats, submitWithdrawRequest, getWithdrawStatus, getWithdrawRecords, getWeeklyBonusProgress, claimWeeklyBonus, recordActivity, getPoolStatus, recordAdView, getUserTickets, getUserRedPacketRecords, claimRedPacket, getDeviceStatus, updateDeviceRecord, getDeviceConfig, getCurrentLotteryTickets, getTodayRanking, getYesterdayRanking, getMonthTopDaily, type WithdrawRecord } from '../api/apiService';
+import { Coins, History, PlayCircle, LogOut, TrendingUp, Wallet, CreditCard, Trophy, Gift, Ticket, Smartphone, Crown, Medal, Sparkles } from 'lucide-vue-next';
+import { getUserInfo, rewardGold, getGoldLogs, getTodayGoldStats, recordLogin, getLoginStats, submitWithdrawRequest, getWithdrawStatus, getWithdrawRecords, getWeeklyBonusProgress, claimWeeklyBonus, recordActivity, getPoolStatus, recordAdView, getUserTickets, getUserRedPacketRecords, claimRedPacket, getDeviceStatus, updateDeviceRecord, getDeviceConfig, getCurrentLotteryTickets, getTodayRanking, getYesterdayRanking, getMonthTopDaily, getWelfareLotteryInfo, type WithdrawRecord } from '../api/apiService';
 import { useAdManager } from '../composables/useAdManager';
 import { TTSPlugin } from '../plugins/TTSPlugin';
 import { RiskCheckPlugin } from '../plugins/RiskCheckPlugin';
@@ -47,6 +47,9 @@ const error = ref('');
 const isWatching = ref(false);
 const showAllRecords = ref(false);
 
+// 福利抽奖次数
+const welfareLotteryChances = ref(0);
+
 // 定时同步间隔（用于多设备数据同步）
 let syncInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -69,143 +72,7 @@ const redPacketRecords = ref<any[]>([]);
 const isLoadingRedPacketRecords = ref(false);
 const showRedPacketRecords = ref(false);
 
-// 中奖记录
-const lotteryWinRecords = ref<any[]>([
-  {
-    id: 'lottery_win_1711500000000',
-    time: '2026-03-27 12:30',
-    amount: 5000,
-    prizeLevel: '一等奖',
-    timestamp: 1711500000000
-  },
-  {
-    id: 'lottery_win_1711413600000',
-    time: '2026-03-26 12:00',
-    amount: 2000,
-    prizeLevel: '二等奖',
-    timestamp: 1711413600000
-  },
-  {
-    id: 'lottery_win_1711327200000',
-    time: '2026-03-25 12:00',
-    amount: 1000,
-    prizeLevel: '三等奖',
-    timestamp: 1711327200000
-  }
-]);
-const showLotteryWinRecordsModal = ref(false);
 
-// 添加中奖记录到最近收益列表
-const addLotteryWinRecord = (amount: number, prizeLevel: string = '三等奖') => {
-  console.log('========== addLotteryWinRecord 被调用 ==========');
-  console.log('金币数量:', amount);
-  console.log('奖项等级:', prizeLevel);
-  
-  const newLotteryWinRecord = {
-    id: `lottery_win_${Date.now()}`,
-    time: new Date().toLocaleString('zh-CN', {
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit'
-    }),
-    amount: amount,
-    prizeLevel: prizeLevel,
-    timestamp: Date.now()
-  };
-  
-  lotteryWinRecords.value.unshift(newLotteryWinRecord);
-  saveLotteryWinRecords(); // 保存到LocalStorage
-  console.log('✅ 已添加中奖记录:', newLotteryWinRecord);
-};
-
-// 从后端API获取中奖记录
-const loadLotteryWinRecords = async () => {
-  try {
-    if (!userId.value) {
-      console.error('❌ 用户ID不存在');
-      return;
-    }
-    
-    console.log('🔧 开始从后端获取中奖记录');
-    const response = await import('../api/apiService').then(m => m.getLotteryHistory());
-    
-    if (response.success && response.data) {
-      console.log('✅ 后端返回的开奖历史:', response.data);
-      
-      // 过滤出当前用户的中奖记录
-      const userWins = [];
-      
-      response.data.history.forEach(issue => {
-        // 检查一等奖
-        issue.winners.firstPrize.forEach(winner => {
-          if (winner.userId === userId.value) {
-            userWins.push({
-              id: `lottery_win_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-              time: new Date(issue.drawTime).toLocaleString('zh-CN', {
-                year: 'numeric', month: '2-digit', day: '2-digit',
-                hour: '2-digit', minute: '2-digit'
-              }),
-              amount: winner.amount,
-              prizeLevel: '一等奖',
-              timestamp: new Date(issue.drawTime).getTime()
-            });
-          }
-        });
-        
-        // 检查二等奖
-        issue.winners.secondPrize.forEach(winner => {
-          if (winner.userId === userId.value) {
-            userWins.push({
-              id: `lottery_win_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-              time: new Date(issue.drawTime).toLocaleString('zh-CN', {
-                year: 'numeric', month: '2-digit', day: '2-digit',
-                hour: '2-digit', minute: '2-digit'
-              }),
-              amount: winner.amount,
-              prizeLevel: '二等奖',
-              timestamp: new Date(issue.drawTime).getTime()
-            });
-          }
-        });
-        
-        // 检查三等奖
-        issue.winners.thirdPrize.forEach(winner => {
-          if (winner.userId === userId.value) {
-            userWins.push({
-              id: `lottery_win_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-              time: new Date(issue.drawTime).toLocaleString('zh-CN', {
-                year: 'numeric', month: '2-digit', day: '2-digit',
-                hour: '2-digit', minute: '2-digit'
-              }),
-              amount: winner.amount,
-              prizeLevel: '三等奖',
-              timestamp: new Date(issue.drawTime).getTime()
-            });
-          }
-        });
-      });
-      
-      // 按时间倒序排序
-      userWins.sort((a, b) => b.timestamp - a.timestamp);
-      
-      lotteryWinRecords.value = userWins;
-      console.log('✅ 过滤后的用户中奖记录:', userWins);
-    } else {
-      console.warn('⚠️ 后端返回失败:', response.message);
-    }
-  } catch (error) {
-    console.error('❌ 获取中奖记录失败:', error);
-  }
-};
-
-// 保存中奖记录到LocalStorage
-const saveLotteryWinRecords = () => {
-  try {
-    localStorage.setItem('lotteryWinRecords', JSON.stringify(lotteryWinRecords.value));
-    console.log('✅ 保存中奖记录到LocalStorage');
-  } catch (error) {
-    console.error('❌ 保存中奖记录失败:', error);
-  }
-};
 
 // 设备状态管理
 const deviceStatus = ref({ isLimited: false, consecutiveLowValueCount: 0 });
@@ -511,6 +378,7 @@ const isLoadingWithdrawRecords = ref(false);
 
 // 排行榜相关
 const showLeaderboard = ref(false);
+const showWeekendEvent = ref(false);
 const dailyLeaderboard = ref<any[]>([]); // 今日排行榜数据
 const yesterdayLeaderboard = ref<any[]>([]); // 昨日排行榜数据
 const yesterdayDate = ref(''); // 昨日日期
@@ -562,6 +430,23 @@ const loadDeviceStatus = async () => {
     deviceStatus.value = { isLimited: false, consecutiveLowValueCount: 0 };
   } finally {
     isLoadingDeviceStatus.value = false;
+  }
+};
+
+// 加载福利抽奖次数
+const loadWelfareLotteryChances = async () => {
+  if (!empId.value) return;
+  
+  try {
+    console.log('🔄 加载福利抽奖次数...');
+    const response = await getWelfareLotteryInfo(empId.value);
+    
+    if (response.success && response.data) {
+      welfareLotteryChances.value = Number(response.data.chances) || 0;
+      console.log('✅ 福利抽奖次数加载成功:', welfareLotteryChances.value);
+    }
+  } catch (error) {
+    console.error('❌ 加载福利抽奖次数异常:', error);
   }
 };
 
@@ -718,9 +603,9 @@ onMounted(async () => {
   await loadTodayGoldStats(); // 加载今日金币统计（全局）
   await loadGoldRecords(); // 加载收益记录（当前设备）
   await loadRedPacketRecords(); // 加载红包记录
-  await loadLotteryWinRecords(); // 加载中奖记录
   await loadDeviceStatus(); // 加载设备状态
   await loadDeviceConfig(); // 加载设备配置
+  await loadWelfareLotteryChances(); // 加载福利抽奖次数
   
   // 排行榜数据改为异步加载，不阻塞广告SDK初始化
   loadRankingData(false).catch(console.error);
@@ -1918,11 +1803,13 @@ const submitWithdraw = async () => {
               排行榜
             </button>
             <button 
-              @click="showLotteryWinRecordsModal = true"
-              class="px-3 py-1 rounded-full bg-white/5 text-[9px] text-amber-500 uppercase tracking-widest hover:bg-white/10 transition-all font-bold border border-amber-500/20"
+              @click="showWeekendEvent = true"
+              class="px-3 py-1 rounded-full bg-white/5 text-[9px] text-amber-500 uppercase tracking-widest hover:bg-white/10 transition-all font-bold border border-amber-500/20 flex items-center gap-2"
             >
-              中奖记录
+              <Sparkles class="w-3 h-3 text-amber-500" />
+              周末活动
             </button>
+
             <!-- 暂时隐藏查看全部按钮 -->
             <!-- <button 
               @click="showAllRecords = true"
@@ -2274,52 +2161,75 @@ const submitWithdraw = async () => {
       </div>
     </transition>
 
-    <!-- 中奖记录弹窗 -->
-    <transition 
-      enter-active-class="transition duration-300 ease-out"
-      enter-from-class="opacity-0 scale-95"
-      enter-to-class="opacity-100 scale-100"
-      leave-active-class="transition duration-200 ease-in"
-      leave-from-class="opacity-100 scale-100"
-      leave-to-class="opacity-0 scale-95"
-    >
-      <div v-if="showLotteryWinRecordsModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-6">
-        <div class="bg-gradient-to-br from-zinc-900 to-black p-6 rounded-[2rem] border border-white/5 max-w-md w-full max-h-[80vh] overflow-y-auto">
-          <div class="flex justify-between items-center mb-4">
-            <h4 class="text-[11px] uppercase tracking-[0.2em] text-amber-400 font-bold">中奖记录</h4>
-            <button @click="showLotteryWinRecordsModal = false" class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <!-- 周末活动弹窗 -->
+    <transition name="modal">
+      <div v-if="showWeekendEvent" class="fixed inset-0 z-[100] flex items-end justify-center sm:items-center p-0 sm:p-6">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" @click="showWeekendEvent = false" />
+        <div class="relative w-full max-w-md bg-gradient-to-br from-purple-900/90 via-indigo-900/90 to-purple-900/90 border-t sm:border border-purple-500/30 rounded-t-[3rem] sm:rounded-[3rem] overflow-hidden flex flex-col z-[101] shadow-2xl">
+          
+          <!-- 头部装饰 -->
+          <div class="relative overflow-hidden">
+            <!-- 背景光效 -->
+            <div class="absolute -top-20 left-1/2 -translate-x-1/2 w-64 h-64 bg-purple-500/30 rounded-full blur-3xl" />
+            <div class="absolute -bottom-10 left-0 w-48 h-48 bg-pink-500/20 rounded-full blur-3xl" />
+            <div class="absolute -bottom-10 right-0 w-48 h-48 bg-blue-500/20 rounded-full blur-3xl" />
+            
+            <!-- 关闭按钮 -->
+            <button 
+              @click="showWeekendEvent = false"
+              class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/20 transition-all z-10"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-          </div>
-          <div v-if="lotteryWinRecords.length === 0" class="py-12 text-center">
-            <Trophy class="w-12 h-12 text-zinc-700 mx-auto mb-4" />
-            <p class="text-zinc-500 text-sm">暂无中奖记录</p>
-            <p class="text-zinc-600 text-xs mt-2">继续努力，下一个中奖的就是你！</p>
-          </div>
-          <div v-else class="space-y-4">
-            <div 
-              v-for="(record, index) in lotteryWinRecords" 
-              :key="record.id"
-              class="p-4 bg-white/[0.02] rounded-xl border border-white/5 hover:bg-white/[0.05] transition-colors"
-            >
-              <div class="flex justify-between items-center mb-2">
-                <span class="text-amber-400 font-bold text-lg">+{{ parseFloat(record.amount).toFixed(2) }} 金币</span>
-                <span class="text-zinc-500 text-xs">{{ record.time.split(' ')[0] }}</span>
+            
+            <!-- 内容区域 -->
+            <div class="relative px-8 py-10 text-center">
+              <!-- 闪烁星星 -->
+              <div class="relative mb-6">
+                <Sparkles class="w-16 h-16 text-purple-400 mx-auto animate-pulse drop-shadow-[0_0_20px_rgba(192,132,252,0.6)]" />
+                <!-- 装饰性小火花 -->
+                <Sparkles class="absolute -top-2 left-1/2 -translate-x-[70px] w-5 h-5 text-amber-400 animate-pulse" />
+                <Sparkles class="absolute -top-1 right-1/2 translate-x-[70px] w-4 h-4 text-pink-400 animate-pulse delay-300" />
               </div>
-              <div class="flex items-center gap-2">
-                <span class="text-zinc-400 text-sm">幸运彩票中奖</span>
-                <span class="text-amber-500 text-xs px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 font-bold">{{ record.prizeLevel }}</span>
-              </div>
+              
+              <!-- 主标题 -->
+              <h2 class="text-2xl font-black text-white mb-4">
+                <span class="text-purple-400">·</span>周末活动<span class="text-purple-400">·</span>
+              </h2>
+              
+              <!-- 副标题 -->
+              <p class="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-pink-300 to-amber-300 mb-3">
+                更多福利，即将来袭！
+              </p>
+              
+              <!-- 时间提示 -->
+              <p class="text-sm text-purple-200/80">
+                预计6月～7月正式开启
+              </p>
             </div>
           </div>
-          <button @click="showLotteryWinRecordsModal = false" class="mt-6 w-full px-6 py-3 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] uppercase tracking-widest font-bold hover:opacity-90 transition-opacity">
-            我知道了
-          </button>
+          
+          <!-- 装饰线 -->
+          <div class="px-8">
+            <div class="h-px bg-gradient-to-r from-transparent via-purple-500/50 to-transparent" />
+          </div>
+          
+          <!-- 底部按钮 -->
+          <div class="px-8 py-8">
+            <button 
+              @click="showWeekendEvent = false"
+              class="w-full py-4 rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-amber-600 text-white font-bold text-sm uppercase tracking-widest hover:from-purple-500 hover:via-pink-500 hover:to-amber-500 transition-all duration-300 active:scale-95 shadow-lg shadow-purple-500/40 flex items-center justify-center gap-2"
+            >
+              <Sparkles class="w-4 h-4" />
+              非常期待
+            </button>
+          </div>
         </div>
       </div>
     </transition>
+
 
     <footer class="text-center mt-8 px-6 pb-8">
       <div class="inline-flex items-center px-4 py-2 rounded-full bg-white/2 border border-white/5">
@@ -2530,11 +2440,17 @@ const submitWithdraw = async () => {
         </router-link>
         <router-link 
           to="/welfare-lottery" 
-          class="flex flex-col items-center transition-all duration-300"
+          class="flex flex-col items-center transition-all duration-300 relative"
           :class="$route.path === '/welfare-lottery' ? 'text-emerald-400 scale-105' : 'text-zinc-400 hover:text-zinc-300'"
         >
           <Gift class="w-6 h-6 mb-1" />
           <span class="text-xs font-medium">福利抽奖</span>
+          <span 
+            v-if="welfareLotteryChances > 0" 
+            class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center"
+          >
+            {{ welfareLotteryChances > 99 ? '99+' : welfareLotteryChances }}
+          </span>
         </router-link>
         <router-link 
           to="/phone-verification" 

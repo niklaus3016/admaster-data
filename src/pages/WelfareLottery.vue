@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, nextTick } from 'vue';
 import { Gift, Trophy, LogOut, History, Wallet, CreditCard, Sparkles, Zap, ChevronRight, Smartphone, TrendingUp, Ticket, RefreshCw, Handshake } from 'lucide-vue-next';
-import { recordAdView, getWelfareLotteryInfo, claimWelfareLottery, getWelfareLotteryRecords, getWelfareWalletBalance, withdrawWelfareFunds, getWelfareLotteryPrizes, bindAlipay, getAlipayInfo, getWelfareWithdrawRecords } from '../api/apiService';
+import { recordAdView, getWelfareLotteryInfo, claimWelfareLottery, getWelfareLotteryRecords, getWelfareWalletBalance, withdrawWelfareFunds, getWelfareLotteryPrizes, bindAlipay, getAlipayInfo, getWelfareWithdrawRecords, getWelfareWalletStatus, getCurrentLotteryTickets } from '../api/apiService';
 import gold1gImage from '../../gold-1g.png';
 import phoneModelImage from '../../phone-model.png';
 
 const empId = ref(localStorage.getItem('empId') || '');
+const userId = ref(localStorage.getItem('userId') || '');
 
 // 状态管理
 const isLoading = ref(false);
@@ -13,14 +14,14 @@ const error = ref('');
 const welfareBalance = ref(0);
 const lotteryChances = ref(0);
 const lotteryItems = ref([
-  { id: '1', name: '1克黄金', probability: 2, value: 500, type: 'gold' },
   { id: '2', name: '1.68元', probability: 20, value: 1.68, type: 'cash' },
   { id: '3', name: '88.8元', probability: 5, value: 88.8, type: 'cash' },
   { id: '4', name: '6.88元', probability: 15, value: 6.88, type: 'cash' },
   { id: '5', name: '千元手机', probability: 1, value: 1000, type: 'phone' },
   { id: '6', name: '16.8元', probability: 12, value: 16.8, type: 'cash' },
-  { id: '7', name: '66.8元', probability: 8, value: 66.8, type: 'cash' },
-  { id: '8', name: '再接再厉', probability: 37, value: 0, type: 'encourage' }
+  { id: '9', name: '36.8元', probability: 10, value: 36.8, type: 'cash' },
+  { id: '8', name: '再接再厉', probability: 37, value: 0, type: 'encourage' },
+  { id: '1', name: '1克黄金', probability: 2, value: 500, type: 'gold' }
 ]);
 const isSpinning = ref(false);
 const spinResult = ref(null);
@@ -36,7 +37,7 @@ const alipayName = ref('');
 const withdrawSuccess = ref(false);
 const isSubmittingWithdraw = ref(false);
 const rotation = ref(0);
-const adProgress = ref(0);
+const isTransitionEnabled = ref(true); // 控制transition是否启用
 const showBindModal = ref(false);
 const bindAlipayName = ref('');
 const bindAlipayAccount = ref('');
@@ -46,8 +47,21 @@ const isSubmittingBind = ref(false);
 const dailyWithdrawCount = ref(0); // 今日已提现次数
 const maxDailyWithdraws = 1; // 每日最大提现次数
 const selectedAmount = ref(0); // 已选择的提现金额
+
+// 进度条相关状态
+const todayAdCount = ref(0); // 今日广告观看次数
+const walletChances = ref(0); // 当前剩余抽奖机会
+const nextThreshold = ref<{ adCount: number; giveChances: number } | null>(null); // 下次奖励配置
+const remainingToNext = ref(0); // 距离下次奖励还差的广告次数
+const thresholds = ref<{ adCount: number; giveChances: number }[]>([
+  { adCount: 1000, giveChances: 1 },
+  { adCount: 2000, giveChances: 2 },
+  { adCount: 3000, giveChances: 3 }
+]); // 阈值配置列表（默认值）
 const withdrawRecords = ref([]); // 提现记录
 const showWithdrawRecordsModal = ref(false); // 提现记录弹窗
+const showRulesModal = ref(false); // 抽奖规则弹窗
+const lotteryTicketsCount = ref(0); // 幸运彩票数量
 
 // 转盘音效
 let spinAudio: HTMLAudioElement | null = null;
@@ -110,6 +124,33 @@ const loadWelfareInfo = async () => {
   }
 };
 
+// 加载抽奖进度状态
+const loadWalletStatus = async () => {
+  try {
+    const response = await getWelfareWalletStatus();
+    if (response.success && response.data) {
+      todayAdCount.value = response.data.todayAdCount;
+      walletChances.value = response.data.chances;
+      nextThreshold.value = response.data.nextThreshold;
+      remainingToNext.value = response.data.remaining;
+      // 加载阈值配置，若接口未返回则使用默认值
+      thresholds.value = response.data.thresholds || [
+        { adCount: 1000, giveChances: 1 },
+        { adCount: 2000, giveChances: 2 },
+        { adCount: 3000, giveChances: 3 }
+      ];
+    }
+  } catch (err) {
+    console.error('获取抽奖进度状态失败:', err);
+    // 使用默认阈值配置
+    thresholds.value = [
+      { adCount: 1000, giveChances: 1 },
+      { adCount: 2000, giveChances: 2 },
+      { adCount: 3000, giveChances: 3 }
+    ];
+  }
+};
+
 // 加载福利钱包余额
 const loadWelfareBalance = async () => {
   console.log('loadWelfareBalance - empId:', empId.value);
@@ -160,6 +201,31 @@ const loadWithdrawRecords = async () => {
     const response = await getWelfareWithdrawRecords(empId.value);
     if (response.success && response.data) {
       withdrawRecords.value = response.data.records;
+      
+      // 统计今日已提现次数（使用本地时区，和 formatTime 保持一致）
+      const now = new Date();
+      const todayYear = now.getFullYear();
+      const todayMonth = now.getMonth();
+      const todayDay = now.getDate();
+      
+      let hasNonFailedTodayRecord = false;
+      for (const record of withdrawRecords.value) {
+        if (record.time) {
+          const recordDate = new Date(record.time);
+          const recordYear = recordDate.getFullYear();
+          const recordMonth = recordDate.getMonth();
+          const recordDay = recordDate.getDate();
+          
+          // 只有 statusText 是 "失败" 的记录不计入，其他都算作已提现
+          if (recordYear === todayYear && recordMonth === todayMonth && recordDay === todayDay && record.statusText !== '失败') {
+            hasNonFailedTodayRecord = true;
+            break;
+          }
+        }
+      }
+      
+      // 今日有非失败状态的记录，算作已提现1次
+      dailyWithdrawCount.value = hasNonFailedTodayRecord ? 1 : 0;
     }
   } catch (err) {
     console.error('获取提现记录失败:', err);
@@ -187,12 +253,9 @@ const handleSpin = async () => {
   isSpinning.value = true;
   error.value = '';
   
-  // 立即开始旋转（先转一圈）
-  rotation.value = rotation.value + 360;
-  
   // 播放转盘音效
   try {
-    spinAudio = new Audio('/cjyx.m4a');
+    spinAudio = new Audio('/gxcjyy.m4a');
     spinAudio.loop = false; // 不循环播放
     spinAudio.volume = 0.5;
     spinAudio.play().catch(err => console.log('音效播放失败:', err));
@@ -201,19 +264,32 @@ const handleSpin = async () => {
   }
   
   try {
-    const response = await claimWelfareLottery(empId.value);
-    if (response.success && response.data) {
+    console.log('🎲 开始调用抽奖接口:', { userId: userId.value, empId: empId.value });
+    const response = await claimWelfareLottery(userId.value, empId.value);
+    console.log('🎲 抽奖接口返回:', response);
+    
+    if (response.success && response.data && response.data.result) {
       const result = response.data.result;
+      console.log('🎲 中奖结果:', result);
       spinResult.value = result;
       
-      // 计算旋转角度
+      // 计算旋转角度 - 直接让中奖奖品转到指针位置
       const prizeIndex = lotteryItems.value.findIndex(item => item.id === result.id);
-      const baseRotation = 360 * 4; // 基础旋转4圈
-      const sectorAngle = 360 / lotteryItems.value.length;
-      // 调整旋转角度，确保指针指向正确的扇区
-      // 转盘实际顺序（从12点开始顺时针）：20元现金 → 10元现金 → 5元现金 → 手机 → 金条 → 再接再厉 → 100元现金 → 50元现金
-      const actualPrizeIndex = [2, 3, 4, 5, 6, 7, 0, 1][prizeIndex];
-      const targetRotation = rotation.value + baseRotation + actualPrizeIndex * sectorAngle;
+      console.log('🎲 中奖结果:', { resultId: result.id, resultName: result.name, prizeIndex });
+      
+      // 如果找不到匹配的奖品，使用默认奖品（再接再厉）
+      const finalPrizeIndex = prizeIndex >= 0 ? prizeIndex : 6; // 6是再接再厉的索引
+      
+      // 核心逻辑：让中奖奖品转到指针位置（顶部0度）
+      const sectorAngle = 360 / lotteryItems.value.length; // 每个奖品45度
+      const targetRotation = 360 * 6 + (360 - finalPrizeIndex * sectorAngle); // 转6圈
+      
+      // 禁用transition，立即重置到0度
+      isTransitionEnabled.value = false;
+      rotation.value = 0;
+      await nextTick();
+      // 重新启用transition，设置目标角度
+      isTransitionEnabled.value = true;
       rotation.value = targetRotation;
       
       // 减少抽奖机会
@@ -224,7 +300,7 @@ const handleSpin = async () => {
         welfareBalance.value += result.value;
       }
       
-      // 转盘停止后重置状态
+      // 转盘停止后等待1秒再显示弹窗
       setTimeout(() => {
         isSpinning.value = false;
         // 停止音效
@@ -233,9 +309,15 @@ const handleSpin = async () => {
           spinAudio.currentTime = 0;
           spinAudio = null;
         }
-        // 重新加载中奖记录
+        // 重新加载福利信息（包括最新的抽奖次数）和中奖记录
+        loadWelfareInfo();
         loadWelfareRecords();
-      }, 6500);
+        
+        // 等待1秒后再显示弹窗，让用户看到转盘停止位置
+        setTimeout(() => {
+          showResultModal.value = true;
+        }, 1000);
+      }, 5800);
     } else {
       error.value = response.message || '抽奖失败';
       isSpinning.value = false;
@@ -259,6 +341,14 @@ const handleSpin = async () => {
   }
 };
 
+// 关闭结果弹窗并重置转盘
+const closeResultModal = () => {
+  showResultModal.value = false;
+  // 禁用transition，立即重置转盘到初始位置（瞬间切换）
+  isTransitionEnabled.value = false;
+  rotation.value = 0;
+};
+
 // 打开绑定弹窗
 const openBindModal = () => {
   // 从本地存储获取已绑定的支付宝信息
@@ -278,7 +368,14 @@ const openBindModal = () => {
 
 // 处理绑定
 const handleBind = async () => {
-  if (!empId.value || !bindAlipayName.value || !bindAlipayAccount.value) return;
+  console.log('handleBind 被调用');
+  console.log('empId:', empId.value);
+  console.log('bindAlipayName:', bindAlipayName.value);
+  console.log('bindAlipayAccount:', bindAlipayAccount.value);
+  if (!empId.value || !bindAlipayName.value || !bindAlipayAccount.value) {
+    console.log('参数不全，返回');
+    return;
+  }
   
   isSubmittingBind.value = true;
   error.value = '';
@@ -316,13 +413,24 @@ const handleBind = async () => {
 
 // 处理提现
 const handleWithdraw = async () => {
-  if (!empId.value || !alipayAccount.value || !alipayName.value) return;
+  console.log('handleWithdraw - 开始提现');
+  console.log('handleWithdraw - empId:', empId.value);
+  console.log('handleWithdraw - withdrawAmount:', withdrawAmount.value);
+  console.log('handleWithdraw - alipayAccount:', alipayAccount.value);
+  console.log('handleWithdraw - alipayName:', alipayName.value);
+  
+  if (!empId.value || !alipayAccount.value || !alipayName.value) {
+    console.log('handleWithdraw - 缺少必要参数');
+    return;
+  }
   
   isSubmittingWithdraw.value = true;
   error.value = '';
   
   try {
+    console.log('handleWithdraw - 调用API');
     const response = await withdrawWelfareFunds(empId.value, withdrawAmount.value, alipayAccount.value, alipayName.value);
+    console.log('handleWithdraw - API响应:', response);
     if (response.success) {
       withdrawSuccess.value = true;
       welfareBalance.value -= withdrawAmount.value;
@@ -356,8 +464,10 @@ const showRewardAnimation = (message: string) => {
 };
 
 // 打开提现弹窗
-const openWithdrawModal = () => {
-  // 先打开金额选择弹窗
+const openWithdrawModal = async () => {
+  // 先加载最新的提现记录
+  await loadWithdrawRecords();
+  // 再打开金额选择弹窗
   showAmountModal.value = true;
 };
 
@@ -378,17 +488,9 @@ const confirmWithdrawAmount = () => {
   
   withdrawAmount.value = selectedAmount.value;
   
-  // 从本地存储获取已绑定的支付宝信息
-  let savedAlipayName = '';
-  let savedAlipayAccount = '';
-  
-  if (typeof localStorage !== 'undefined') {
-    savedAlipayName = localStorage.getItem('alipayName') || '';
-    savedAlipayAccount = localStorage.getItem('alipayAccount') || '';
-  }
-  
-  alipayName.value = savedAlipayName;
-  alipayAccount.value = savedAlipayAccount;
+  // 清空之前的支付宝信息，让用户手动输入
+  alipayName.value = '';
+  alipayAccount.value = '';
   
   withdrawSuccess.value = false;
   showAmountModal.value = false;
@@ -405,10 +507,37 @@ const closeRecordsModal = () => {
   showRecordsModal.value = false;
 };
 
+// 打开抽奖规则弹窗
+const openRulesModal = () => {
+  showRulesModal.value = true;
+};
+
+// 关闭抽奖规则弹窗
+const closeRulesModal = () => {
+  showRulesModal.value = false;
+};
+
+// 加载幸运彩票数量
+const loadLotteryTicketsCount = async () => {
+  if (!userId.value) return;
+  
+  try {
+    const response = await getCurrentLotteryTickets(userId.value);
+    if (response.success && response.data) {
+      lotteryTicketsCount.value = response.data.tickets.length || 0;
+    }
+  } catch (error) {
+    console.error('加载幸运彩票数量失败:', error);
+  }
+};
+
 // 生命周期
 onMounted(async () => {
   await loadWelfareInfo();
   await loadWelfareBalance();
+  await loadWalletStatus();
+  await loadLotteryTicketsCount();
+  loadWelfareRecords();
   loadWithdrawRecords();
 });
 
@@ -440,6 +569,24 @@ const getPrizeIcon = (type: string) => {
     default:
       return Gift;
   }
+};
+
+// 提取纯奖品类型名称（去掉金额）
+const getPrizeName = (name: string) => {
+  // 如果包含"再接再厉"，直接返回
+  if (name.includes('再接再厉')) {
+    return '再接再厉';
+  }
+  // 如果包含"黄金"，返回"黄金"
+  if (name.includes('黄金')) {
+    return '黄金';
+  }
+  // 如果包含"手机"，返回"手机"
+  if (name.includes('手机')) {
+    return '手机';
+  }
+  // 现金奖品，返回"现金"
+  return '现金';
 };
 </script>
 
@@ -473,13 +620,6 @@ const getPrizeIcon = (type: string) => {
     <main class="max-w-md mx-auto px-6 mt-8 space-y-10 relative z-10">
       <!-- 钱包卡片 -->
       <section class="relative">
-        <!-- 预览提示框 -->
-        <div class="mb-4 p-3 rounded-lg bg-gradient-to-r from-red-500/20 to-orange-500/20 border border-red-500/30 animate-pulse">
-          <p class="text-xs font-bold text-center text-red-400 tracking-wide">
-            此页面仅作为预览使用，福利抽奖功能暂未开放，预计5月正式上线，敬请期待！
-          </p>
-        </div>
-        
         <div class="absolute -inset-1 bg-gradient-to-r from-amber-500/20 via-blue-500/20 to-purple-500/20 blur-xl rounded-[2.5rem] opacity-50" />
         <div class="relative bg-gradient-to-br from-zinc-900 to-black border border-white/10 p-6 rounded-[2.5rem] overflow-hidden shadow-2xl">
           <!-- 碳纤维纹理 -->
@@ -497,13 +637,14 @@ const getPrizeIcon = (type: string) => {
             </div>
 
             <div class="flex gap-3 items-center pt-2">
-              <div 
-                @click="openBindModal"
-                class="flex-1 px-4 py-2 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-600/20 border border-blue-500/30 text-blue-400 text-xs font-bold uppercase tracking-[0.2em] hover:from-blue-500/30 hover:to-purple-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              <button 
+                @click="openWithdrawModal"
+                :disabled="welfareBalance <= 0"
+                class="flex-1 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 text-white font-black text-xs uppercase tracking-[0.2em] hover:opacity-90 transition-all active:scale-95 disabled:opacity-30 disabled:active:scale-100 flex items-center justify-center gap-2 shadow-[0_5px_10px_rgba(59,130,246,0.2)]"
               >
-                <Wallet class="w-3 h-3" />
-                提现绑定
-              </div>
+                <CreditCard class="w-3 h-3" />
+                立即提现
+              </button>
               <div 
                 @click="showWithdrawRecordsModal = true"
                 class="flex-1 px-4 py-2 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-600/20 border border-blue-500/30 text-blue-400 text-xs font-bold uppercase tracking-[0.2em] hover:from-blue-500/30 hover:to-purple-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
@@ -512,20 +653,21 @@ const getPrizeIcon = (type: string) => {
                 提现记录
               </div>
             </div>
-
-            <div class="pt-1">
-              <button 
-                @click="openWithdrawModal"
-                :disabled="welfareBalance <= 0"
-                class="w-full py-4 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-black text-xs uppercase tracking-[0.2em] hover:opacity-90 transition-all active:scale-95 disabled:opacity-30 disabled:active:scale-100 flex items-center justify-center gap-3 shadow-[0_10px_20px_rgba(59,130,246,0.2)]"
-              >
-                <CreditCard class="w-4 h-4" />
-                立即提现
-              </button>
-            </div>
           </div>
         </div>
       </section>
+
+      <!-- 抽奖规则按钮 -->
+      <div class="w-full max-w-[200px] mx-auto -mt-6">
+        <button 
+          @click="openRulesModal"
+          class="w-full py-2.5 rounded-full bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-500/30 shadow-[0_4px_20px_rgba(245,158,11,0.15),inset_0_1px_0_rgba(255,255,255,0.05)] flex items-center justify-center gap-3 hover:from-amber-500/20 hover:via-orange-500/20 hover:to-amber-500/20 hover:border-amber-500/50 hover:shadow-[0_4px_25px_rgba(245,158,11,0.25)] active:scale-[0.98] transition-all duration-300"
+        >
+          <Sparkles class="w-4 h-4 text-amber-400" />
+          <span class="text-xs font-bold tracking-wide text-amber-400/90">查看抽奖规则</span>
+          <Sparkles class="w-4 h-4 text-amber-400" />
+        </button>
+      </div>
 
       <!-- 实物化大转盘 -->
       <section class="flex flex-col items-center justify-center py-6 space-y-12">
@@ -560,7 +702,8 @@ const getPrizeIcon = (type: string) => {
           <!-- 转盘主体 -->
           <div class="relative w-80 h-80 rounded-full p-3 bg-zinc-900 shadow-inner overflow-hidden">
             <div 
-              class="w-full h-full rounded-full border-[12px] border-zinc-800 relative overflow-hidden transition-transform duration-[6500ms] cubic-bezier(0.15, 0, 0.15, 1) shadow-2xl"
+              class="w-full h-full rounded-full border-[12px] border-zinc-800 relative overflow-hidden shadow-2xl"
+              :class="{ 'transition-transform duration-[5800ms] cubic-bezier(0.15, 0, 0.15, 1)': isTransitionEnabled }"
               :style="{ transform: `rotate(${rotation}deg)` }"
             >
               <!-- 扇区 -->
@@ -624,45 +767,65 @@ const getPrizeIcon = (type: string) => {
           </div>
         </div>
 
-        <!-- 工业风进度条 -->
-        <div v-if="false" class="w-full max-w-[280px] space-y-4">
-          <div class="flex justify-between items-end px-1">
-            <div class="flex flex-col">
-              <span class="text-[10px] text-zinc-500 uppercase tracking-[0.4em] font-black mb-1">系统进度</span>
-              <div class="flex items-center gap-2">
-                <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                <span class="text-[10px] text-blue-400 font-mono font-bold uppercase tracking-widest">数据同步中...</span>
+        <!-- 抽奖进度条 -->
+        <div class="w-full max-w-[280px]">
+          <div class="bg-gradient-to-br from-zinc-800/80 to-zinc-900/80 rounded-xl border border-zinc-700/50 backdrop-blur-xl p-3 shadow-[0_4px_15px_rgba(0,0,0,0.5)]">
+            <!-- 奖励标签（进度条上方） -->
+            <div class="flex justify-between px-0 mb-2">
+              <span class="text-[9px] font-bold text-zinc-500">+0</span>
+              <template v-for="(threshold, index) in thresholds" :key="'reward-' + index">
+                <span class="flex items-center gap-0.5 text-[10px] font-black text-amber-400 drop-shadow-[0_0_4px_rgba(251,191,36,0.6)]">
+                  <Zap class="w-3 h-3" />+{{ threshold.giveChances }}
+                </span>
+              </template>
+            </div>
+            
+            <!-- 进度条 -->
+            <div class="relative h-2.5 bg-zinc-900/80 rounded-full overflow-hidden border border-zinc-700/30">
+              <!-- 动态背景刻度线 -->
+              <div 
+                v-for="(threshold, index) in thresholds.slice(0, -1)" 
+                :key="'line-' + index"
+                class="absolute inset-y-0 w-[1px] bg-zinc-700/30"
+                :style="{ left: `${(threshold.adCount / (thresholds[thresholds.length - 1]?.adCount || 3000)) * 100}%` }"
+              />
+              
+              <!-- 进度条 -->
+              <div 
+                class="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-amber-500 rounded-full transition-all duration-1000 ease-out relative overflow-hidden"
+                :style="{ width: `${Math.min((todayAdCount / (thresholds[thresholds.length - 1]?.adCount || 3000)) * 100, 100)}%` }"
+              >
+                <!-- 扫光效果 -->
+                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
               </div>
             </div>
-            <div class="text-right">
-              <span class="text-2xl font-black font-mono text-white tabular-nums">{{ adProgress }}</span>
-              <span class="text-xs text-zinc-600 font-bold ml-1">/ 99999</span>
+            
+            <!-- 刻度标签（进度条下方） -->
+            <div class="flex justify-between px-0 mt-2">
+              <span class="text-[9px] font-mono font-bold text-white">0</span>
+              <template v-for="(threshold, index) in thresholds" :key="'label-' + index">
+                <span class="text-[9px] font-mono font-bold text-white">{{ threshold.adCount }}</span>
+              </template>
+            </div>
+            
+            <!-- 底部提示（整合广告次数和进度状态） -->
+            <div class="mt-3 pt-3 border-t border-zinc-700/30">
+              <div class="flex justify-center items-center">
+                <template v-if="nextThreshold">
+                  <span class="text-[10px] text-zinc-400">
+                    <span class="text-white font-bold">{{ todayAdCount }}</span> / {{ thresholds[thresholds.length - 1]?.adCount || 3000 }} 条广告 · 再看 <span class="text-amber-400 font-bold">{{ remainingToNext }}</span> 条得 <span class="text-amber-400 font-bold">{{ nextThreshold.giveChances }}</span> 次
+                  </span>
+                </template>
+                <template v-else>
+                  <span class="text-[10px]">
+                    <span class="text-emerald-400 font-bold">{{ todayAdCount }}</span>
+                    <span class="text-zinc-500"> / {{ thresholds[thresholds.length - 1]?.adCount || 3000 }} 条广告 · </span>
+                    <span class="text-emerald-400 font-bold">今日已满级</span>
+                  </span>
+                </template>
+              </div>
             </div>
           </div>
-          
-          <!-- 测试按钮 -->
-          <button 
-            @click="lotteryChances += 1"
-            class="w-full py-2 rounded-lg bg-blue-500/20 border border-blue-500/30 text-blue-400 text-xs font-bold uppercase tracking-widest hover:bg-blue-500/30 transition-all"
-          >
-            测试：增加抽奖机会
-          </button>
-          
-          <div class="relative h-4 bg-zinc-900 rounded-full border border-white/5 p-1 overflow-hidden shadow-inner">
-            <!-- 玻璃管效果 -->
-            <div class="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none z-10" />
-            <div 
-              class="h-full bg-gradient-to-r from-blue-600 via-purple-600 to-amber-500 rounded-full transition-all duration-1000 ease-out relative"
-              :style="{ width: `${(adProgress / 99999) * 100}%` }"
-            >
-              <!-- 扫光动画 -->
-              <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
-            </div>
-          </div>
-          
-          <p class="text-[9px] text-zinc-500 text-center uppercase tracking-[0.2em] font-bold leading-relaxed">
-            每观看 99999 个广告可获得 <span class="text-amber-500">1 次高级抽奖机会</span>
-          </p>
         </div>
       </section>
 
@@ -671,7 +834,7 @@ const getPrizeIcon = (type: string) => {
         <div class="flex items-center justify-between px-2">
           <div class="flex items-center gap-3">
             <div class="w-1 h-4 bg-amber-500 rounded-full" />
-            <h2 class="text-[10px] uppercase tracking-[0.4em] text-zinc-400 font-black">中奖历史记录</h2>
+            <h2 class="text-[10px] uppercase tracking-[0.4em] text-zinc-400 font-black">抽奖记录</h2>
           </div>
           <div class="flex items-center gap-1.5">
             <div class="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
@@ -687,31 +850,40 @@ const getPrizeIcon = (type: string) => {
             </div>
             <p class="text-[10px] text-zinc-600 uppercase tracking-[0.4em] font-bold">暂无中奖记录</p>
           </div>
-          <div v-else class="divide-y divide-white/[0.03]">
+          <div v-else class="divide-y divide-white/[0.03] max-h-[360px] overflow-y-auto">
             <div 
               v-for="record in welfareRecords" 
               :key="record.id"
-              class="px-8 py-6 flex justify-between items-center hover:bg-white/[0.02] transition-colors group"
+              class="px-8 py-5 flex justify-between items-center hover:bg-white/[0.02] transition-colors group"
             >
-              <div class="flex items-center gap-5">
+              <div class="flex items-center gap-4">
                 <div 
-                  class="w-12 h-12 rounded-2xl flex items-center justify-center border border-white/5 shadow-lg transition-transform group-hover:scale-110"
+                  class="w-10 h-10 rounded-xl flex items-center justify-center border border-white/5 shadow-lg transition-transform group-hover:scale-110"
                   :class="{
                     'bg-emerald-500/5 text-emerald-500': record.value > 0,
                     'bg-zinc-500/5 text-zinc-500': record.value === 0
                   }"
                 >
-                  <Gift class="w-6 h-6" />
+                  <Gift class="w-5 h-5" />
                 </div>
                 <div class="flex flex-col">
-                  <span class="text-sm font-black text-white tracking-tight group-hover:text-amber-400 transition-colors">{{ record.name }}</span>
-                  <div class="flex items-center gap-2 mt-1">
-                    <span class="text-[9px] text-zinc-500 font-mono tracking-widest">{{ formatTime(record.time) }}</span>
-                  </div>
+                  <span class="text-sm font-black text-white tracking-tight group-hover:text-amber-400 transition-colors">{{ getPrizeName(record.name) }}</span>
+                  <span class="text-[9px] text-zinc-500 font-mono tracking-widest mt-0.5">{{ formatTime(record.time) }}</span>
                 </div>
               </div>
-              <div class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all -translate-x-4 group-hover:translate-x-0">
-                <ChevronRight class="w-4 h-4 text-zinc-400" />
+              <div class="text-right">
+                <span 
+                  v-if="record.value > 0"
+                  class="text-base font-black bg-gradient-to-r from-emerald-400 to-emerald-300 bg-clip-text text-transparent"
+                >
+                  +{{ record.value }}元
+                </span>
+                <span 
+                  v-else
+                  class="text-base font-black text-zinc-500"
+                >
+                  谢谢参与
+                </span>
               </div>
             </div>
           </div>
@@ -722,36 +894,147 @@ const getPrizeIcon = (type: string) => {
     <!-- 中奖弹窗 -->
     <transition name="prize">
       <div v-if="showResultModal" class="fixed inset-0 z-[100] flex items-center justify-center p-6">
-        <div class="absolute inset-0 bg-black/90 backdrop-blur-2xl" @click="showResultModal = false" />
+        <!-- 背景遮罩 -->
+        <div class="absolute inset-0 bg-black/95 backdrop-blur-3xl" @click="showResultModal = false" />
         
-        <!-- 弹窗背景动画 -->
+        <!-- 光晕动画 -->
         <div class="absolute inset-0 overflow-hidden pointer-events-none">
-          <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-amber-500/10 blur-[120px] rounded-full animate-pulse" />
+          <div 
+            v-if="spinResult?.type !== 'encourage'"
+            class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-radial from-amber-500/20 via-transparent to-transparent animate-ping" 
+          />
+          <div 
+            v-if="spinResult?.type !== 'encourage'"
+            class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-gradient-radial from-yellow-400/10 via-transparent to-transparent animate-pulse" 
+          />
         </div>
 
-        <div class="relative bg-zinc-900 border border-white/10 p-12 rounded-[4rem] text-center space-y-8 shadow-[0_0_150px_rgba(245,158,11,0.2)] max-w-sm w-full overflow-hidden">
-          <!-- 碳纤维纹理 -->
-          <div class="absolute inset-0 opacity-[0.03] pointer-events-none" style="background-image: url('https://www.transparenttextures.com/patterns/carbon-fibre.png');" />
+        <!-- 烟花粒子容器 -->
+        <div v-if="spinResult?.type !== 'encourage'" class="absolute inset-0 pointer-events-none overflow-hidden">
+          <!-- 烟花爆炸效果 -->
+          <div class="firework" style="top: 30%; left: 20%;"></div>
+          <div class="firework" style="top: 40%; left: 80%; animation-delay: 0.5s;"></div>
+          <div class="firework" style="top: 60%; left: 30%; animation-delay: 1s;"></div>
+          <div class="firework" style="top: 25%; left: 65%; animation-delay: 1.5s;"></div>
+          <div class="firework" style="top: 70%; left: 75%; animation-delay: 2s;"></div>
           
-          <div class="absolute -top-16 left-1/2 -translate-x-1/2 w-32 h-32 bg-gradient-to-br from-amber-400 to-orange-600 rounded-full flex items-center justify-center shadow-[0_20px_50px_rgba(245,158,11,0.5)] border-4 border-zinc-900">
-            <Trophy class="w-16 h-16 text-white animate-bounce" />
+          <!-- 闪烁星星 -->
+          <div class="star" style="top: 20%; left: 15%; animation-delay: 0s;"></div>
+          <div class="star" style="top: 35%; left: 85%; animation-delay: 0.3s;"></div>
+          <div class="star" style="top: 55%; left: 10%; animation-delay: 0.6s;"></div>
+          <div class="star" style="top: 75%; left: 90%; animation-delay: 0.9s;"></div>
+          <div class="star" style="top: 45%; left: 5%; animation-delay: 1.2s;"></div>
+          
+          <!-- 飘落彩纸 -->
+          <div class="confetti confetti-1" style="left: 10%; animation-delay: 0s;"></div>
+          <div class="confetti confetti-2" style="left: 25%; animation-delay: 0.2s;"></div>
+          <div class="confetti confetti-3" style="left: 40%; animation-delay: 0.4s;"></div>
+          <div class="confetti confetti-4" style="left: 55%; animation-delay: 0.6s;"></div>
+          <div class="confetti confetti-5" style="left: 70%; animation-delay: 0.8s;"></div>
+          <div class="confetti confetti-6" style="left: 85%; animation-delay: 1s;"></div>
+        </div>
+
+        <!-- 主弹窗 -->
+        <div 
+          :class="[
+            'relative p-6 rounded-[2rem] text-center space-y-4 max-w-sm w-full overflow-hidden border transition-all',
+            spinResult?.type === 'encourage' 
+              ? 'bg-gradient-to-br from-zinc-800 via-zinc-900 to-black border-white/5 shadow-[0_0_100px_rgba(59,130,246,0.25),inset_0_0_40px_rgba(59,130,246,0.05)]'
+              : 'bg-gradient-to-br from-zinc-800 via-zinc-900 to-black border-white/5 shadow-[0_0_150px_rgba(245,158,11,0.3),inset_0_0_40px_rgba(245,158,11,0.05)]'
+          ]"
+        >
+          <!-- 边框光效 -->
+          <div 
+            :class="[
+              'absolute inset-[1px] rounded-[calc(2rem-2px)] pointer-events-none',
+              spinResult?.type === 'encourage' 
+                ? 'bg-gradient-to-r from-blue-500/15 via-blue-400/10 to-blue-500/15'
+                : 'bg-gradient-to-r from-amber-500/20 via-yellow-500/10 to-amber-500/20'
+            ]"
+          />
+          
+          <!-- 顶部图标 -->
+          <div class="relative -mt-12">
+            <div 
+              :class="[
+                'absolute inset-0 w-24 h-24 -left-1/2 -translate-x-1/2 rounded-full blur-xl',
+                spinResult?.type === 'encourage' 
+                  ? 'bg-gradient-radial from-blue-400/30 to-transparent animate-pulse'
+                  : 'bg-gradient-radial from-amber-400/40 to-transparent animate-pulse'
+              ]"
+            />
+            <div 
+              :class="[
+                'relative w-20 h-20 mx-auto rounded-full flex items-center justify-center shadow-lg border-3 border-zinc-900',
+                spinResult?.type === 'encourage' 
+                  ? 'bg-gradient-to-br from-blue-500 via-blue-400 to-blue-600 shadow-[0_0_40px_rgba(59,130,246,0.5),0_15px_30px_rgba(0,0,0,0.5)]'
+                  : 'bg-gradient-to-br from-amber-400 via-yellow-500 to-orange-500 shadow-[0_0_40px_rgba(245,158,11,0.6),0_15px_30px_rgba(0,0,0,0.5)]'
+              ]"
+            >
+              <div class="absolute inset-1.5 bg-gradient-to-br from-white/20 to-transparent rounded-full" />
+              <component 
+                :is="spinResult?.type === 'encourage' ? Handshake : Trophy" 
+                class="w-10 h-10 text-white drop-shadow-lg" 
+              />
+            </div>
           </div>
           
-          <div class="pt-12 space-y-3">
-            <h3 class="text-4xl font-black text-white uppercase tracking-tighter italic leading-none">恭喜中奖!</h3>
-            <p class="text-[10px] text-zinc-500 font-black uppercase tracking-[0.4em]">恭喜获得奖励</p>
+          <!-- 标题 -->
+          <div class="pt-4">
+            <h3 
+              :class="[
+                'text-2xl font-black uppercase tracking-tight',
+                spinResult?.type === 'encourage' 
+                  ? 'bg-gradient-to-r from-blue-400 via-blue-300 to-blue-400 bg-clip-text text-transparent'
+                  : 'bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 bg-clip-text text-transparent'
+              ]"
+            >
+              {{ spinResult?.type === 'encourage' ? '很遗憾!' : '恭喜中奖!' }}
+            </h3>
           </div>
 
-          <div class="py-10 bg-black/40 rounded-[2.5rem] border border-white/5 relative group">
-            <div class="absolute inset-0 bg-amber-500/5 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-            <p class="text-4xl font-black text-amber-400 tracking-tight relative z-10">{{ spinResult?.name }}</p>
-          </div>
-
-          <button
-            @click="showResultModal = false"
-            class="w-full py-5 rounded-2xl bg-white text-black font-black text-xs uppercase tracking-[0.3em] hover:bg-zinc-200 transition-all active:scale-95 shadow-2xl"
+          <!-- 奖品展示 -->
+          <div 
+            :class="[
+              'py-4 px-4 rounded-[1.5rem] border relative overflow-hidden',
+              spinResult?.type === 'encourage' 
+                ? 'bg-black/40 border-white/5'
+                : 'bg-black/60 border-white/5'
+            ]"
           >
-            收下奖励
+            <!-- 背景光效 -->
+            <div 
+              v-if="spinResult?.type !== 'encourage'"
+              class="absolute inset-0 bg-gradient-to-br from-amber-500/10 via-transparent to-yellow-500/5" 
+            />
+            
+            <!-- 奖品名称 -->
+            <p 
+              :class="[
+                'text-3xl font-black tracking-tight drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)]',
+                spinResult?.type === 'encourage' ? 'text-white' : 'text-white'
+              ]"
+            >
+              {{ spinResult?.name }}
+            </p>
+          </div>
+
+          <!-- 确定按钮 -->
+          <button
+            @click="closeResultModal"
+            :class="[
+              'w-full py-4 rounded-xl font-black text-sm uppercase tracking-[0.2em] transition-all duration-300 active:scale-95 relative overflow-hidden group',
+              spinResult?.type === 'encourage' 
+                ? 'bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 text-white hover:from-blue-500 hover:via-blue-400 hover:to-blue-500 shadow-[0_8px_20px_rgba(59,130,246,0.3),inset_0_1px_0_rgba(255,255,255,0.2)]'
+                : 'bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-500 text-black hover:from-amber-400 hover:via-yellow-400 hover:to-amber-400 shadow-[0_8px_20px_rgba(245,158,11,0.4),inset_0_1px_0_rgba(255,255,255,0.2)]'
+            ]"
+          >
+            <span class="relative z-10">确定</span>
+            <div 
+              :class="[
+                'absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700'
+              ]"
+            />
           </button>
         </div>
       </div>
@@ -779,8 +1062,8 @@ const getPrizeIcon = (type: string) => {
             <div class="relative z-10 flex flex-col flex-1 justify-between">
               <div class="space-y-8">
                 <div class="text-center">
-                  <h3 class="text-2xl font-black text-white uppercase tracking-tight">选择提现金额</h3>
-                  <p class="text-xs text-zinc-500 font-black uppercase tracking-[0.3em] mt-2">当前余额: <span class="text-blue-400 text-sm">¥{{ welfareBalance.toFixed(2) }}</span></p>
+                  <h3 class="text-2xl font-black bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent uppercase tracking-tight">选择提现金额</h3>
+                  <p class="text-xs text-zinc-500 font-black uppercase tracking-[0.3em] mt-2">当前余额: <span class="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent text-sm">¥{{ welfareBalance.toFixed(2) }}</span></p>
                 </div>
                 
                 <div class="grid grid-cols-3 gap-3">
@@ -942,13 +1225,13 @@ const getPrizeIcon = (type: string) => {
             <div class="space-y-6">
               <!-- 可提现金额 -->
               <div class="glass-card rounded-xl p-4">
-                <p class="text-zinc-500 text-xs uppercase tracking-wider mb-2">可提现金额</p>
+                <p class="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent text-xs uppercase tracking-wider mb-2">可提现金额</p>
                 <p class="text-2xl font-bold text-white">¥{{ welfareBalance.toFixed(2) }}</p>
               </div>
               
               <!-- 提现金额输入 -->
               <div>
-                <label class="block text-zinc-500 text-xs uppercase tracking-wider mb-2">提现金额</label>
+                <label class="block bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent text-xs uppercase tracking-wider mb-2">提现金额</label>
                 <input 
                   v-model="withdrawAmount" 
                   type="number" 
@@ -963,7 +1246,7 @@ const getPrizeIcon = (type: string) => {
               
               <!-- 支付宝账号 -->
               <div>
-                <label class="block text-zinc-500 text-xs uppercase tracking-wider mb-2">支付宝账号</label>
+                <label class="block bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent text-xs uppercase tracking-wider mb-2">支付宝账号</label>
                 <input 
                   v-model="alipayAccount" 
                   type="text"
@@ -974,7 +1257,7 @@ const getPrizeIcon = (type: string) => {
               
               <!-- 支付宝姓名 -->
               <div>
-                <label class="block text-zinc-500 text-xs uppercase tracking-wider mb-2">支付宝姓名</label>
+                <label class="block bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent text-xs uppercase tracking-wider mb-2">支付宝姓名</label>
                 <input 
                   v-model="alipayName" 
                   type="text"
@@ -1076,6 +1359,97 @@ const getPrizeIcon = (type: string) => {
       </div>
     </transition>
 
+    <!-- 抽奖规则弹窗 -->
+    <transition name="modal">
+      <div v-if="showRulesModal" class="fixed inset-0 z-[9999] flex items-center justify-center p-6 pointer-events-auto">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-md z-[9998] pointer-events-auto" @click="closeRulesModal" />
+        <div class="relative w-full max-w-md bg-[#020205] border border-white/10 rounded-[3rem] overflow-hidden flex flex-col h-[600px] z-[9999] shadow-2xl">
+          <div class="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-[#020205] z-10">
+            <div class="flex items-center">
+              <div class="w-8 h-8 bg-amber-500/20 rounded-full flex items-center justify-center mr-3 border border-amber-500/30">
+                <Sparkles class="w-4 h-4 text-amber-400" />
+              </div>
+              <h3 class="text-sm font-bold uppercase tracking-widest">抽奖规则</h3>
+            </div>
+            <button 
+              @click="closeRulesModal"
+              class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-zinc-500 hover:text-white"
+            >
+              <LogOut class="w-4 h-4 rotate-90" />
+            </button>
+          </div>
+          
+          <div class="flex-1 overflow-y-auto no-scrollbar p-6">
+            <div class="space-y-6">
+              <!-- 抽奖机会规则 -->
+              <div class="glass-card rounded-xl p-4">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-amber-400 mb-3 flex items-center gap-2">
+                  <div class="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+                  抽奖机会获取规则
+                </h4>
+                <ul class="space-y-2 text-xs text-zinc-300">
+                  <li class="flex items-start gap-2">
+                    <span class="text-blue-400 font-bold">•</span>
+                    <span>抽奖机会采用阶梯制，每日0点重置</span>
+                  </li>
+                  <template v-for="(threshold, index) in thresholds" :key="'rule-' + index">
+                    <li class="flex items-start gap-2">
+                      <span class="text-green-400 font-bold">✓</span>
+                      <span>当日广告次数达<span class="text-amber-400 font-bold">{{ threshold.adCount }}</span>次，
+                        <template v-if="index === 0">得</template>
+                        <template v-else>额外得</template>
+                        <span class="text-amber-400 font-bold">{{ threshold.giveChances }}</span>次抽奖机会
+                        <template v-if="index === thresholds.length - 1">（封顶）</template>
+                      </span>
+                    </li>
+                  </template>
+                  <li class="flex items-start gap-2">
+                    <span class="text-amber-400 font-bold">★</span>
+                    <span>每个用户每日最多可获得<span class="text-amber-400 font-bold">{{ thresholds.reduce((sum, t) => sum + t.giveChances, 0) }}</span>次抽奖机会</span>
+                  </li>
+                  <li class="flex items-start gap-2">
+                    <span class="text-purple-400 font-bold">✦</span>
+                    <span>本抽奖活动综合中奖率为<span class="text-amber-400 font-bold">92%</span></span>
+                  </li>
+                </ul>
+              </div>
+              
+              <!-- 现金奖励规则 -->
+              <div class="glass-card rounded-xl p-4">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-green-400 mb-3 flex items-center gap-2">
+                  <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                  现金奖励规则
+                </h4>
+                <p class="text-xs text-zinc-300 leading-relaxed">
+                  现金奖励中奖后，获得的奖励会直接发放至福利钱包，可直接提现至支付宝，1～3个工作日到账。
+                </p>
+              </div>
+              
+              <!-- 实物奖励规则 -->
+              <div class="glass-card rounded-xl p-4">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-purple-400 mb-3 flex items-center gap-2">
+                  <div class="w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
+                  实物奖励规则
+                </h4>
+                <p class="text-xs text-zinc-300 leading-relaxed">
+                  实物奖励中奖后，工作人员会主动联系中奖用户，对接收货地址，进行奖品寄送。
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="px-8 py-4 border-t border-white/5 bg-[#020205] z-10">
+            <button 
+              @click="closeRulesModal"
+              class="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-black font-bold text-xs uppercase tracking-widest hover:opacity-90 transition-all active:scale-95"
+            >
+              我知道了
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
     <!-- 记录弹窗 -->
     <transition name="modal">
       <div v-if="showRecordsModal" class="fixed inset-0 z-[9999] flex items-end justify-center sm:items-center p-0 sm:p-6 pointer-events-auto">
@@ -1152,14 +1526,28 @@ const getPrizeIcon = (type: string) => {
         >
           <Ticket class="w-6 h-6 mb-1" />
           <span class="text-xs font-medium">幸运彩票</span>
+          <!-- 幸运彩票红点标记 -->
+          <span 
+            v-if="lotteryTicketsCount > 0"
+            class="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center px-1 shadow-[0_0_10px_rgba(239,68,68,0.6)] animate-pulse"
+          >
+            {{ lotteryTicketsCount > 99 ? '99+' : lotteryTicketsCount }}
+          </span>
         </router-link>
         <router-link 
           to="/welfare-lottery" 
-          class="flex flex-col items-center transition-all duration-300"
+          class="flex flex-col items-center transition-all duration-300 relative"
           :class="$route.path === '/welfare-lottery' ? 'text-emerald-400 scale-105' : 'text-zinc-400 hover:text-zinc-300'"
         >
           <Gift class="w-6 h-6 mb-1" />
           <span class="text-xs font-medium">福利抽奖</span>
+          <!-- 抽奖机会红点标记 -->
+          <span 
+            v-if="lotteryChances > 0"
+            class="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center px-1 shadow-[0_0_10px_rgba(239,68,68,0.6)] animate-pulse"
+          >
+            {{ lotteryChances > 99 ? '99+' : lotteryChances }}
+          </span>
         </router-link>
         <router-link 
           to="/phone-verification" 

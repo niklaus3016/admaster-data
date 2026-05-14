@@ -2,7 +2,7 @@
 import { ref, onMounted, watch, onUnmounted, computed } from 'vue';
 import { Ticket, Trophy, Sparkles, Coins, Clock, TrendingUp, Smartphone, Gift } from 'lucide-vue-next';
 import { useLocalStorage } from '../composables/useLocalStorage';
-import { getLotteryPool, getCurrentLotteryTickets, getLotteryHistory, getLotteryResult, generateLotteryTicket, getUserInfo, getLastLotteryTicket, getLotterySettings } from '../api/apiService';
+import { getLotteryPool, getCurrentLotteryTickets, getLotteryHistory, getLotteryResult, generateLotteryTicket, getUserInfo, getLastLotteryTicket, getLotterySettings, getWelfareLotteryInfo } from '../api/apiService';
 import { TTSPlugin } from '../plugins/TTSPlugin';
 import { Capacitor } from '@capacitor/core';
 
@@ -32,6 +32,36 @@ const lotterySettings = ref({
 const showRulesModal = ref(false); // 控制开奖规则弹窗显示
 let timerInterval: any = null;
 const isLoading = ref(true);
+
+// 福利抽奖次数
+const welfareLotteryChances = ref(0);
+const empId = ref(localStorage.getItem('empId') || '');
+
+// 中奖记录
+const lotteryWinRecords = ref<any[]>([
+  {
+    id: 'lottery_win_1711500000000',
+    time: '2026-03-27 12:30',
+    amount: 5000,
+    prizeLevel: '一等奖',
+    timestamp: 1711500000000
+  },
+  {
+    id: 'lottery_win_1711413600000',
+    time: '2026-03-26 12:00',
+    amount: 2000,
+    prizeLevel: '二等奖',
+    timestamp: 1711413600000
+  },
+  {
+    id: 'lottery_win_1711327200000',
+    time: '2026-03-25 12:00',
+    amount: 1000,
+    prizeLevel: '三等奖',
+    timestamp: 1711327200000
+  }
+]);
+const showLotteryWinRecordsModal = ref(false);
 
 // 切换显示所有彩票
 const toggleShowAllTickets = () => {
@@ -134,10 +164,122 @@ const loadData = async () => {
         previousTickets.value = [];
       }
     }
+    
+    // 加载福利抽奖次数
+    if (empId.value) {
+      try {
+        const welfareResponse = await getWelfareLotteryInfo(empId.value);
+        if (welfareResponse.success && welfareResponse.data) {
+          welfareLotteryChances.value = Number(welfareResponse.data.chances) || 0;
+        }
+      } catch (error) {
+        console.error('加载福利抽奖次数失败:', error);
+      }
+    }
+    
+    // 加载中奖记录
+    await loadLotteryWinRecords();
   } catch (error) {
     console.error('加载数据失败:', error);
   } finally {
     isLoading.value = false;
+  }
+};
+
+// 从后端API获取中奖记录
+const loadLotteryWinRecords = async () => {
+  try {
+    const userId = localStorage.getItem('userId');
+    if (!userId) {
+      console.error('❌ 用户ID不存在');
+      return;
+    }
+    
+    console.log('🔧 开始从后端获取中奖记录');
+    const response = await getLotteryHistory();
+    
+    if (response.success && response.data) {
+      console.log('✅ 后端返回的开奖历史:', response.data);
+      
+      // 过滤出当前用户的中奖记录
+      const userWins = [];
+      
+      response.data.history.forEach(issue => {
+        // 检查一等奖
+        if (issue.winners.firstPrize && Array.isArray(issue.winners.firstPrize)) {
+          issue.winners.firstPrize.forEach(winner => {
+            if (winner.userId === userId) {
+              userWins.push({
+                id: `lottery_win_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                time: new Date(issue.drawTime).toLocaleString('zh-CN', {
+                  year: 'numeric', month: '2-digit', day: '2-digit',
+                  hour: '2-digit', minute: '2-digit'
+                }),
+                amount: winner.amount,
+                prizeLevel: '一等奖',
+                timestamp: new Date(issue.drawTime).getTime()
+              });
+            }
+          });
+        }
+        
+        // 检查二等奖
+        if (issue.winners.secondPrize && Array.isArray(issue.winners.secondPrize)) {
+          issue.winners.secondPrize.forEach(winner => {
+            if (winner.userId === userId) {
+              userWins.push({
+                id: `lottery_win_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                time: new Date(issue.drawTime).toLocaleString('zh-CN', {
+                  year: 'numeric', month: '2-digit', day: '2-digit',
+                  hour: '2-digit', minute: '2-digit'
+                }),
+                amount: winner.amount,
+                prizeLevel: '二等奖',
+                timestamp: new Date(issue.drawTime).getTime()
+              });
+            }
+          });
+        }
+        
+        // 检查三等奖
+        if (issue.winners.thirdPrize && Array.isArray(issue.winners.thirdPrize)) {
+          issue.winners.thirdPrize.forEach(winner => {
+            if (winner.userId === userId) {
+              userWins.push({
+                id: `lottery_win_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                time: new Date(issue.drawTime).toLocaleString('zh-CN', {
+                  year: 'numeric', month: '2-digit', day: '2-digit',
+                  hour: '2-digit', minute: '2-digit'
+                }),
+                amount: winner.amount,
+                prizeLevel: '三等奖',
+                timestamp: new Date(issue.drawTime).getTime()
+              });
+            }
+          });
+        }
+      });
+      
+      // 按时间倒序排序
+      userWins.sort((a, b) => b.timestamp - a.timestamp);
+      
+      lotteryWinRecords.value = userWins;
+      console.log('✅ 过滤后的用户中奖记录:', userWins);
+    } else {
+      console.warn('⚠️ 后端返回失败:', response.message);
+    }
+  } catch (error) {
+    console.error('❌ 获取中奖记录失败:', error);
+  }
+};
+
+// 保存中奖记录到LocalStorage
+const saveLotteryWinRecords = () => {
+  try {
+    localStorage.setItem('lotteryWinRecords', JSON.stringify(lotteryWinRecords.value));
+    console.log('✅ 保存中奖记录到LocalStorage');
+  } catch (error) {
+    console.error('❌ 保存中奖记录失败:', error);
   }
 };
 
@@ -596,7 +738,15 @@ watch(isSpinning, (spinning) => {
 
       <!-- 开奖记录 -->
         <div class="space-y-2">
-          <h3 class="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-bold px-2">往期开奖记录（最近7期）</h3>
+          <div class="flex justify-between items-center px-2">
+            <h3 class="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-bold">往期开奖记录（最近7期）</h3>
+            <button 
+              @click="showLotteryWinRecordsModal = true"
+              class="px-3 py-1 rounded-full bg-white/5 text-[9px] text-amber-500 uppercase tracking-widest hover:bg-white/10 transition-all font-bold border border-amber-500/20"
+            >
+              我的中奖记录
+            </button>
+          </div>
         <div class="bg-white/[0.02] rounded-[2rem] border border-white/[0.05] overflow-hidden p-2">
           <div class="divide-y divide-white/[0.03] max-h-[350px] overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
             <div 
@@ -682,41 +832,167 @@ watch(isSpinning, (spinning) => {
         leave-from-class="opacity-100 scale-100"
         leave-to-class="opacity-0 scale-95"
       >
-        <div v-if="showRulesModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-6">
-          <div class="bg-gradient-to-br from-zinc-900 to-black p-6 rounded-[2rem] border border-white/5 max-w-md w-full max-h-[80vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-4">
-              <h4 class="text-[11px] uppercase tracking-[0.2em] text-amber-400 font-bold">开奖规则</h4>
-              <button @click="showRulesModal = false" class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div v-if="showRulesModal" class="fixed inset-0 z-[9999] flex items-center justify-center p-6">
+          <div class="absolute inset-0 bg-black/80 backdrop-blur-md z-[9998]" @click="showRulesModal = false" />
+          <div class="relative w-full max-w-md bg-[#020205] border border-white/10 rounded-[3rem] overflow-hidden flex flex-col h-[550px] z-[9999] shadow-2xl">
+            <!-- 头部 -->
+            <div class="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-[#020205] z-10">
+              <div class="flex items-center">
+                <div class="w-8 h-8 bg-amber-500/20 rounded-full flex items-center justify-center mr-3 border border-amber-500/30">
+                  <Trophy class="w-4 h-4 text-amber-400" />
+                </div>
+                <h3 class="text-sm font-bold uppercase tracking-widest">开奖规则</h3>
+              </div>
+              <button @click="showRulesModal = false" class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-zinc-500 hover:text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-            <ul class="space-y-4 text-[11px] text-zinc-400 leading-relaxed">
-              <li class="flex gap-3">
-                <span class="text-amber-500">01</span>
-                每观看 {{ lotterySettings.adCountThreshold }} 个广告自动获得一张幸运彩票。
-              </li>
-              <li class="flex gap-3">
-                <span class="text-amber-500">02</span>
-                每张彩票包含唯一的 6 位数字号码。
-              </li>
-              <li class="flex gap-3">
-                <span class="text-amber-500">03</span>
-                系统每晚 22:00 自动进行一次开奖，处理所有待开奖彩票。
-              </li>
-              <li class="flex gap-3">
-                <span class="text-amber-500">04</span>
-                奖池金额由系统设定并持续累积。
-              </li>
-              <li class="flex gap-3">
-                <span class="text-amber-500">05</span>
-                奖金分配：按照一等奖{{ Math.round(lotterySettings.firstPrizePercentage * 100) }}%（{{ lotterySettings.firstPrizeCount }}人）、二等奖{{ Math.round(lotterySettings.secondPrizePercentage * 100) }}%（{{ lotterySettings.secondPrizeCount }}人）、三等奖{{ Math.round(lotterySettings.thirdPrizePercentage * 100) }}%（{{ lotterySettings.thirdPrizeCount }}人）分配奖金。
-              </li>
-            </ul>
-            <button @click="showRulesModal = false" class="mt-6 w-full px-6 py-3 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] uppercase tracking-widest font-bold hover:opacity-90 transition-opacity">
-              我知道了
-            </button>
+            
+            <!-- 内容区域 -->
+            <div class="flex-1 overflow-y-auto p-6">
+              <div class="space-y-6">
+                <!-- 获取规则 -->
+                <div class="rounded-xl p-4 bg-white/[0.02] border border-white/5">
+                  <h4 class="text-xs font-bold uppercase tracking-wider text-amber-400 mb-3 flex items-center gap-2">
+                    <div class="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+                    彩票获取规则
+                  </h4>
+                  <ul class="space-y-2 text-xs text-zinc-300">
+                    <li class="flex items-start gap-2">
+                      <span class="text-blue-400 font-bold">•</span>
+                      <span>每观看 <span class="text-amber-400 font-bold">{{ lotterySettings.adCountThreshold }}</span> 个广告自动获得一张幸运彩票</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <span class="text-green-400 font-bold">✓</span>
+                      <span>每张彩票包含唯一的 <span class="text-amber-400 font-bold">6</span> 位数字号码</span>
+                    </li>
+                  </ul>
+                </div>
+                
+                <!-- 开奖规则 -->
+                <div class="rounded-xl p-4 bg-white/[0.02] border border-white/5">
+                  <h4 class="text-xs font-bold uppercase tracking-wider text-blue-400 mb-3 flex items-center gap-2">
+                    <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                    开奖规则
+                  </h4>
+                  <ul class="space-y-2 text-xs text-zinc-300">
+                    <li class="flex items-start gap-2">
+                      <span class="text-purple-400 font-bold">✦</span>
+                      <span>系统每晚 <span class="text-amber-400 font-bold">22:00</span> 自动进行一次开奖</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <span class="text-purple-400 font-bold">✦</span>
+                      <span>开奖时处理所有待开奖彩票</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <span class="text-purple-400 font-bold">✦</span>
+                      <span>奖池金额由系统设定并持续累积</span>
+                    </li>
+                  </ul>
+                </div>
+                
+                <!-- 奖金分配 -->
+                <div class="rounded-xl p-4 bg-white/[0.02] border border-white/5">
+                  <h4 class="text-xs font-bold uppercase tracking-wider text-green-400 mb-3 flex items-center gap-2">
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                    奖金分配规则
+                  </h4>
+                  <ul class="space-y-2 text-xs text-zinc-300">
+                    <li class="flex items-start gap-2">
+                      <span class="text-amber-400 font-bold">★</span>
+                      <span>一等奖：<span class="text-amber-400 font-bold">{{ Math.round(lotterySettings.firstPrizePercentage * 100) }}%</span>（<span class="text-amber-400 font-bold">{{ lotterySettings.firstPrizeCount }}</span>人，独自分配<span class="text-amber-400 font-bold">{{ Math.round(lotterySettings.firstPrizePercentage * 100) }}%</span>）</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <span class="text-amber-400 font-bold">★</span>
+                      <span>二等奖：<span class="text-amber-400 font-bold">{{ Math.round(lotterySettings.secondPrizePercentage * 100) }}%</span>（<span class="text-amber-400 font-bold">{{ lotterySettings.secondPrizeCount }}</span>人，每人分配<span class="text-amber-400 font-bold">{{ Math.round(lotterySettings.secondPrizePercentage * 100 / lotterySettings.secondPrizeCount) }}%</span>）</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <span class="text-amber-400 font-bold">★</span>
+                      <span>三等奖：<span class="text-amber-400 font-bold">{{ Math.round(lotterySettings.thirdPrizePercentage * 100) }}%</span>（<span class="text-amber-400 font-bold">{{ lotterySettings.thirdPrizeCount }}</span>人，每人分配<span class="text-amber-400 font-bold">{{ Math.round(lotterySettings.thirdPrizePercentage * 100 / lotterySettings.thirdPrizeCount) }}%</span>）</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 底部按钮 -->
+            <div class="px-8 py-6 border-t border-white/5 bg-[#020205]">
+              <button 
+                @click="showRulesModal = false"
+                class="w-full py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-xs uppercase tracking-widest hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                <Trophy class="w-4 h-4" />
+                我知道了
+              </button>
+            </div>
+          </div>
+        </div>
+      </transition>
+
+      <!-- 中奖记录弹窗 -->
+      <transition 
+        enter-active-class="transition duration-300 ease-out"
+        enter-from-class="opacity-0 scale-95"
+        enter-to-class="opacity-100 scale-100"
+        leave-active-class="transition duration-200 ease-in"
+        leave-from-class="opacity-100 scale-100"
+        leave-to-class="opacity-0 scale-95"
+      >
+        <div v-if="showLotteryWinRecordsModal" class="fixed inset-0 z-[9999] flex items-center justify-center p-6">
+          <div class="absolute inset-0 bg-black/80 backdrop-blur-md z-[9998]" @click="showLotteryWinRecordsModal = false" />
+          <div class="relative w-full max-w-md bg-[#020205] border border-white/10 rounded-[3rem] overflow-hidden flex flex-col h-[550px] z-[9999] shadow-2xl">
+            <!-- 头部 -->
+            <div class="px-8 py-6 border-b border-white/5 flex justify-between items-center bg-[#020205] z-10">
+              <div class="flex items-center">
+                <div class="w-8 h-8 bg-amber-500/20 rounded-full flex items-center justify-center mr-3 border border-amber-500/30">
+                  <Trophy class="w-4 h-4 text-amber-400" />
+                </div>
+                <h3 class="text-sm font-bold uppercase tracking-widest">我的中奖记录</h3>
+              </div>
+              <button @click="showLotteryWinRecordsModal = false" class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-zinc-500 hover:text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <!-- 内容区域 -->
+            <div class="flex-1 overflow-y-auto p-6">
+              <div v-if="lotteryWinRecords.length === 0" class="py-12 text-center">
+                <Trophy class="w-12 h-12 text-zinc-700 mx-auto mb-4" />
+                <p class="text-zinc-500 text-sm">暂无中奖记录</p>
+                <p class="text-zinc-600 text-xs mt-2">继续努力，下一个中奖的就是你！</p>
+              </div>
+              <div v-else class="space-y-4">
+                <div 
+                  v-for="(record, index) in lotteryWinRecords" 
+                  :key="record.id"
+                  class="rounded-xl p-4 bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] transition-colors"
+                >
+                  <div class="flex justify-between items-center mb-2">
+                    <span class="text-amber-400 font-bold text-lg">+{{ parseFloat(record.amount).toFixed(2) }} 金币</span>
+                    <span class="text-zinc-500 text-xs">{{ record.time.split(' ')[0] }}</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-zinc-400 text-sm">幸运彩票中奖</span>
+                    <span class="text-amber-500 text-xs px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 font-bold">{{ record.prizeLevel }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 底部按钮 -->
+            <div class="px-8 py-6 border-t border-white/5 bg-[#020205]">
+              <button 
+                @click="showLotteryWinRecordsModal = false"
+                class="w-full py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-xs uppercase tracking-widest hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                <Trophy class="w-4 h-4" />
+                我知道了
+              </button>
+            </div>
           </div>
         </div>
       </transition>
@@ -746,11 +1022,17 @@ watch(isSpinning, (spinning) => {
         </router-link>
         <router-link 
           to="/welfare-lottery" 
-          class="flex flex-col items-center transition-all duration-300"
+          class="flex flex-col items-center transition-all duration-300 relative"
           :class="$route.path === '/welfare-lottery' ? 'text-emerald-400 scale-105' : 'text-zinc-400 hover:text-zinc-300'"
         >
           <Gift class="w-6 h-6 mb-1" />
           <span class="text-xs font-medium">福利抽奖</span>
+          <span 
+            v-if="welfareLotteryChances > 0" 
+            class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center"
+          >
+            {{ welfareLotteryChances > 99 ? '99+' : welfareLotteryChances }}
+          </span>
         </router-link>
         <router-link 
           to="/phone-verification" 
