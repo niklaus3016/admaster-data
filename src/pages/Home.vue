@@ -1796,18 +1796,18 @@ const submitWithdraw = async () => {
           </div>
           <div class="flex gap-3">
             <button 
-              @click="showLeaderboard = true"
-              class="px-3 py-1 rounded-full bg-white/5 text-[9px] text-blue-500 uppercase tracking-widest hover:bg-white/10 transition-all font-bold border border-blue-500/20 flex items-center gap-2"
-            >
-              <Trophy class="w-3 h-3" />
-              排行榜
-            </button>
-            <button 
               @click="showWeekendEvent = true"
               class="px-3 py-1 rounded-full bg-white/5 text-[9px] text-amber-500 uppercase tracking-widest hover:bg-white/10 transition-all font-bold border border-amber-500/20 flex items-center gap-2"
             >
               <Sparkles class="w-3 h-3 text-amber-500" />
               周末活动
+            </button>
+            <button 
+              @click="showLeaderboard = true"
+              class="px-3 py-1 rounded-full bg-white/5 text-[9px] text-blue-500 uppercase tracking-widest hover:bg-white/10 transition-all font-bold border border-blue-500/20 flex items-center gap-2"
+            >
+              <Trophy class="w-3 h-3" />
+              排行榜
             </button>
 
             <!-- 暂时隐藏查看全部按钮 -->
