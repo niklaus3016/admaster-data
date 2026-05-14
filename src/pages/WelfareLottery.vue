@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, nextTick } from 'vue';
 import { Gift, Trophy, LogOut, History, Wallet, CreditCard, Sparkles, Zap, ChevronRight, Smartphone, TrendingUp, Ticket, RefreshCw, Handshake } from 'lucide-vue-next';
 import { recordAdView, getWelfareLotteryInfo, claimWelfareLottery, getWelfareLotteryRecords, getWelfareWalletBalance, withdrawWelfareFunds, getWelfareLotteryPrizes, bindAlipay, getAlipayInfo, getWelfareWithdrawRecords, getWelfareWalletStatus, getCurrentLotteryTickets } from '../api/apiService';
+import { AudioPlugin } from '../plugins/AudioPlugin';
 import gold1gImage from '../../gold-1g.png';
 import phoneModelImage from '../../phone-model.png';
 
@@ -64,7 +65,33 @@ const showRulesModal = ref(false); // 抽奖规则弹窗
 const lotteryTicketsCount = ref(0); // 幸运彩票数量
 
 // 转盘音效
-let spinAudio: HTMLAudioElement | null = null;
+let spinAudioPlaying = false;
+
+// 播放转盘音效
+const playSpinSound = async () => {
+  try {
+    await AudioPlugin.play({ 
+      filePath: 'gxcjyy', 
+      volume: 0.8,
+      loop: false 
+    });
+    spinAudioPlaying = true;
+  } catch (err) {
+    console.log('音效播放失败:', err);
+  }
+};
+
+// 停止转盘音效
+const stopSpinSound = async () => {
+  try {
+    if (spinAudioPlaying) {
+      await AudioPlugin.stop();
+      spinAudioPlaying = false;
+    }
+  } catch (err) {
+    console.log('音效停止失败:', err);
+  }
+};
 
 // 计算属性
 const canSpin = computed(() => lotteryChances.value > 0 && !isSpinning.value);
@@ -254,14 +281,7 @@ const handleSpin = async () => {
   error.value = '';
   
   // 播放转盘音效
-  try {
-    spinAudio = new Audio('/gxcjyy.m4a');
-    spinAudio.loop = false; // 不循环播放
-    spinAudio.volume = 0.5;
-    spinAudio.play().catch(err => console.log('音效播放失败:', err));
-  } catch (err) {
-    console.log('音效初始化失败:', err);
-  }
+  playSpinSound();
   
   try {
     console.log('🎲 开始调用抽奖接口:', { userId: userId.value, empId: empId.value });
@@ -304,11 +324,7 @@ const handleSpin = async () => {
       setTimeout(() => {
         isSpinning.value = false;
         // 停止音效
-        if (spinAudio) {
-          spinAudio.pause();
-          spinAudio.currentTime = 0;
-          spinAudio = null;
-        }
+        stopSpinSound();
         // 重新加载福利信息（包括最新的抽奖次数）和中奖记录
         loadWelfareInfo();
         loadWelfareRecords();
@@ -322,22 +338,14 @@ const handleSpin = async () => {
       error.value = response.message || '抽奖失败';
       isSpinning.value = false;
       // 停止音效
-      if (spinAudio) {
-        spinAudio.pause();
-        spinAudio.currentTime = 0;
-        spinAudio = null;
-      }
+      stopSpinSound();
     }
   } catch (err) {
     console.error('抽奖失败:', err);
     error.value = '网络错误，请稍后重试';
     isSpinning.value = false;
     // 停止音效
-    if (spinAudio) {
-      spinAudio.pause();
-      spinAudio.currentTime = 0;
-      spinAudio = null;
-    }
+    stopSpinSound();
   }
 };
 

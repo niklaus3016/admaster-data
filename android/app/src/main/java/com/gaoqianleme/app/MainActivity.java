@@ -19,6 +19,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(BaiduAdPlugin.class);
         registerPlugin(TTSPlugin.class);
         registerPlugin(RiskCheckPlugin.class);
+        registerPlugin(AudioPlugin.class);
         
         super.onCreate(savedInstanceState);
         
