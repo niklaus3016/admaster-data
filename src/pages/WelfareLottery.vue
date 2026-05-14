@@ -826,11 +826,17 @@ const getPrizeName = (name: string) => {
                     <span class="text-white font-bold">{{ todayAdCount }}</span> / {{ thresholds[thresholds.length - 1]?.adCount || 3000 }} 条广告 · 再看 <span class="text-amber-400 font-bold">{{ remainingToNext }}</span> 条得 <span class="text-amber-400 font-bold">{{ nextThreshold.giveChances }}</span> 次
                   </span>
                 </template>
-                <template v-else>
+                <template v-else-if="todayAdCount >= (thresholds[thresholds.length - 1]?.adCount || 3000)">
                   <span class="text-[10px]">
                     <span class="text-emerald-400 font-bold">{{ todayAdCount }}</span>
                     <span class="text-zinc-500"> / {{ thresholds[thresholds.length - 1]?.adCount || 3000 }} 条广告 · </span>
                     <span class="text-emerald-400 font-bold">今日已满级</span>
+                  </span>
+                </template>
+                <template v-else>
+                  <span class="text-[10px] text-zinc-500">
+                    <span class="text-white font-bold">{{ todayAdCount }}</span> / {{ thresholds[thresholds.length - 1]?.adCount || 3000 }} 条广告 · 
+                    <span class="text-amber-400">加载中...</span>
                   </span>
                 </template>
               </div>
