@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { Gift, Trophy, LogOut, History, Wallet, CreditCard, Sparkles, Zap, ChevronRight, Smartphone, TrendingUp, Ticket, RefreshCw, Handshake } from 'lucide-vue-next';
 import { recordAdView, getWelfareLotteryInfo, claimWelfareLottery, getWelfareLotteryRecords, getWelfareWalletBalance, withdrawWelfareFunds, getWelfareLotteryPrizes, bindAlipay, getAlipayInfo, getWelfareWithdrawRecords, getWelfareWalletStatus, getCurrentLotteryTickets } from '../api/apiService';
 import { AudioPlugin } from '../plugins/AudioPlugin';
@@ -13,7 +13,6 @@ const userId = ref(localStorage.getItem('userId') || '');
 const isLoading = ref(false);
 const error = ref('');
 const welfareBalance = ref(0);
-const lotteryChances = ref(0);
 const lotteryItems = ref([
   { id: '2', name: '1.68元', probability: 20, value: 1.68, type: 'cash' },
   { id: '3', name: '88.8元', probability: 5, value: 88.8, type: 'cash' },
@@ -66,6 +65,8 @@ const lotteryTicketsCount = ref(0); // 幸运彩票数量
 
 // 转盘音效
 let spinAudioPlaying = false;
+let spinTimeoutId: ReturnType<typeof setTimeout> | null = null;
+let resultTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
 // 播放转盘音效
 const playSpinSound = async () => {
@@ -113,32 +114,27 @@ const loadWelfareInfo = async () => {
   error.value = '';
   
   try {
-    // 获取福利抽奖信息
-    console.log('loadWelfareInfo - 开始调用getWelfareLotteryInfo');
-    const infoResponse = await getWelfareLotteryInfo(empId.value);
+    const [infoResponse, prizesResponse, alipayResponse] = await Promise.all([
+      getWelfareLotteryInfo(empId.value),
+      getWelfareLotteryPrizes(),
+      getAlipayInfo(empId.value)
+    ]);
+    
     console.log('loadWelfareInfo - getWelfareLotteryInfo响应:', infoResponse);
     if (infoResponse.success && infoResponse.data) {
       welfareBalance.value = Number(infoResponse.data.balance) || 0;
-      lotteryChances.value = Number(infoResponse.data.chances) || 0;
       console.log('loadWelfareInfo - 余额:', welfareBalance.value);
-      console.log('loadWelfareInfo - 抽奖机会:', lotteryChances.value);
     } else {
       error.value = infoResponse.message || '获取福利抽奖信息失败';
       console.log('loadWelfareInfo - 获取失败:', error.value);
     }
     
-    // 获取奖品列表
-    console.log('loadWelfareInfo - 开始调用getWelfareLotteryPrizes');
-    const prizesResponse = await getWelfareLotteryPrizes();
     console.log('loadWelfareInfo - getWelfareLotteryPrizes响应:', prizesResponse);
     if (prizesResponse.success && prizesResponse.data) {
       lotteryItems.value = prizesResponse.data.prizes;
       console.log('loadWelfareInfo - 奖品列表:', lotteryItems.value);
     }
     
-    // 获取绑定的支付宝信息
-    console.log('loadWelfareInfo - 开始调用getAlipayInfo');
-    const alipayResponse = await getAlipayInfo(empId.value);
     console.log('loadWelfareInfo - getAlipayInfo响应:', alipayResponse);
     if (alipayResponse.success && alipayResponse.data) {
       bindAlipayName.value = alipayResponse.data.alipayName;
@@ -285,6 +281,9 @@ const loadWithdrawRecords = async () => {
 // 时间格式化函数
 const formatTime = (timeString: string) => {
   const date = new Date(timeString);
+  if (isNaN(date.getTime())) {
+    return '--';
+  }
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
@@ -355,7 +354,7 @@ const handleSpin = async () => {
       }
       
       // 转盘停止后等待1秒再显示弹窗
-      setTimeout(() => {
+      spinTimeoutId = setTimeout(() => {
         isSpinning.value = false;
         // 停止音效
         stopSpinSound();
@@ -364,7 +363,7 @@ const handleSpin = async () => {
         loadWelfareRecords();
         
         // 等待1秒后再显示弹窗，让用户看到转盘停止位置
-        setTimeout(() => {
+        resultTimeoutId = setTimeout(() => {
           showResultModal.value = true;
         }, 1000);
       }, 5800);
@@ -575,12 +574,30 @@ const loadLotteryTicketsCount = async () => {
 
 // 生命周期
 onMounted(async () => {
-  await loadWelfareInfo();
-  await loadWelfareBalance();
-  await loadWalletStatus();
-  await loadLotteryTicketsCount();
-  loadWelfareRecords();
-  loadWithdrawRecords();
+  Promise.all([
+    loadWelfareInfo(),
+    loadWelfareBalance(),
+    loadWalletStatus(),
+    loadLotteryTicketsCount()
+  ]).finally(() => {
+    loadWelfareRecords();
+    loadWithdrawRecords();
+  });
+});
+
+// 组件卸载时清理
+onUnmounted(() => {
+  if (spinTimeoutId) {
+    clearTimeout(spinTimeoutId);
+    spinTimeoutId = null;
+  }
+  if (resultTimeoutId) {
+    clearTimeout(resultTimeoutId);
+    resultTimeoutId = null;
+  }
+  if (spinAudioPlaying) {
+    stopSpinSound();
+  }
 });
 
 // 获取奖品颜色
