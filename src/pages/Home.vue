@@ -597,15 +597,18 @@ onMounted(async () => {
     return;
   }
 
-  await loadLoginStats();
-  await loadWithdrawStatus();
-  await loadUserInfo();
-  await loadTodayGoldStats(); // 加载今日金币统计（全局）
-  await loadGoldRecords(); // 加载收益记录（当前设备）
-  await loadRedPacketRecords(); // 加载红包记录
-  await loadDeviceStatus(); // 加载设备状态
-  await loadDeviceConfig(); // 加载设备配置
-  await loadWelfareLotteryChances(); // 加载福利抽奖次数
+  // 并行加载所有数据，提升页面加载速度
+  await Promise.all([
+    loadLoginStats(),
+    loadWithdrawStatus(),
+    loadUserInfo(),
+    loadTodayGoldStats(),
+    loadGoldRecords(),
+    loadRedPacketRecords(),
+    loadDeviceStatus(),
+    loadDeviceConfig(),
+    loadWelfareLotteryChances()
+  ]);
   
   // 排行榜数据改为异步加载，不阻塞广告SDK初始化
   loadRankingData(false).catch(console.error);
@@ -624,7 +627,7 @@ onMounted(async () => {
   // 记录用户活动（进入首页）
   await recordUserActivity();
 
-  // 启动定时同步，每30秒同步一次数据看板（金币余额、今日金币等全局数据）
+  // 启动定时同步，每60秒同步一次数据看板（金币余额、今日金币等全局数据）
   // 排行榜数据已改为按需加载（5分钟缓存），不再参与定时同步
   syncInterval = setInterval(async () => {
     console.log('🔄 定时同步数据看板...');

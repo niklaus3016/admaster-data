@@ -86,69 +86,48 @@ const formattedUserCoins = computed(() => {
 const loadData = async () => {
   isLoading.value = true;
   try {
-    // 加载奖金池状态
-    const poolResponse = await getLotteryPool();
+    const userId = localStorage.getItem('userId');
+    const employeeId = localStorage.getItem('employeeId');
+
+    // 并行加载所有独立数据
+    const [poolResponse, historyResponse, resultResponse, settingsResponse] = await Promise.all([
+      getLotteryPool(),
+      getLotteryHistory(),
+      getLotteryResult(),
+      getLotterySettings()
+    ]);
+
+    // 处理奖金池状态
     if (poolResponse.success && poolResponse.data) {
       poolStatus.value = poolResponse.data;
     }
 
-    // 加载用户奖券
-    // 使用当前登录用户的ID
-    const userId = localStorage.getItem('userId');
-    const employeeId = localStorage.getItem('employeeId');
-    console.log('当前用户ID:', userId);
-    if (userId) {
-      const ticketsResponse = await getCurrentLotteryTickets(userId);
-      console.log('getCurrentLotteryTickets响应:', ticketsResponse);
-      if (ticketsResponse.success && ticketsResponse.data) {
-        console.log('实际获取到的彩票数量:', ticketsResponse.data.tickets.length);
-        lotteryTickets.value = ticketsResponse.data.tickets || [];
-        console.log('待开奖奖券:', lotteryTickets.value);
-      }
-
-      // 加载用户信息
-      if (employeeId) {
-        const userResponse = await getUserInfo(userId, employeeId);
-        if (userResponse.success && userResponse.data) {
-          userInfo.value = userResponse.data;
-        }
-      }
-    } else {
-      console.warn('未找到用户ID，无法获取彩票数据');
-      lotteryTickets.value = [];
-    }
-
-    // 加载开奖历史
-    const historyResponse = await getLotteryHistory();
+    // 处理开奖历史
     if (historyResponse.data) {
       pastDraws.value = historyResponse.data.history || [];
-      console.log('开奖历史数据:', pastDraws.value);
     }
 
-    // 加载最新开奖结果
-    const resultResponse = await getLotteryResult();
-    if (resultResponse.success && resultResponse.data) {
-      // 可以在这里处理最新开奖结果
-    }
-
-    // 加载彩票设置
-    const settingsResponse = await getLotterySettings();
+    // 处理彩票设置
     if (settingsResponse.success && settingsResponse.data) {
       lotterySettings.value = settingsResponse.data;
     }
 
-    // 加载上一期彩票数据
+    // 并行加载需要 userId 的数据
     if (userId) {
-      const lastTicketResponse = await getLastLotteryTicket(userId);
-      console.log('getLastLotteryTicket响应:', lastTicketResponse);
+      const [ticketsResponse, lastTicketResponse] = await Promise.all([
+        getCurrentLotteryTickets(userId),
+        getLastLotteryTicket(userId)
+      ]);
+
+      // 处理用户奖券
+      if (ticketsResponse.success && ticketsResponse.data) {
+        lotteryTickets.value = ticketsResponse.data.tickets || [];
+      }
+
+      // 处理上一期彩票数据
       if (lastTicketResponse.success && lastTicketResponse.data && lastTicketResponse.data.tickets) {
-        // 检查是否中奖（根据后端返回的数据判断）
         const lastTickets = lastTicketResponse.data.tickets;
-        console.log('上一期彩票数据:', lastTickets);
-        
-        // 处理上一期彩票数据
         previousTickets.value = lastTickets.map((ticket: any) => {
-          // 检查后端返回的中奖状态
           const isWinner = ticket.status && ticket.status.includes('中奖');
           const prize = ticket.status || '已开奖';
           return {
@@ -159,24 +138,30 @@ const loadData = async () => {
             prize: prize
           };
         });
-        console.log('previousTickets:', previousTickets.value);
       } else {
         previousTickets.value = [];
       }
+    } else {
+      lotteryTickets.value = [];
+      previousTickets.value = [];
     }
-    
-    // 加载福利抽奖次数
-    if (empId.value) {
-      try {
-        const welfareResponse = await getWelfareLotteryInfo(empId.value);
-        if (welfareResponse.success && welfareResponse.data) {
-          welfareLotteryChances.value = Number(welfareResponse.data.chances) || 0;
-        }
-      } catch (error) {
-        console.error('加载福利抽奖次数失败:', error);
-      }
+
+    // 并行加载用户信息和福利抽奖次数
+    const userInfoPromise = employeeId ? getUserInfo(userId, employeeId) : Promise.resolve(null);
+    const welfarePromise = empId.value ? getWelfareLotteryInfo(empId.value) : Promise.resolve(null);
+
+    const [userResponse, welfareResponse] = await Promise.all([userInfoPromise, welfarePromise]);
+
+    // 处理用户信息
+    if (userResponse && userResponse.success && userResponse.data) {
+      userInfo.value = userResponse.data;
     }
-    
+
+    // 处理福利抽奖次数
+    if (welfareResponse && welfareResponse.success && welfareResponse.data) {
+      welfareLotteryChances.value = Number(welfareResponse.data.chances) || 0;
+    }
+
     // 加载中奖记录
     await loadLotteryWinRecords();
   } catch (error) {
@@ -419,7 +404,7 @@ onMounted(() => {
   loadData();
   updateCountdown();
   timerInterval = setInterval(updateCountdown, 1000);
-  // 每5秒自动刷新奖金池数据
+  // 每30秒自动刷新奖金池数据
   poolRefreshInterval = setInterval(() => {
     // 只刷新奖金池数据，避免频繁加载所有数据
     const poolResponse = getLotteryPool();
@@ -428,7 +413,7 @@ onMounted(() => {
         poolStatus.value = response.data;
       }
     });
-  }, 5000); // 5秒刷新一次
+  }, 30000); // 30秒刷新一次
 });
 
 onUnmounted(() => {
