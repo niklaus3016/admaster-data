@@ -1798,13 +1798,14 @@ const submitWithdraw = async () => {
             <h2 class="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-medium">最近收益（近50条）</h2>
           </div>
           <div class="flex gap-3">
-            <button 
+            <!-- 暂时隐藏周末活动按钮 -->
+            <!-- <button 
               @click="showWeekendEvent = true"
               class="px-3 py-1 rounded-full bg-white/5 text-[9px] text-amber-500 uppercase tracking-widest hover:bg-white/10 transition-all font-bold border border-amber-500/20 flex items-center gap-2"
             >
               <Sparkles class="w-3 h-3 text-amber-500" />
               周末活动
-            </button>
+            </button> -->
             <button 
               @click="showLeaderboard = true"
               class="px-3 py-1 rounded-full bg-white/5 text-[9px] text-blue-500 uppercase tracking-widest hover:bg-white/10 transition-all font-bold border border-blue-500/20 flex items-center gap-2"
