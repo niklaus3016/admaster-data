@@ -1,0 +1,1 @@
+import{W as r}from"./index-BBkOYEIY.js";class o extends r{async loadRewardVideoAd(e){return Promise.resolve()}async showRewardVideoAd(){return Promise.resolve()}async isReady(){return{ready:!1}}async addListener(e,n){return Promise.resolve()}}export{o as BaiduAdPluginWeb};
