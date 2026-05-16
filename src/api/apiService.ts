@@ -3,6 +3,90 @@
 const API_BASE_URL = 'https://wfqmaepvjkdd.sealoshzh.site'; // 生产环境后端服务地址
 const USE_MOCK_DATA = false; // 使用真实后端API
 
+// 默认超时时间（毫秒）
+const DEFAULT_TIMEOUT = 8000;
+
+/**
+ * 带超时的fetch包装函数
+ * @param url 请求URL
+ * @param options 请求选项
+ * @param timeout 超时时间（毫秒），默认8秒
+ * @returns Promise<Response>
+ */
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit = {},
+  timeout: number = DEFAULT_TIMEOUT
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    console.warn(`⚠️ 请求超时: ${url}`);
+    controller.abort();
+  }, timeout);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if ((error as Error).name === 'AbortError') {
+      throw new Error('请求超时');
+    }
+    throw error;
+  }
+}
+
+/**
+ * API请求封装，带统一的错误处理和超时管理
+ * @param url 请求路径（相对于API_BASE_URL）
+ * @param options 请求选项
+ * @param timeout 超时时间
+ * @returns Promise<ApiResponse<T>>
+ */
+async function apiRequest<T = any>(
+  url: string,
+  options: RequestInit = {},
+  timeout: number = DEFAULT_TIMEOUT
+): Promise<ApiResponse<T>> {
+  try {
+    const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
+    
+    const response = await fetchWithTimeout(fullUrl, options, timeout);
+    
+    if (!response.ok) {
+      console.error(`API请求失败: ${fullUrl}, 状态码: ${response.status}`);
+      return {
+        success: false,
+        message: `服务器响应错误: ${response.statusText}`,
+      };
+    }
+
+    try {
+      const data = await response.json();
+      return data as ApiResponse<T>;
+    } catch (jsonError) {
+      console.error('解析响应体失败:', jsonError);
+      return {
+        success: false,
+        message: '服务器返回的数据格式错误',
+      };
+    }
+  } catch (error) {
+    console.error('API请求异常:', error);
+    const errorMessage = (error as Error).message === '请求超时' 
+      ? '请求超时，请稍后重试' 
+      : '网络错误，请稍后重试';
+    return {
+      success: false,
+      message: errorMessage,
+    };
+  }
+}
+
 interface ApiResponse<T = any> {
   success: boolean;
   message?: string;
@@ -209,16 +293,8 @@ export async function getUserInfo(userId: string, employeeId: string): Promise<A
     });
   }
 
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/user/info?userId=${userId}&employeeId=${employeeId}`);
-    return await response.json();
-  } catch (error) {
-    console.error('获取金币信息失败:', error);
-    return {
-      success: false,
-      message: '网络错误，请稍后重试',
-    };
-  }
+  const url = `/api/user/info?userId=${userId}&employeeId=${employeeId}`;
+  return await apiRequest<UserInfo>(url);
 }
 
 /**
@@ -250,22 +326,13 @@ export async function rewardGold(userId: string, employeeId: string, ecpm: numbe
     });
   }
 
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/employee/reward-gold`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ userId, employeeId, ecpm, slotId, deviceId }),
-    });
-    return await response.json();
-  } catch (error) {
-    console.error('发放金币失败:', error);
-    return {
-      success: false,
-      message: '网络错误，请稍后重试',
-    };
-  }
+  return await apiRequest<GoldReward>('/api/employee/reward-gold', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ userId, employeeId, ecpm, slotId, deviceId }),
+  });
 }
 
 /**
@@ -441,22 +508,13 @@ export async function getTodayGoldStats(userId: string): Promise<ApiResponse<Tod
  * @returns 新添加的员工信息
  */
 export async function addEmployee(name: string, phone: string, area: string): Promise<ApiResponse<EmployeeInfo>> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/employee/add`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ name, phone, area }),
-    });
-    return await response.json();
-  } catch (error) {
-    console.error('添加员工失败:', error);
-    return {
-      success: false,
-      message: '网络错误，请稍后重试',
-    };
-  }
+  return await apiRequest<EmployeeInfo>('/api/employee/add', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ name, phone, area }),
+  });
 }
 
 // 登录统计相关接口

@@ -573,11 +573,22 @@ if (triggerPreloadAfterDelay) {
 
 // 初始化数据
 // 处理页面可见性变化
+// 页面可见性变化处理（带防抖）
+let visibilityTimeout: ReturnType<typeof setTimeout> | null = null;
+
 const handleVisibilityChange = async () => {
   if (document.visibilityState === 'visible') {
-    console.log('👁️ 页面重新可见，同步数据看板...');
-    await loadUserInfo(false); // 页面聚焦时不显示加载状态
-    await loadTodayGoldStats(); // 同步今日金币统计（全局）
+    // 防抖处理，避免频繁切换时重复请求
+    if (visibilityTimeout) {
+      clearTimeout(visibilityTimeout);
+    }
+    
+    visibilityTimeout = setTimeout(async () => {
+      console.log('👁️ 页面重新可见，同步数据看板...');
+      await loadUserInfo(false); // 页面聚焦时不显示加载状态
+      await loadTodayGoldStats(); // 同步今日金币统计（全局）
+      visibilityTimeout = null;
+    }, 500); // 500ms防抖
   }
 };
 
@@ -597,21 +608,51 @@ onMounted(async () => {
     return;
   }
 
-  // 并行加载所有数据，提升页面加载速度
-  await Promise.all([
-    loadLoginStats(),
-    loadWithdrawStatus(),
-    loadUserInfo(),
-    loadTodayGoldStats(),
-    loadGoldRecords(),
-    loadRedPacketRecords(),
-    loadDeviceStatus(),
-    loadDeviceConfig(),
-    loadWelfareLotteryChances()
-  ]);
+  // ========== 数据加载策略优化 ==========
+  // 将数据请求分为三个优先级，优先加载关键数据，提升首屏渲染速度
   
-  // 排行榜数据改为异步加载，不阻塞广告SDK初始化
+  // 【高优先级】关键数据 - 必须先加载完成才能正常使用
+  const criticalTasks = [
+    loadUserInfo(),           // 用户金币信息（显示余额）
+    loadTodayGoldStats(),     // 今日金币统计（显示今日收益）
+    loadDeviceStatus(),       // 设备状态（判断是否可看广告）
+    loadDeviceConfig()        // 设备配置（广告策略）
+  ];
+  
+  // 【中优先级】重要数据 - 影响部分功能但不阻塞主流程
+  const importantTasks = [
+    loadLoginStats(),             // 登录统计
+    loadWithdrawStatus(),         // 提现状态
+    loadWelfareLotteryChances()   // 福利彩票机会
+  ];
+  
+  // 【低优先级】非关键数据 - 可以后台异步加载
+  const backgroundTasks = [
+    loadGoldRecords(),        // 金币记录列表
+    loadRedPacketRecords()    // 红包记录列表
+  ];
+  
+  // 第一步：先加载关键数据，确保页面能快速渲染
+  console.log('🔹 开始加载关键数据...');
+  await Promise.all(criticalTasks);
+  console.log('✅ 关键数据加载完成');
+  
+  // 第二步：后台并行加载其他数据，不阻塞页面交互
+  console.log('🔹 开始后台加载非关键数据...');
+  const secondaryPromise = Promise.all([
+    ...importantTasks,
+    ...backgroundTasks
+  ]).then(() => {
+    console.log('✅ 非关键数据加载完成');
+  }).catch(error => {
+    console.error('❌ 后台数据加载失败:', error);
+  });
+  
+  // 排行榜数据也改为后台异步加载
   loadRankingData(false).catch(console.error);
+  
+  // 不等待非关键数据，立即继续执行后续逻辑
+  await Promise.resolve();
   
   // 登录进入首页后触发风控检测
   if (Capacitor.isNativePlatform()) {
@@ -627,15 +668,28 @@ onMounted(async () => {
   // 记录用户活动（进入首页）
   await recordUserActivity();
 
-  // 启动定时同步，每60秒同步一次数据看板（金币余额、今日金币等全局数据）
-  // 排行榜数据已改为按需加载（5分钟缓存），不再参与定时同步
-  syncInterval = setInterval(async () => {
+  // ========== 定时同步机制优化 ==========
+  // 延长同步间隔到60秒，并在页面不可见时暂停同步以节省资源
+  const SYNC_INTERVAL = 60000; // 60秒同步一次
+  
+  const performSync = async () => {
+    // 页面不可见时跳过同步
+    if (document.visibilityState !== 'visible') {
+      console.log('⏭️ 页面不可见，跳过定时同步');
+      return;
+    }
+    
     console.log('🔄 定时同步数据看板...');
-    await loadUserInfo(false); // 定时同步时不显示加载状态
-    await loadTodayGoldStats(); // 同步今日金币统计（全局）
-    // await loadRankingData(); // 排行榜数据改为按需加载，由缓存机制控制
-    // await loadPoolStatus(); // 同步奖金池状态（暂时隐藏，下下个版本上线）
-  }, 30000);
+    try {
+      await loadUserInfo(false); // 定时同步时不显示加载状态
+      await loadTodayGoldStats(); // 同步今日金币统计（全局）
+    } catch (error) {
+      console.error('❌ 定时同步失败:', error);
+    }
+  };
+  
+  // 使用setInterval执行定时同步
+  syncInterval = setInterval(performSync, SYNC_INTERVAL);
 
   // 监听页面可见性变化，页面重新可见时同步数据
   document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -1068,11 +1122,12 @@ const handleWatchAd = async () => {
       
       // 确保金币数量是有效的数字
         if (typeof earned === 'number' && earned > 0) {
-          // 更新本地状态
+          // 更新本地状态（关键路径）
           currentMonthGold.value = rewardResponse.data.currentMonthGold;
-          // 显示金币奖励动画和语音
+          // 显示金币奖励动画和语音（关键路径）
           await showRewardAnimation(earned);
-          // 检查是否有红包信息
+          
+          // 检查是否有红包信息（关键路径）
           const hasRedPacket = rewardResponse.data.hasRedPacket;
           const redPacketAmount = rewardResponse.data.redPacketAmount;
           
@@ -1083,7 +1138,7 @@ const handleWatchAd = async () => {
           
           if (hasRedPacket && redPacketAmount > 0) {
             console.log('🎁 后端触发红包，金额：', redPacketAmount);
-            // 显示红包动画
+            // 显示红包动画（关键路径）
             await showRedPacketAnimation(redPacketAmount);
           } else {
             console.log('❌ 未触发红包，原因:', {
@@ -1092,7 +1147,7 @@ const handleWatchAd = async () => {
             });
           }
           
-          // 检查是否获得奖券
+          // 检查是否获得奖券（关键路径）
           const ticketNumber = rewardResponse.data.ticketNumber;
           const issueNumber = rewardResponse.data.issueNumber;
           
@@ -1101,30 +1156,41 @@ const handleWatchAd = async () => {
               ticketNumber: ticketNumber,
               issueNumber: issueNumber
             });
-            // 显示奖券获得提示
+            // 显示奖券获得提示（关键路径）
             await showTicketAnimation(ticketNumber);
           }
-          // 更新设备记录
-          try {
-            const deviceId = getDeviceId();
-            const deviceRecordResponse = await updateDeviceRecord(userId.value, deviceId, earned);
-            if (deviceRecordResponse.success && deviceRecordResponse.data) {
-              // 确保consecutiveLowValueCount有默认值
-              deviceStatus.value = {
-                isLimited: deviceRecordResponse.data.isLimited,
-                consecutiveLowValueCount: deviceRecordResponse.data.consecutiveLowValueCount || 0
-              };
-              console.log('✅ 设备记录更新成功:', deviceStatus.value);
-            }
-          } catch (error) {
-            console.error('❌ 更新设备记录失败:', error);
-            // 降级处理：继续执行，不影响用户获得金币
-          }
           
-          // 重新加载今日金币统计（全局）、收益记录（当前设备）和红包记录
-          await loadTodayGoldStats();
-          await loadGoldRecords();
-          await loadRedPacketRecords();
+          // ========== 非关键操作：后台异步执行 ==========
+          // 这些操作不影响用户获得金币的核心流程，可以在后台执行
+          const backgroundOperations = async () => {
+            try {
+              // 更新设备记录
+              const deviceId = getDeviceId();
+              const deviceRecordResponse = await updateDeviceRecord(userId.value, deviceId, earned);
+              if (deviceRecordResponse.success && deviceRecordResponse.data) {
+                deviceStatus.value = {
+                  isLimited: deviceRecordResponse.data.isLimited,
+                  consecutiveLowValueCount: deviceRecordResponse.data.consecutiveLowValueCount || 0
+                };
+                console.log('✅ 设备记录更新成功:', deviceStatus.value);
+              }
+            } catch (error) {
+              console.error('❌ 更新设备记录失败:', error);
+            }
+            
+            try {
+              // 重新加载今日金币统计（全局）、收益记录（当前设备）和红包记录
+              await loadTodayGoldStats();
+              await loadGoldRecords();
+              await loadRedPacketRecords();
+            } catch (error) {
+              console.error('❌ 后台数据同步失败:', error);
+            }
+          };
+          
+          // 后台执行，不阻塞主线程
+          backgroundOperations().catch(console.error);
+          
         } else {
           console.error('金币数量无效:', earned);
           error.value = '金币发放失败';

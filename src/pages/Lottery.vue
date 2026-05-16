@@ -397,13 +397,32 @@ const updateCountdown = () => {
   countdown.value = { h, m, s };
 };
 
+// 使用requestAnimationFrame优化的倒计时循环
+let animationFrameId: number | null = null;
+let lastUpdateTime = 0;
+
+const countdownLoop = (timestamp: number) => {
+  // 每秒更新一次，避免频繁更新
+  if (timestamp - lastUpdateTime >= 1000) {
+    updateCountdown();
+    lastUpdateTime = timestamp;
+  }
+  
+  // 继续循环
+  animationFrameId = requestAnimationFrame(countdownLoop);
+};
+
 // 生命周期钩子
 let poolRefreshInterval: any = null;
 
 onMounted(() => {
   loadData();
   updateCountdown();
-  timerInterval = setInterval(updateCountdown, 1000);
+  
+  // 使用requestAnimationFrame代替setInterval，性能更好且页面不可见时自动暂停
+  lastUpdateTime = performance.now();
+  animationFrameId = requestAnimationFrame(countdownLoop);
+  
   // 每30秒自动刷新奖金池数据
   poolRefreshInterval = setInterval(() => {
     // 只刷新奖金池数据，避免频繁加载所有数据
@@ -412,13 +431,23 @@ onMounted(() => {
       if (response.success && response.data) {
         poolStatus.value = response.data;
       }
+    }).catch(error => {
+      console.error('❌ 奖金池刷新失败:', error);
     });
   }, 30000); // 30秒刷新一次
 });
 
 onUnmounted(() => {
-  if (timerInterval) clearInterval(timerInterval);
-  if (poolRefreshInterval) clearInterval(poolRefreshInterval);
+  // 清理requestAnimationFrame
+  if (animationFrameId !== null) {
+    cancelAnimationFrame(animationFrameId);
+    animationFrameId = null;
+  }
+  // 清理定时器
+  if (poolRefreshInterval) {
+    clearInterval(poolRefreshInterval);
+    poolRefreshInterval = null;
+  }
 });
 
 // 播放中奖语音
