@@ -541,7 +541,7 @@ const loadWithdrawStatus = async () => {
 };
 
 const adConfig = {
-  appId: '2882303761520524004',
+  appId: '2882303761520530114',
   slotIds: [
     '19281661', // 保价1500
     '19281662', // 保价1000
