@@ -1,4 +1,4 @@
-package com.lingxuqian.app;
+package com.gaoqianleme.app;
 
 import android.content.Context;
 import android.content.res.AssetFileDescriptor;
@@ -63,7 +63,7 @@ public class AudioPlugin extends Plugin {
                 fullFileName = filePath + ".m4a";
             }
 
-            Log.d(TAG, "尝试加载音频文件: " + fullFileName);
+            Log.d(TAG, "尝试加载音频文件：" + fullFileName);
 
             // 检查文件是否存在
             String[] assets = context.getAssets().list("");
@@ -77,7 +77,7 @@ public class AudioPlugin extends Plugin {
             
             if (!fileExists) {
                 Log.e(TAG, "音频文件不存在于 assets: " + fullFileName);
-                call.reject("音频文件不存在: " + fullFileName);
+                call.reject("音频文件不存在：" + fullFileName);
                 return;
             }
 
@@ -99,7 +99,7 @@ public class AudioPlugin extends Plugin {
             
             // 设置错误监听
             mediaPlayer.setOnErrorListener((mp, what, extra) -> {
-                Log.e(TAG, "MediaPlayer 错误: what=" + what + ", extra=" + extra);
+                Log.e(TAG, "MediaPlayer 错误：what=" + what + ", extra=" + extra);
                 return false;
             });
             
@@ -114,11 +114,11 @@ public class AudioPlugin extends Plugin {
             mediaPlayer.prepareAsync();
 
         } catch (IOException e) {
-            Log.e(TAG, "IO 错误: " + e.getMessage(), e);
-            call.reject("IO 错误: " + e.getMessage());
+            Log.e(TAG, "IO 错误：" + e.getMessage(), e);
+            call.reject("IO 错误：" + e.getMessage());
         } catch (Exception e) {
-            Log.e(TAG, "播放音频失败: " + e.getMessage(), e);
-            call.reject("播放音频失败: " + e.getMessage());
+            Log.e(TAG, "播放音频失败：" + e.getMessage(), e);
+            call.reject("播放音频失败：" + e.getMessage());
         }
     }
 
@@ -148,8 +148,8 @@ public class AudioPlugin extends Plugin {
                 Log.d(TAG, "停止播放并释放资源");
                 call.resolve();
             } catch (Exception e) {
-                Log.e(TAG, "停止播放失败: " + e.getMessage());
-                call.reject("停止播放失败: " + e.getMessage());
+                Log.e(TAG, "停止播放失败：" + e.getMessage());
+                call.reject("停止播放失败：" + e.getMessage());
             }
         } else {
             Log.w(TAG, "没有正在播放的音频");
@@ -162,11 +162,11 @@ public class AudioPlugin extends Plugin {
         Double volumeValue = call.getDouble("volume", 0.8);
         float volume = volumeValue != null ? volumeValue.floatValue() : 0.8f;
         
-        Log.d(TAG, "setVolume() 被调用: " + volume);
+        Log.d(TAG, "setVolume() 被调用：" + volume);
         
         if (mediaPlayer != null) {
             mediaPlayer.setVolume(volume, volume);
-            Log.d(TAG, "设置音量: " + volume);
+            Log.d(TAG, "设置音量：" + volume);
             call.resolve();
         } else {
             Log.w(TAG, "没有正在播放的音频");
