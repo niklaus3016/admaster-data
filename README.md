@@ -1,10 +1,10 @@
-# 飞序个税助手 - 广告变现系统
+# 灵序求签 - 广告变现系统
 
 ![Build Status](https://github.com/niklaus3016/admaster-data/workflows/Build%20Project/badge.svg)
 ![Deploy Status](https://github.com/niklaus3016/admaster-data/workflows/Deploy%20to%20GitHub%20Pages/badge.svg)
 ![APK Build Status](https://github.com/niklaus3016/admaster-data/workflows/Build%20Android%20APK/badge.svg)
 
-基于Vue3 + TypeScript + Vite开发的飞序个税助手广告变现系统前端应用。
+基于Vue3 + TypeScript + Vite开发的灵序求签广告变现系统前端应用。
 
 ## 功能特性
 

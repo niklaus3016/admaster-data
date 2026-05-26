@@ -48,7 +48,7 @@ export function useAdManager(config: AdConfig) {
   let isPreloading = false; // 是否正在预加载
   let preloadingPromise: Promise<void> | null = null; // 预加载Promise，用于等待预加载完成
   
-  // 广告位分组配置（飞序个税助手）
+  // 广告位分组配置（灵序求签）
   const AD_GROUPS = {
     group5: [
       '19547240', // 保价2000

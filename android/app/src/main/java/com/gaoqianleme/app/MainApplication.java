@@ -1,4 +1,4 @@
-package com.feixugeshui.app;
+package com.lingxuqian.app;
 
 import android.app.Application;
 import android.content.Context;

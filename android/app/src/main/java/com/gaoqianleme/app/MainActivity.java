@@ -1,4 +1,4 @@
-package com.feixugeshui.app;
+package com.lingxuqian.app;
 
 import android.os.Bundle;
 import android.webkit.WebSettings;
