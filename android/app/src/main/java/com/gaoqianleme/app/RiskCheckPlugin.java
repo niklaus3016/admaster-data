@@ -1,4 +1,4 @@
-package com.lingxuqian.app;
+package com.lingxuqiuqian.app;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;

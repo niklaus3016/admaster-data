@@ -1,4 +1,4 @@
-package com.lingxuqian.app;
+package com.lingxuqiuqian.app;
 
 import android.content.Context;
 import android.content.res.AssetFileDescriptor;
