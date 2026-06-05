@@ -1,4 +1,4 @@
-package com.kuaixuewm.app;
+package com.mengxutaluo.app;
 
 import android.os.Bundle;
 import android.webkit.WebSettings;

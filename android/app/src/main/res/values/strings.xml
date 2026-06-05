@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">快序二维码</string>
-    <string name="title_activity_main">快序二维码</string>
-    <string name="package_name">com.kuaixuewm.app</string>
-    <string name="custom_url_scheme">com.kuaixuewm.app</string>
+    <string name="app_name">梦序塔罗</string>
+    <string name="title_activity_main">梦序塔罗</string>
+    <string name="package_name">com.mengxutaluo.app</string>
+    <string name="custom_url_scheme">com.mengxutaluo.app</string>
 </resources>

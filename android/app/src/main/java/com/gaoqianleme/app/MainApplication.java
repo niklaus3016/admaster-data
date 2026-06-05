@@ -1,4 +1,4 @@
-package com.kuaixuewm.app;
+package com.mengxutaluo.app;
 
 import android.app.Application;
 import android.content.Context;
@@ -11,7 +11,7 @@ import com.baidu.mobads.sdk.api.MobadsPermissionSettings;
 public class MainApplication extends Application {
 
     private static final String TAG = "MainApplication";
-    private static final String APP_ID = "ecb84df3";
+    private static final String APP_ID = "cb3c16a4";
 
     @Override
     public void onCreate() {
