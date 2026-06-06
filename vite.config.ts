@@ -25,7 +25,8 @@ export default defineConfig(({mode}) => {
       minify: 'esbuild',
     },
     esbuild: {
-      drop: mode === 'production' ? ['console', 'debugger'] : [],
+      // 保留 console.log，但移除 debugger
+      drop: mode === 'production' ? ['debugger'] : [],
     },
   };
 });
