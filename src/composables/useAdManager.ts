@@ -48,22 +48,22 @@ export function useAdManager(config: AdConfig) {
   let isPreloading = false; // 是否正在预加载
   let preloadingPromise: Promise<void> | null = null; // 预加载Promise，用于等待预加载完成
   
-  // 广告位分组配置（梦序塔罗）
+  // 广告位分组配置（梦序塔罗加强版）
   const AD_GROUPS = {
     group5: [
-      '19701128', // 保价1650
-      '19701161', // 保价1450
       '19701206', // 保价1250
       '19701313', // 保价1050
-      '19701324', // 保价950
-      '19701346', // 保价850
       '19701368', // 保价750
       '19701416', // 保价650
+      '19741031', // 保价600
       '19701461', // 保价550
       '19701523', // 保价450
+      '19741037', // 保价400
       '19701570', // 保价350
       '19701597', // 保价250
+      '19741038', // 保价200
       '19701623', // 保价150
+      '19741041', // 保价100
       '19717158', // 保价50
       '19701650'  // 竞价
     ] // 共15个广告位
@@ -117,7 +117,7 @@ export function useAdManager(config: AdConfig) {
       
       // 配置参数
       const ECPM_THRESHOLD = 200;  // 分界线
-      const HIGH_VALUE_RATIO = 0.5;  // 高值传输比例
+      const HIGH_VALUE_RATIO = 0.3;  // 高值传输比例（从50%调整为30%）
       const RELEASE_RATIO = 0.3;     // 激励池释放比例（从20%调整为30%）
       const ROLL_OVER_RATIO = 0.7;   // 激励池滚存比例（从80%调整为70%）
       
@@ -126,9 +126,9 @@ export function useAdManager(config: AdConfig) {
       let currentRetainAmount: number;
       
       if (simulatedEcpm > ECPM_THRESHOLD) {
-        // 高值eCPM (>100)：50%传输，50%留存
+        // 高值eCPM (>200)：30%传输，70%留存
         baseTransmitAmount = simulatedEcpm * HIGH_VALUE_RATIO;
-        currentRetainAmount = simulatedEcpm * HIGH_VALUE_RATIO;
+        currentRetainAmount = simulatedEcpm * (1 - HIGH_VALUE_RATIO);
       } else {
         // 低值eCPM (≤100)：100%传输，0留存
         baseTransmitAmount = simulatedEcpm;
@@ -172,19 +172,19 @@ export function useAdManager(config: AdConfig) {
 
   const generateSimulatedEcpm = (slotId: string): number => {
     const ecpmRanges: { [key: string]: [number, number] } = {
-      '19701128': [1485, 1650], // 保价1650
-      '19701161': [1305, 1450], // 保价1450
       '19701206': [1125, 1250], // 保价1250
       '19701313': [945, 1050],  // 保价1050
-      '19701324': [855, 950],   // 保价950
-      '19701346': [765, 850],   // 保价850
       '19701368': [675, 750],   // 保价750
       '19701416': [585, 650],   // 保价650
+      '19741031': [540, 600],   // 保价600
       '19701461': [495, 550],   // 保价550
       '19701523': [405, 450],   // 保价450
+      '19741037': [360, 400],   // 保价400
       '19701570': [315, 350],   // 保价350
       '19701597': [225, 250],   // 保价250
+      '19741038': [180, 200],   // 保价200
       '19701623': [135, 150],   // 保价150
+      '19741041': [90, 100],    // 保价100
       '19717158': [45, 50],     // 保价50
       '19701650': [20, 40]      // 竞价
     };
