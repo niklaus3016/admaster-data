@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.mengxutaluo.app',
-  appName: '梦序塔罗',
+  appId: 'com.tangshiquezi.app',
+  appName: '唐诗缺字挑战',
   webDir: 'dist'
 };
 
