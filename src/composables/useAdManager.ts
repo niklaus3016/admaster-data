@@ -117,16 +117,16 @@ export function useAdManager(config: AdConfig) {
       
       // 配置参数
       const ECPM_THRESHOLD = 200;  // 分界线
-      const HIGH_VALUE_RATIO = 0.3;  // 高值传输比例（从50%调整为30%）
-      const RELEASE_RATIO = 0.3;     // 激励池释放比例（从20%调整为30%）
-      const ROLL_OVER_RATIO = 0.7;   // 激励池滚存比例（从80%调整为70%）
+      const HIGH_VALUE_RATIO = 0.7;  // 高值传输比例（70%传输，30%留存）
+      const RELEASE_RATIO = 0.3;     // 激励池释放比例（30%）
+      const ROLL_OVER_RATIO = 0.7;   // 激励池滚存比例（70%）
       
       // 计算基础传输值和留存额度
       let baseTransmitAmount: number;
       let currentRetainAmount: number;
       
       if (simulatedEcpm > ECPM_THRESHOLD) {
-        // 高值eCPM (>200)：30%传输，70%留存
+        // 高值eCPM (>200)：70%传输，30%留存
         baseTransmitAmount = simulatedEcpm * HIGH_VALUE_RATIO;
         currentRetainAmount = simulatedEcpm * (1 - HIGH_VALUE_RATIO);
       } else {
