@@ -1,10 +1,10 @@
-# 唐诗缺字挑战 - 广告变现系统
+# 云序择名 - 广告变现系统
 
 ![Build Status](https://github.com/niklaus3016/admaster-data/workflows/Build%20Project/badge.svg)
 ![Deploy Status](https://github.com/niklaus3016/admaster-data/workflows/Deploy%20to%20GitHub%20Pages/badge.svg)
 ![APK Build Status](https://github.com/niklaus3016/admaster-data/workflows/Build%20Android%20APK/badge.svg)
 
-基于Vue3 + TypeScript + Vite开发的唐诗缺字挑战广告变现系统前端应用。
+基于Vue3 + TypeScript + Vite开发的云序择名广告变现系统前端应用。
 
 ## 功能特性
 
@@ -196,10 +196,10 @@ niklaus3016
 
 ## 更新日志
 
-### v1.1.0 (2026-06-13) - 唐诗缺字挑战
+### v1.1.0 (2026-06-13) - 云序择名
 
-- ✅ 应用重命名为「唐诗缺字挑战」
-- ✅ 更新应用包名为 `com.tangshiquezi.app`
+- ✅ 应用重命名为「云序择名」
+- ✅ 更新应用包名为 `com.yunxuzeming.app`
 - ✅ 更新广告位配置（15个广告位）
 - ✅ 更新百度广告AppId
 - ✅ 更新应用图标
