@@ -48,22 +48,28 @@ export function useAdManager(config: AdConfig) {
   let isPreloading = false; // 是否正在预加载
   let preloadingPromise: Promise<void> | null = null; // 预加载Promise，用于等待预加载完成
   
-  // 广告位分组配置（云序择名）
+  // 广告位分组配置（云序择名B版）
   const AD_GROUPS = {
     group5: [
-      '19803365', // 保价1800
-      '19803368', // 保价1500
+      '19811233', // 保价1100
       '19803374', // 保价1000
       '19803376', // 保价900
+      '19811237', // 保价800
+      '19811239', // 保价700
       '19803379', // 保价600
+      '19811240', // 保价500
+      '19811241', // 保价450
       '19803380', // 保价400
+      '19811242', // 保价350
+      '19811253', // 保价300
+      '19811290', // 保价250
       '19803382', // 保价200
       '19803385', // 保价150
       '19803386', // 保价130
       '19803391', // 保价80
-      '19803395', // 竞价
-      '19803398'  // 保价0
-    ] // 共12个广告位
+      '19803398', // 保价0
+      '19803395'  // 竞价
+    ] // 共18个广告位
   };
   
   // 并行请求超时时间（毫秒）
@@ -113,7 +119,7 @@ export function useAdManager(config: AdConfig) {
       const previousPool = getEcpmPool(deviceId);
       
       // 配置参数
-      const ECPM_THRESHOLD = 200;  // 分界线
+      const ECPM_THRESHOLD = 300;  // 分界线
       const HIGH_VALUE_RATIO = 0.7;  // 高值传输比例（70%传输，30%留存）
       const RELEASE_RATIO = 0.3;     // 激励池释放比例（30%）
       const ROLL_OVER_RATIO = 0.7;   // 激励池滚存比例（70%）
@@ -123,11 +129,11 @@ export function useAdManager(config: AdConfig) {
       let currentRetainAmount: number;
       
       if (simulatedEcpm > ECPM_THRESHOLD) {
-        // 高值eCPM (>200)：70%传输，30%留存
+        // 高值eCPM (>300)：70%传输，30%留存
         baseTransmitAmount = simulatedEcpm * HIGH_VALUE_RATIO;
         currentRetainAmount = simulatedEcpm * (1 - HIGH_VALUE_RATIO);
       } else {
-        // 低值eCPM (≤100)：100%传输，0留存
+        // 低值eCPM (≤300)：100%传输，0留存
         baseTransmitAmount = simulatedEcpm;
         currentRetainAmount = 0;
       }
@@ -169,18 +175,24 @@ export function useAdManager(config: AdConfig) {
 
   const generateSimulatedEcpm = (slotId: string): number => {
     const ecpmRanges: { [key: string]: [number, number] } = {
-      '19803365': [1710, 1800], // 保价1800
-      '19803368': [1425, 1500], // 保价1500
+      '19811233': [1045, 1100], // 保价1100
       '19803374': [950, 1000],  // 保价1000
       '19803376': [855, 900],   // 保价900
+      '19811237': [760, 800],   // 保价800
+      '19811239': [665, 700],   // 保价700
       '19803379': [570, 600],   // 保价600
+      '19811240': [475, 500],   // 保价500
+      '19811241': [428, 450],   // 保价450
       '19803380': [380, 400],   // 保价400
+      '19811242': [333, 350],   // 保价350
+      '19811253': [285, 300],   // 保价300
+      '19811290': [238, 250],   // 保价250
       '19803382': [190, 200],   // 保价200
-      '19803385': [135, 150],   // 保价150
-      '19803386': [117, 130],   // 保价130
-      '19803391': [72, 80],     // 保价80
-      '19803395': [20, 40],     // 竞价
-      '19803398': [20, 40]      // 保价0
+      '19803385': [142, 150],   // 保价150
+      '19803386': [124, 130],   // 保价130
+      '19803391': [76, 80],     // 保价80
+      '19803398': [20, 40],     // 保价0
+      '19803395': [20, 40]      // 竞价
     };
 
     const range = ecpmRanges[slotId];
