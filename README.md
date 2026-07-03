@@ -1,10 +1,10 @@
-# 茗序茶经 - 广告变现系统
+# 速行清单 - 广告变现系统
 
 ![Build Status](https://github.com/niklaus3016/admaster-data/workflows/Build%20Project/badge.svg)
 ![Deploy Status](https://github.com/niklaus3016/admaster-data/workflows/Deploy%20to%20GitHub%20Pages/badge.svg)
 ![APK Build Status](https://github.com/niklaus3016/admaster-data/workflows/Build%20Android%20APK/badge.svg)
 
-基于Vue3 + TypeScript + Vite开发的茗序茶经广告变现系统前端应用。
+基于Vue3 + TypeScript + Vite开发的速行清单广告变现系统前端应用。
 
 ## 功能特性
 
@@ -196,10 +196,10 @@ niklaus3016
 
 ## 更新日志
 
-### v1.1.0 (2026-06-13) - 茗序茶经
+### v1.1.0 (2026-06-13) - 速行清单
 
-- ✅ 应用重命名为「茗序茶经」
-- ✅ 更新应用包名为 `com.mingxuchajing.app`
+- ✅ 应用重命名为「速行清单」
+- ✅ 更新应用包名为 `com.suxingqingdan.app`
 - ✅ 更新广告位配置（15个广告位）
 - ✅ 更新百度广告AppId
 - ✅ 更新应用图标

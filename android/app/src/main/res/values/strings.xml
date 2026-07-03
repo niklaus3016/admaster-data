@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">茗序茶经</string>
-    <string name="title_activity_main">茗序茶经</string>
-    <string name="package_name">com.mingxuchajing.app</string>
-    <string name="custom_url_scheme">com.mingxuchajing.app</string>
+    <string name="app_name">速行清单</string>
+    <string name="title_activity_main">速行清单</string>
+    <string name="package_name">com.suxingqingdan.app</string>
+    <string name="custom_url_scheme">com.suxingqingdan.app</string>
 </resources>
