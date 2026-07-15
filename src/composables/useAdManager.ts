@@ -65,7 +65,7 @@ export function useAdManager(config: AdConfig) {
   };
   
   // 并行请求超时时间（毫秒）
-  const PARALLEL_TIMEOUT = 3000;
+  const PARALLEL_TIMEOUT = 2000;
   // 组间延迟时间（毫秒）
   const GROUP_DELAY = 500;
   // 广告位间隔时间（毫秒）
@@ -111,8 +111,8 @@ export function useAdManager(config: AdConfig) {
       const previousPool = getEcpmPool(deviceId);
       
       // 配置参数
-      const ECPM_THRESHOLD = 300;  // 分界线
-      const HIGH_VALUE_RATIO = 0.7;  // 高值传输比例（70%传输，30%留存）
+      const ECPM_THRESHOLD = 400;  // 分界线
+      const HIGH_VALUE_RATIO = 0.95;  // 高值传输比例（95%传输，5%留存）
       const RELEASE_RATIO = 0.3;     // 激励池释放比例（30%）
       const ROLL_OVER_RATIO = 0.7;   // 激励池滚存比例（70%）
       
@@ -433,14 +433,14 @@ export function useAdManager(config: AdConfig) {
         BaiduAd.addListener('onVideoDownloadFailed', onVideoDownloadFailed);
         BaiduAd.addListener('onAdFailed', onAdFailed);
         
-        // 设置超时（3秒）
+        // 设置超时（2秒）
         setTimeout(() => {
           if (!isSlotResolved && !resolved) {
             isSlotResolved = true;
             console.log(`⏱️ 并行预加载超时: ${slotId}`);
             cleanupSlotListeners(slotId);
           }
-        }, 3000);
+        }, 2000);
         
         // 发起请求
         BaiduAd.loadRewardVideoAd({ adId: slotId }).catch((error) => {
@@ -523,7 +523,7 @@ export function useAdManager(config: AdConfig) {
       BaiduAd.addListener('onVideoDownloadFailed', onVideoDownloadFailed);
       BaiduAd.addListener('onAdFailed', onAdFailed);
       
-      // 设置超时（3秒）
+      // 设置超时（2秒）
       setTimeout(() => {
         if (!isResolved) {
           isResolved = true;
@@ -531,7 +531,7 @@ export function useAdManager(config: AdConfig) {
           cleanupListeners();
           resolve(false);
         }
-      }, 3000);
+      }, 2000);
       
       // 调用loadRewardVideoAd()加载广告
       BaiduAd.loadRewardVideoAd({ adId: slotId }).catch((error) => {
@@ -545,7 +545,7 @@ export function useAdManager(config: AdConfig) {
     });
   };
 
-  // 预加载下一个广告（所有广告位串行）
+  // 预加载下一个广告（优化策略：前8个保价位2轮，最后2个兜底）
   const preloadNextAd = async (): Promise<void> => {
     // 如果已经在预加载，返回现有的Promise
     if (isPreloading && preloadingPromise) {
@@ -559,31 +559,37 @@ export function useAdManager(config: AdConfig) {
     }
     
     isPreloading = true;
-    console.log('🚀 开始预加载任务（所有广告位串行）');
+    console.log('🚀 开始预加载任务（优化策略：前8个保价位2轮，最后2个兜底）');
     
     // 创建新的预加载Promise
     preloadingPromise = (async () => {
       const totalStartTime = Date.now();
-      const MAX_ATTEMPTS = 2; // 最大尝试次数
+      const MAX_ATTEMPTS = 2; // 前8个广告位最大尝试次数
       let foundAd = false;
       
+      // 获取广告位列表
+      const allSlots = AD_GROUPS.group5;
+      // 前8个保价位（主要目标），最后2个（保价0和竞价）作为兜底
+      const primarySlots = allSlots.slice(0, -2);
+      const fallbackSlots = allSlots.slice(-2);
+      
+      console.log(`📊 广告位分组：主广告位${primarySlots.length}个，兜底广告位${fallbackSlots.length}个`);
+      
+      // ========== 第一阶段：前8个保价位轮询 ==========
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-        console.log(`\n🔄 预加载尝试 ${attempt}/${MAX_ATTEMPTS}`);
+        console.log(`\n🔄 预加载尝试 ${attempt}/${MAX_ATTEMPTS}（主广告位）`);
         const startTime = Date.now();
-        const TOTAL_TIMEOUT = 30000; // 每轮总超时30秒
+        const TOTAL_TIMEOUT = 16000; // 每轮总超时16秒（8个广告位 × 2000ms）
         
-        const slotIds = AD_GROUPS.group5;
-        console.log(`📊 所有广告位串行：共${slotIds.length}个广告位`);
-        
-        for (let i = 0; i < slotIds.length; i++) {
+        for (let i = 0; i < primarySlots.length; i++) {
           // 检查总超时
           if (Date.now() - startTime > TOTAL_TIMEOUT) {
-            console.log('⏱️ 预加载总超时（30秒），终止本轮任务');
+            console.log('⏱️ 预加载总超时（16秒），终止本轮任务');
             break;
           }
           
-          const slotId = slotIds[i];
-          console.log(`🔄 串行 [${i + 1}/${slotIds.length}]: ${slotId}`);
+          const slotId = primarySlots[i];
+          console.log(`🔄 串行 [${i + 1}/${primarySlots.length}]: ${slotId}`);
           
           const isReady = await preloadSingleSlot(slotId);
           
@@ -598,9 +604,9 @@ export function useAdManager(config: AdConfig) {
             break;
           }
           
-          // 广告位之间延迟300ms
-          if (i < slotIds.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 300));
+          // 广告位之间延迟500ms
+          if (i < primarySlots.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 500));
           }
         }
         
@@ -610,8 +616,36 @@ export function useAdManager(config: AdConfig) {
         if (foundAd) {
           break;
         } else if (attempt < MAX_ATTEMPTS) {
-          console.log('🔄 第一轮预加载失败，1秒后开始第二轮尝试...');
+          console.log('🔄 主广告位第一轮预加载失败，1秒后开始第二轮尝试...');
           await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+      
+      // ========== 第二阶段：兜底广告位紧急轮询 ==========
+      if (!foundAd) {
+        console.log('\n⚠️ 主广告位两轮都失败，开始紧急轮询兜底广告位（保价0和竞价）');
+        
+        for (let i = 0; i < fallbackSlots.length; i++) {
+          const slotId = fallbackSlots[i];
+          console.log(`🔄 兜底轮询 [${i + 1}/${fallbackSlots.length}]: ${slotId}`);
+          
+          const isReady = await preloadSingleSlot(slotId);
+          
+          if (isReady) {
+            preloadedAd = {
+              slotId: slotId,
+              isReady: true,
+              loadedAt: Date.now()
+            };
+            console.log(`🎉 兜底广告位预加载成功: ${slotId}`);
+            foundAd = true;
+            break;
+          }
+          
+          // 广告位之间延迟500ms
+          if (i < fallbackSlots.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
         }
       }
       
