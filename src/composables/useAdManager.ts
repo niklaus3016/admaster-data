@@ -50,26 +50,27 @@ export function useAdManager(config: AdConfig) {
   
   // 广告位分组配置（月序星座）
   const AD_GROUPS = {
-    group5: [
+    group1: [
+      '19361382', // 保价1500
       '19361408', // 保价1000
+      '19361425'  // 保价900
+    ],
+    group2: [
       '19361441', // 保价600
       '19361453', // 保价400
-      '19950604', // 保价300
-      '19950607', // 保价250
+      '19950604'  // 保价300
+    ],
+    group3: [
       '19361461', // 保价200
-      '19950616', // 保价180
       '19361483', // 保价150
-      '19361488', // 保价130
-      '19950621', // 保价120
-      '19950635', // 保价110
-      '19950645', // 保价100
+      '19361488'  // 保价130
+    ],
+    group4: [
       '19361502', // 保价80
-      '19950682', // 保价70
-      '19950693', // 保价60
-      '19950657', // 竞价
+      '19361510', // 竞价
       '19361517'  // 保价0
-    ] // 共17个广告位
-  };
+    ]
+  }; // 共12个广告位
   
   // 并行请求超时时间（毫秒）
   const PARALLEL_TIMEOUT = 2000;
@@ -118,8 +119,8 @@ export function useAdManager(config: AdConfig) {
       const previousPool = getEcpmPool(deviceId);
       
       // 配置参数
-      const ECPM_THRESHOLD = 400;  // 分界线
-      const HIGH_VALUE_RATIO = 0.95;  // 高值传输比例（95%传输，5%留存）
+      const ECPM_THRESHOLD = 700;  // 分界线
+      const HIGH_VALUE_RATIO = 0.7;   // 高值传输比例（70%传输，30%留存）
       const RELEASE_RATIO = 0.3;     // 激励池释放比例（30%）
       const ROLL_OVER_RATIO = 0.7;   // 激励池滚存比例（70%）
       
@@ -128,11 +129,11 @@ export function useAdManager(config: AdConfig) {
       let currentRetainAmount: number;
       
       if (simulatedEcpm > ECPM_THRESHOLD) {
-        // 高值eCPM (>300)：70%传输，30%留存
+        // 高值eCPM (>700)：70%传输，30%留存
         baseTransmitAmount = simulatedEcpm * HIGH_VALUE_RATIO;
         currentRetainAmount = simulatedEcpm * (1 - HIGH_VALUE_RATIO);
       } else {
-        // 低值eCPM (≤300)：100%传输，0留存
+        // 低值eCPM (≤700)：100%传输，0留存
         baseTransmitAmount = simulatedEcpm;
         currentRetainAmount = 0;
       }
@@ -174,23 +175,22 @@ export function useAdManager(config: AdConfig) {
 
   const generateSimulatedEcpm = (slotId: string): number => {
     const ecpmRanges: { [key: string]: [number, number] } = {
-      '19361408': [950, 1000],   // 保价1000
-      '19361441': [570, 600],    // 保价600
-      '19361453': [380, 400],    // 保价400
-      '19950604': [285, 300],    // 保价300
-      '19950607': [238, 250],    // 保价250
-      '19361461': [190, 200],    // 保价200
-      '19950616': [171, 180],    // 保价180
+      // group1 - 保价1500, 1000, 900
+      '19361382': [1350, 1500],  // 保价1500
+      '19361408': [900, 1000],   // 保价1000
+      '19361425': [810, 900],    // 保价900
+      // group2 - 保价600, 400, 300
+      '19361441': [540, 600],    // 保价600
+      '19361453': [360, 400],    // 保价400
+      '19950604': [270, 300],    // 保价300
+      // group3 - 保价200, 150, 130
+      '19361461': [180, 200],    // 保价200
       '19361483': [135, 150],    // 保价150
       '19361488': [117, 130],    // 保价130
-      '19950621': [108, 120],    // 保价120
-      '19950635': [99, 110],     // 保价110
-      '19950645': [90, 100],     // 保价100
+      // group4 - 保价80, 竞价, 保价0
       '19361502': [72, 80],      // 保价80
-      '19950682': [63, 70],      // 保价70
-      '19950693': [54, 60],      // 保价60
-      '19950657': [25, 30],      // 竞价
-      '19361517': [20, 40]       // 保价0
+      '19361510': [20, 30],      // 竞价
+      '19361517': [20, 30]       // 保价0
     };
 
     const range = ecpmRanges[slotId];
@@ -199,7 +199,7 @@ export function useAdManager(config: AdConfig) {
   };
 
   const isBiddingSlot = (slotId: string): boolean => {
-    const biddingSlots = ['19950657'];
+    const biddingSlots = ['19361510'];
     return biddingSlots.includes(slotId);
   };
 
@@ -581,7 +581,7 @@ export function useAdManager(config: AdConfig) {
       let foundAd = false;
       
       // 获取所有广告位列表
-      const allSlots = AD_GROUPS.group5;
+      const allSlots = Object.values(AD_GROUPS).flat();
       console.log(`📊 广告位总数：${allSlots.length}个`);
       
       // ========== 一轮轮询所有广告位 ==========
@@ -1102,7 +1102,7 @@ export function useAdManager(config: AdConfig) {
       } else {
         console.log('❌ 预加载失败，直接请求所有广告位');
         // 预加载失败，直接请求所有广告位串行
-        const allSlots = AD_GROUPS.group5;
+        const allSlots = Object.values(AD_GROUPS).flat();
         console.log('🔄 直接请求所有广告位:', allSlots);
         
         for (let i = 0; i < allSlots.length; i++) {
@@ -1407,7 +1407,7 @@ export function useAdManager(config: AdConfig) {
     // }
     
     // 全部串行请求
-    let result = await trySerialAdGroup(AD_GROUPS.group5, GROUP5_SLOT_DELAY);
+    let result = await trySerialAdGroup(Object.values(AD_GROUPS).flat(), GROUP5_SLOT_DELAY);
     if (result && checkSession()) {
       isAdLoading.value = false;
       isAdReady.value = false;
