@@ -69,8 +69,11 @@ export function useAdManager(config: AdConfig) {
       '19361502', // 保价80
       '20081479', // 保价40
       '20091902'  // 保价0
+    ],
+    group5: [
+      '20093207'  // 竞价
     ]
-  }; // 共12个广告位
+  }; // 共13个广告位
   
   // 并行请求超时时间（毫秒）
   const PARALLEL_TIMEOUT = 2000;
@@ -190,7 +193,9 @@ export function useAdManager(config: AdConfig) {
       // group4 - 保价80, 40, 0
       '19361502': [72, 80],      // 保价80
       '20081479': [36, 40],      // 保价40
-      '20091902': [20, 25]       // 保价0
+      '20091902': [20, 25],       // 保价0
+      // group5 - 竞价
+      '20093207': [20, 25]        // 竞价
     };
 
     const range = ecpmRanges[slotId];
@@ -199,7 +204,7 @@ export function useAdManager(config: AdConfig) {
   };
 
   const isBiddingSlot = (slotId: string): boolean => {
-    const biddingSlots: string[] = [];
+    const biddingSlots = ['20093207'];
     return biddingSlots.includes(slotId);
   };
 

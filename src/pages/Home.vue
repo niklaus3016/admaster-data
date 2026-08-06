@@ -558,8 +558,10 @@ const adConfig = {
     // group4 - 保价80, 40, 0
     '19361502', // 保价80
     '20081479', // 保价40
-    '20091902'  // 保价0
-  ], // 按优先级从高到低排列（共12个）
+    '20091902', // 保价0
+    // group5 - 竞价
+    '20093207'  // 竞价
+  ], // 按优先级从高到低排列（共13个）
 };
 
 const { showRewardVideo, triggerPreloadAfterDelay } = useAdManager(adConfig);
