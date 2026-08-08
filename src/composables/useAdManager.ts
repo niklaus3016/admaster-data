@@ -48,10 +48,10 @@ export function useAdManager(config: AdConfig) {
   let isPreloading = false; // 是否正在预加载
   let preloadingPromise: Promise<void> | null = null; // 预加载Promise，用于等待预加载完成
   
-  // 广告位分组配置（潮序圣杯 B版）
+  // 广告位分组配置（潮序圣杯 C版）
   const AD_GROUPS = {
     group1: [
-      '20094393', // 保价1000
+      '20094393', // 保价700
       '20094437', // 保价600
       '20098708'  // 保价500
     ],
@@ -67,10 +67,13 @@ export function useAdManager(config: AdConfig) {
     ],
     group4: [
       '20098699', // 保价50
-      '20094771', // 保价0
+      '20094552', // 保价30
+      '20094771'  // 保价0
+    ],
+    group5: [
       '20098700'  // 竞价
     ]
-  }; // 共12个广告位
+  }; // 共13个广告位
   
   // 并行请求超时时间（毫秒）
   const PARALLEL_TIMEOUT = 2000;
@@ -175,8 +178,8 @@ export function useAdManager(config: AdConfig) {
 
   const generateSimulatedEcpm = (slotId: string): number => {
     const ecpmRanges: { [key: string]: [number, number] } = {
-      // group1 - 保价1000, 600, 500
-      '20094393': [900, 1000],   // 保价1000
+      // group1 - 保价700, 600, 500
+      '20094393': [630, 700],    // 保价700
       '20094437': [540, 600],    // 保价600
       '20098708': [450, 500],    // 保价500
       // group2 - 保价400, 300, 250
@@ -187,9 +190,11 @@ export function useAdManager(config: AdConfig) {
       '20098691': [162, 180],    // 保价180
       '20098697': [108, 120],    // 保价120
       '20098698': [63, 70],      // 保价70
-      // group4 - 保价50, 0, 竞价
+      // group4 - 保价50, 30, 0
       '20098699': [45, 50],      // 保价50
+      '20094552': [25, 30],      // 保价30
       '20094771': [20, 25],      // 保价0
+      // group5 - 竞价
       '20098700': [20, 25]       // 竞价
     };
 
