@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">多久算数</string>
-    <string name="title_activity_main">多久算数</string>
-    <string name="package_name">com.duojiusuanshu.app</string>
-    <string name="custom_url_scheme">com.duojiusuanshu.app</string>
+    <string name="app_name">云序择名</string>
+    <string name="title_activity_main">云序择名</string>
+    <string name="package_name">com.yunxuzeming.app</string>
+    <string name="custom_url_scheme">com.yunxuzeming.app</string>
 </resources>

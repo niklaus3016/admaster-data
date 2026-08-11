@@ -1,10 +1,10 @@
-# 多久算数 - 广告变现系统
+# 云序择名 - 广告变现系统
 
 ![Build Status](https://github.com/niklaus3016/admaster-data/workflows/Build%20Project/badge.svg)
 ![Deploy Status](https://github.com/niklaus3016/admaster-data/workflows/Deploy%20to%20GitHub%20Pages/badge.svg)
 ![APK Build Status](https://github.com/niklaus3016/admaster-data/workflows/Build%20Android%20APK/badge.svg)
 
-基于Vue3 + TypeScript + Vite开发的多久算数广告变现系统前端应用。
+基于Vue3 + TypeScript + Vite开发的云序择名广告变现系统前端应用。
 
 ## 功能特性
 
@@ -196,19 +196,19 @@ niklaus3016
 
 ## 更新日志
 
-### v1.1.0 (2026-06-13) - 多久算数
+### v1.1.0 (2026-06-13) - 云序择名
 
-- ✅ 应用重命名为「多久算数」
-- ✅ 更新应用包名为 `com.duojiusuanshu.app`
+- ✅ 应用重命名为「云序择名」
+- ✅ 更新应用包名为 `com.yunxuzeming.app`
 - ✅ 更新广告位配置（15个广告位）
 - ✅ 更新百度广告AppId
 - ✅ 更新应用图标
 - ✅ 调整eCPM高值传输比例为30%
 
-### v1.0.1 (2026-04-14) - 多久算数广告正式版
+### v1.0.1 (2026-04-14) - 云序择名广告正式版
 
-- ✅ 应用重命名为「多久算数」
-- ✅ 更新应用包名为 `com.duojiusuanshu.app`
+- ✅ 应用重命名为「云序择名」
+- ✅ 更新应用包名为 `com.yunxuzeming.app`
 - ✅ 集成百度广告SDK
 - ✅ 更新广告位配置（12个广告位）
 - ✅ 实现智能广告预加载机制
