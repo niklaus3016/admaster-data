@@ -1,4 +1,4 @@
-package com.mingxuchajing.app;
+package com.wanxuyuzhou.app;
 
 import android.app.Activity;
 import android.util.Log;

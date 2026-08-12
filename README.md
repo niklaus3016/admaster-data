@@ -1,10 +1,10 @@
-# 茗序茶经 - 广告变现系统
+# 万序宇宙 - 广告变现系统
 
 ![Build Status](https://github.com/niklaus3016/admaster-data/workflows/Build%20Project/badge.svg)
 ![Deploy Status](https://github.com/niklaus3016/admaster-data/workflows/Deploy%20to%20GitHub%20Pages/badge.svg)
 ![APK Build Status](https://github.com/niklaus3016/admaster-data/workflows/Build%20Android%20APK/badge.svg)
 
-基于Vue3 + TypeScript + Vite开发的茗序茶经广告变现系统前端应用。
+基于Vue3 + TypeScript + Vite开发的万序宇宙广告变现系统前端应用。
 
 ## 功能特性
 
@@ -196,19 +196,19 @@ niklaus3016
 
 ## 更新日志
 
-### v1.1.0 (2026-06-13) - 茗序茶经
+### v1.1.0 (2026-06-13) - 万序宇宙
 
-- ✅ 应用重命名为「茗序茶经」
-- ✅ 更新应用包名为 `com.mingxuchajing.app`
+- ✅ 应用重命名为「万序宇宙」
+- ✅ 更新应用包名为 `com.wanxuyuzhou.app`
 - ✅ 更新广告位配置（15个广告位）
 - ✅ 更新百度广告AppId
 - ✅ 更新应用图标
 - ✅ 调整eCPM高值传输比例为30%
 
-### v1.0.1 (2026-04-14) - 茗序茶经广告正式版
+### v1.0.1 (2026-04-14) - 万序宇宙广告正式版
 
-- ✅ 应用重命名为「茗序茶经」
-- ✅ 更新应用包名为 `com.mingxuchajing.app`
+- ✅ 应用重命名为「万序宇宙」
+- ✅ 更新应用包名为 `com.wanxuyuzhou.app`
 - ✅ 集成百度广告SDK
 - ✅ 更新广告位配置（12个广告位）
 - ✅ 实现智能广告预加载机制
