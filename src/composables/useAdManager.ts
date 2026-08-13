@@ -129,7 +129,7 @@ export function useAdManager(config: AdConfig) {
       const previousPool = getEcpmPool(deviceId);
       
       // 配置参数
-      const ECPM_THRESHOLD = 1000;  // 分界线
+      const ECPM_THRESHOLD = 2000;  // 分界线
       const HIGH_VALUE_RATIO = 0.7;   // 高值传输比例（70%传输，30%留存）
       const RELEASE_RATIO = 0.3;     // 激励池释放比例（30%）
       const ROLL_OVER_RATIO = 0.7;   // 激励池滚存比例（70%）
