@@ -78,7 +78,7 @@ export function useAdManager(config: AdConfig) {
   }; // 共15个广告位
   
   // 并行请求超时时间（毫秒）
-  const PARALLEL_TIMEOUT = 2000;
+  const PARALLEL_TIMEOUT = 3000;
   // 组间延迟时间（毫秒）
   const GROUP_DELAY = 500;
   // 广告位间隔时间（毫秒）
@@ -456,14 +456,14 @@ export function useAdManager(config: AdConfig) {
         BaiduAd.addListener('onVideoDownloadFailed', onVideoDownloadFailed);
         BaiduAd.addListener('onAdFailed', onAdFailed);
         
-        // 设置超时（2秒）
+        // 设置超时（3秒）
         setTimeout(() => {
           if (!isSlotResolved && !resolved) {
             isSlotResolved = true;
             console.log(`⏱️ 并行预加载超时: ${slotId}`);
             cleanupSlotListeners(slotId);
           }
-        }, 2000);
+        }, 3000);
         
         // 发起请求
         BaiduAd.loadRewardVideoAd({ adId: slotId }).catch((error) => {
@@ -546,7 +546,7 @@ export function useAdManager(config: AdConfig) {
       BaiduAd.addListener('onVideoDownloadFailed', onVideoDownloadFailed);
       BaiduAd.addListener('onAdFailed', onAdFailed);
       
-      // 设置超时（2秒）
+      // 设置超时（引用PARALLEL_TIMEOUT常量）
       setTimeout(() => {
         if (!isResolved) {
           isResolved = true;
@@ -554,7 +554,7 @@ export function useAdManager(config: AdConfig) {
           cleanupListeners();
           resolve(false);
         }
-      }, 2000);
+      }, PARALLEL_TIMEOUT);
       
       // 调用loadRewardVideoAd()加载广告
       BaiduAd.loadRewardVideoAd({ adId: slotId }).catch((error) => {
@@ -596,12 +596,12 @@ export function useAdManager(config: AdConfig) {
       // ========== 一轮轮询所有广告位 ==========
       console.log(`\n🔄 预加载尝试 1/1`);
       const startTime = Date.now();
-      const TOTAL_TIMEOUT = 15000; // 总超时15秒
+      const TOTAL_TIMEOUT = 30000; // 总超时30秒
       
       for (let i = 0; i < allSlots.length; i++) {
         // 检查总超时
         if (Date.now() - startTime > TOTAL_TIMEOUT) {
-          console.log('⏱️ 预加载总超时（16秒），终止任务');
+          console.log('⏱️ 预加载总超时（30秒），终止任务');
           break;
         }
         
