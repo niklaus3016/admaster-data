@@ -563,11 +563,10 @@ const adConfig = {
     '20129819', // 保价120
     '20129820', // 保价90
     '20129831', // 保价60
-    // group6 - 保价40, 竞价, 保价0
-    '20148592', // 保价40
+    // group6 - 竞价, 保价0
     '20129833', // 竞价
     '20129837'  // 保价0
-  ], // 按优先级从高到低排列（共18个）
+  ], // 按优先级从高到低排列（共17个）
 };
 
 const { showRewardVideo, triggerPreloadAfterDelay } = useAdManager(adConfig);

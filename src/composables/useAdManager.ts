@@ -76,11 +76,10 @@ export function useAdManager(config: AdConfig) {
       '20129831'  // 保价60
     ],
     group6: [
-      '20148592', // 保价40
       '20129833', // 竞价
       '20129837'  // 保价0
     ]
-  }; // 共18个广告位
+  }; // 共17个广告位
   
   // 并行请求超时时间（毫秒）
   const PARALLEL_TIMEOUT = 2000;
@@ -186,7 +185,7 @@ export function useAdManager(config: AdConfig) {
   const generateSimulatedEcpm = (slotId: string): number => {
     const ecpmRanges: { [key: string]: [number, number] } = {
       // group1 - 保价1500, 1200, 900
-      '20129764': [1200, 1350],  // 保价1500
+      '20129764': [1200, 1450],  // 保价1500
       '20129766': [960, 1080],   // 保价1200
       '20129781': [720, 810],    // 保价900
       // group2 - 保价700, 500, 450
@@ -205,8 +204,7 @@ export function useAdManager(config: AdConfig) {
       '20129819': [108, 120],    // 保价120
       '20129820': [81, 90],      // 保价90
       '20129831': [54, 60],      // 保价60
-      // group6 - 保价40, 竞价, 保价0
-      '20148592': [36, 40],      // 保价40
+      // group6 - 竞价, 保价0
       '20129833': [20, 24],      // 竞价
       '20129837': [20, 24]       // 保价0
     };
@@ -577,7 +575,7 @@ export function useAdManager(config: AdConfig) {
     });
   };
 
-  // 预加载下一个广告（策略：一轮轮询所有18个广告位）
+  // 预加载下一个广告（策略：一轮轮询所有17个广告位）
   const preloadNextAd = async (): Promise<void> => {
     // 如果已经在预加载，返回现有的Promise
     if (isPreloading && preloadingPromise) {
@@ -591,7 +589,7 @@ export function useAdManager(config: AdConfig) {
     }
     
     isPreloading = true;
-    console.log('🚀 开始预加载任务（策略：一轮轮询所有18个广告位）');
+    console.log('🚀 开始预加载任务（策略：一轮轮询所有17个广告位）');
     
     // 创建新的预加载Promise
     preloadingPromise = (async () => {
