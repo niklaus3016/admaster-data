@@ -78,7 +78,7 @@ export function useAdManager(config: AdConfig) {
   }; // 共15个广告位
   
   // 并行请求超时时间（毫秒）
-  const PARALLEL_TIMEOUT = 3000;
+  const PARALLEL_TIMEOUT = 2000;
   // 组间延迟时间（毫秒）
   const GROUP_DELAY = 500;
   // 广告位间隔时间（毫秒）
@@ -621,10 +621,7 @@ export function useAdManager(config: AdConfig) {
           break;
         }
         
-        // 广告位之间延迟（引用常量 GROUP5_SLOT_DELAY）
-        if (i < allSlots.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, GROUP5_SLOT_DELAY));
-        }
+        // 失败立即询问下一个广告位（不等间隔）
       }
       
       isPreloading = false;
@@ -1109,10 +1106,12 @@ export function useAdManager(config: AdConfig) {
           return;
         }
       } else {
-        console.log('❌ 预加载失败，直接请求所有广告位');
+        console.log('❌ 预加载失败，等待2秒后开始第二轮紧急加载...');
+        // 第一轮全失败，等待2秒给SDK喘息，再进行第二轮
+        await new Promise(resolve => setTimeout(resolve, 2000));
         // 预加载失败，直接请求所有广告位串行
         const allSlots = Object.values(AD_GROUPS).flat();
-        console.log('🔄 直接请求所有广告位:', allSlots);
+        console.log('🔄 开始第二轮紧急加载，请求所有广告位:', allSlots);
         
         for (let i = 0; i < allSlots.length; i++) {
           const slotId = allSlots[i];
@@ -1143,10 +1142,7 @@ export function useAdManager(config: AdConfig) {
               }
           }
           
-          // 广告位之间延迟300ms
-          if (i < allSlots.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 300));
-          }
+          // 失败立即询问下一个广告位（不等间隔）
         }
         
         console.log('❌ 所有广告位都加载失败');
@@ -1335,7 +1331,7 @@ export function useAdManager(config: AdConfig) {
         });
       
       // 单层超时
-      const SLOT_TIMEOUT = 3000;
+      const SLOT_TIMEOUT = 2000;
       slotTimeoutId = setTimeout(() => {
         if (!checkSession() || currentAdSuccess || isResolved) return;
         
