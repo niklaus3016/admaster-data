@@ -1,4 +1,4 @@
-package com.tangshiquezi.app;
+package com.suxingqingdan.app;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
