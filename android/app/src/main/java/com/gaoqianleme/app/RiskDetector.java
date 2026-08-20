@@ -1,4 +1,4 @@
-package com.zhiliaochengshi.app;
+package com.zhixubiji.app;
 
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
