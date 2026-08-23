@@ -2327,3 +2327,118 @@ export async function getLotteryHistory(page: number = 1, limit: number = 20): P
     };
   }
 }
+
+// ============ 保底福袋接口 ============
+
+export type GuaranteeStatus = 'NOT_QUALIFIED' | 'ELIGIBLE_TO_CLAIM' | 'NO_GAP_FOUND' | 'CLAIMED';
+
+export interface StageGuarantee {
+  stage: 1 | 2;
+  thresholdViews: number;
+  thresholdGold: number;
+  status: GuaranteeStatus;
+  gapGold: number;
+  progress: number;
+  claimedRecord: { gapGold: number; claimedAt: string } | null;
+}
+
+export interface DailyGuaranteeStatus {
+  date: string;
+  todayViews: number;
+  todayGoldReal: number;
+  weeklyVirtualGold: number;
+  stages: StageGuarantee[];
+  weekly: {
+    week: string;
+    targetCount: number;
+    currentCount: number;
+    bonusGold: number;
+    isQualified: boolean;
+    isClaimed: boolean;
+    virtualAddGold: number;
+  };
+  // 兼容字段（取 stage=2 的值）
+  thresholdViews?: number;
+  thresholdGold?: number;
+  todayViewsProgress?: number;
+  totalGoldForGuarantee?: number;
+  gapGold?: number;
+  status?: GuaranteeStatus;
+  claimedRecord?: { gapGold: number; claimedAt: string } | null;
+}
+
+/**
+ * 查询今日保底礼包状态
+ * @param param { userId?: string; employeeId?: string }
+ * @returns 保底礼包状态
+ */
+export async function getDailyGuaranteeStatus(param: { userId?: string; employeeId?: string }): Promise<any> {
+  try {
+    const token = localStorage.getItem('token');
+    const queryParam = param.employeeId ? `employeeId=${param.employeeId}` : `userId=${param.userId || ''}`;
+    const response = await fetch(`${API_BASE_URL}/api/welfare/daily-guarantee/status?${queryParam}`, {
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : ''
+      }
+    });
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('获取保底福袋状态失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+      date: new Date().toISOString().split('T')[0],
+      todayViews: 0,
+      todayGoldReal: 0,
+      weeklyVirtualGold: 0,
+      stages: [
+        { stage: 1, thresholdViews: 2000, thresholdGold: 50000, status: 'NOT_QUALIFIED', gapGold: 0, progress: 0, claimedRecord: null },
+        { stage: 2, thresholdViews: 3000, thresholdGold: 100000, status: 'NOT_QUALIFIED', gapGold: 0, progress: 0, claimedRecord: null }
+      ],
+      weekly: { week: '', targetCount: 0, currentCount: 0, bonusGold: 0, isQualified: false, isClaimed: false, virtualAddGold: 0 }
+    };
+  }
+}
+
+export interface ClaimDailyGuaranteeResult {
+  date: string;
+  stage: 1 | 2;
+  gapGold: number;
+  claimedAt: string;
+  viewsAtClaim: number;
+  goldAtClaim: number;
+  weeklyVirtualGold: number;
+  totalGoldForGuaranteeBefore: number;
+  alreadyClaimed?: boolean;
+  message?: string;
+}
+
+/**
+ * 领取今日保底礼包
+ * @param stage 段位 1 或 2，不传默认 2（兼容老前端）
+ * @returns 领取结果
+ */
+export async function claimDailyGuarantee(stage?: 1 | 2): Promise<any> {
+  try {
+    const token = localStorage.getItem('token');
+    const body: any = {};
+    if (stage !== undefined) body.stage = stage;
+    const response = await fetch(`${API_BASE_URL}/api/welfare/daily-guarantee/claim`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : ''
+      },
+      body: JSON.stringify(body)
+    });
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('领取保底福袋失败:', error);
+    return {
+      success: false,
+      message: '网络错误，请稍后重试',
+    };
+  }
+}

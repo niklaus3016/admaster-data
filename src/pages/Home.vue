@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { Coins, History, PlayCircle, LogOut, TrendingUp, Wallet, CreditCard, Trophy, Gift, Ticket, Smartphone, Crown, Medal, Sparkles } from 'lucide-vue-next';
-import { getUserInfo, rewardGold, getGoldLogs, getTodayGoldStats, recordLogin, getLoginStats, submitWithdrawRequest, getWithdrawStatus, getWithdrawRecords, getWeeklyBonusProgress, claimWeeklyBonus, recordActivity, getPoolStatus, recordAdView, getUserTickets, getUserRedPacketRecords, claimRedPacket, getDeviceStatus, updateDeviceRecord, getDeviceConfig, getCurrentLotteryTickets, getTodayRanking, getYesterdayRanking, getMonthTopDaily, getWelfareLotteryInfo, type WithdrawRecord } from '../api/apiService';
+import { getUserInfo, rewardGold, getGoldLogs, getTodayGoldStats, recordLogin, getLoginStats, submitWithdrawRequest, getWithdrawStatus, getWithdrawRecords, getWeeklyBonusProgress, claimWeeklyBonus, recordActivity, getPoolStatus, recordAdView, getUserTickets, getUserRedPacketRecords, claimRedPacket, getDeviceStatus, updateDeviceRecord, getDeviceConfig, getCurrentLotteryTickets, getTodayRanking, getYesterdayRanking, getMonthTopDaily, getWelfareLotteryInfo, getDailyGuaranteeStatus, claimDailyGuarantee, type WithdrawRecord, type DailyGuaranteeStatus, type GuaranteeStatus, type StageGuarantee } from '../api/apiService';
 import { useAdManager } from '../composables/useAdManager';
 import { TTSPlugin } from '../plugins/TTSPlugin';
 import { RiskCheckPlugin } from '../plugins/RiskCheckPlugin';
@@ -78,6 +78,64 @@ const showRedPacketRecords = ref(false);
 const deviceStatus = ref({ isLimited: false, consecutiveLowValueCount: 0 });
 const deviceConfig = ref({ consecutiveLimit: 8, goldThreshold: 40 });
 const isLoadingDeviceStatus = ref(false);
+
+// 保底福袋状态
+const guaranteeStatus = ref<DailyGuaranteeStatus | null>(null);
+const isLoadingGuarantee = ref(false);
+
+// 保底福袋领取动画状态（每个 stage 独立）
+interface FudaiAnimState {
+  animating: boolean;
+  phase: 'idle' | 'shake' | 'burst' | 'coins';
+  coins: { id: number; endX: number; endY: number; delay: number }[];
+}
+const fudaiAnimState = ref<{ [k in 1 | 2]: FudaiAnimState }>({
+  1: { animating: false, phase: 'idle', coins: [] },
+  2: { animating: false, phase: 'idle', coins: [] },
+});
+
+// 保底福袋状态枚举
+const GUARANTEE_STATUS = {
+  NOT_QUALIFIED: 'NOT_QUALIFIED' as GuaranteeStatus,
+  ELIGIBLE_TO_CLAIM: 'ELIGIBLE_TO_CLAIM' as GuaranteeStatus,
+  NO_GAP_FOUND: 'NO_GAP_FOUND' as GuaranteeStatus,
+  CLAIMED: 'CLAIMED' as GuaranteeStatus,
+};
+
+// 获取单个 stage 的状态
+const getStage = (stage: 1 | 2): StageGuarantee | null => {
+  if (!guaranteeStatus.value) return null;
+  const list = guaranteeStatus.value.stages || [];
+  if (list.length === 0) {
+    // 后端未返回 stages 时，用兼容字段构造默认 stages
+    return {
+      stage,
+      thresholdViews: stage === 1 ? 2000 : 3000,
+      thresholdGold: stage === 1 ? 50000 : 100000,
+      status: guaranteeStatus.value.status || 'NOT_QUALIFIED',
+      gapGold: guaranteeStatus.value.gapGold || 0,
+      progress: guaranteeStatus.value.todayViewsProgress || 0,
+      claimedRecord: guaranteeStatus.value.claimedRecord || null,
+    };
+  }
+  return list.find(s => s.stage === stage) || null;
+};
+
+// stage 是否灰色
+const isStageGray = (stage: 1 | 2) => {
+  const s = getStage(stage);
+  if (!s) return true;
+  return s.status === GUARANTEE_STATUS.NOT_QUALIFIED
+    || s.status === GUARANTEE_STATUS.CLAIMED
+    || s.status === GUARANTEE_STATUS.NO_GAP_FOUND;
+};
+
+// stage 是否可领取
+const canClaimStage = (stage: 1 | 2) => {
+  const s = getStage(stage);
+  if (!s) return false;
+  return s.status === GUARANTEE_STATUS.ELIGIBLE_TO_CLAIM && !fudaiAnimState.value[stage].animating;
+};
 
 // 奖金池相关（暂时隐藏，下下个版本上线）
 // const poolStatus = ref({ redPacketPool: 0, lotteryPool: 0 });
@@ -543,27 +601,31 @@ const loadWithdrawStatus = async () => {
 const adConfig = {
   appId: '2882303761520568691',
   slotIds: [
-    // group1 - 保价700, 600, 500
-    '20202243', // 保价700
+    // group1 - 保价1000, 800, 600
+    '20188165', // 保价1000
+    '20188175', // 保价800
     '20188181', // 保价600
+    // group2 - 保价500, 450, 400
     '20202242', // 保价500
-    // group2 - 保价450, 400, 350
     '20202244', // 保价450
     '20188188', // 保价400
+    // group3 - 保价350, 300, 250
     '20188211', // 保价350
-    // group3 - 保价300, 250, 200
     '20188214', // 保价300
     '20188223', // 保价250
+    // group4 - 保价200, 160, 120
     '20188231', // 保价200
-    // group4 - 保价160, 120, 80
     '20188265', // 保价160
     '20188266', // 保价120
+    // group5 - 保价80, 60, 40
     '20188278', // 保价80
-    // group5 - 保价60, 竞价, 保价0
     '20202246', // 保价60
+    '20215901', // 保价40
+    // group6 - 保价20, 竞价, 保价0
+    '20215906', // 保价20
     '20188286', // 竞价
     '20188294'  // 保价0
-  ], // 按优先级从高到低排列（共15个）
+  ], // 按优先级从高到低排列（共18个）
 };
 
 const { showRewardVideo, triggerPreloadAfterDelay } = useAdManager(adConfig);
@@ -618,7 +680,8 @@ onMounted(async () => {
     loadUserInfo(),           // 用户金币信息（显示余额）
     loadTodayGoldStats(),     // 今日金币统计（显示今日收益）
     loadDeviceStatus(),       // 设备状态（判断是否可看广告）
-    loadDeviceConfig()        // 设备配置（广告策略）
+    loadDeviceConfig(),       // 设备配置（广告策略）
+    loadGuaranteeStatus()     // 保底福袋状态
   ];
   
   // 【中优先级】重要数据 - 影响部分功能但不阻塞主流程
@@ -855,6 +918,133 @@ const loadTodayGoldStats = async () => {
   }
 };
 
+// 加载保底福袋状态
+const loadGuaranteeStatus = async () => {
+  if (!empId.value && !userId.value) return;
+
+  isLoadingGuarantee.value = true;
+  try {
+    // 优先使用 employeeId（后端要求），fallback userId
+    const params = empId.value
+      ? { employeeId: empId.value }
+      : { userId: userId.value };
+
+    const response = await getDailyGuaranteeStatus(params);
+
+    console.log('📡 请求保底福袋状态:', { params, success: response.success });
+
+    if (response.success) {
+      // 后端返回结构: { success: true, stages: [], ... } 无 data 包装
+      const raw = response as any;
+      // 如果后端没返回 stages，就用兼容字段构造默认 stages
+      if (!raw.stages || !Array.isArray(raw.stages)) {
+        raw.stages = [
+          {
+            stage: 1,
+            thresholdViews: 2000,
+            thresholdGold: 50000,
+            status: raw.status || 'NOT_QUALIFIED',
+            gapGold: 0,
+            progress: (raw.todayViews || 0) / 2000,
+            claimedRecord: null,
+          },
+          {
+            stage: 2,
+            thresholdViews: 3000,
+            thresholdGold: 100000,
+            status: raw.status || 'NOT_QUALIFIED',
+            gapGold: raw.gapGold || 0,
+            progress: raw.todayViewsProgress || (raw.todayViews || 0) / 3000,
+            claimedRecord: raw.claimedRecord || null,
+          },
+        ];
+      }
+      guaranteeStatus.value = raw as DailyGuaranteeStatus;
+      console.log('💰 保底福袋状态:', {
+        stages: raw.stages.map((s: any) => ({ stage: s.stage, status: s.status, gapGold: s.gapGold })),
+        todayViews: raw.todayViews,
+        todayGoldReal: raw.todayGoldReal,
+      });
+    } else {
+      console.warn('⚠️ 获取保底福袋状态失败:', response.message);
+    }
+  } catch (err) {
+    console.error('❌ 加载保底福袋状态失败:', err);
+  } finally {
+    isLoadingGuarantee.value = false;
+  }
+};
+
+// 生成福袋金币粒子
+const generateFudaiCoins = (): { id: number; endX: number; endY: number; delay: number }[] => {
+  const coins: { id: number; endX: number; endY: number; delay: number }[] = [];
+  const count = 8;
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2 - Math.PI / 2;
+    const distance = 40 + Math.random() * 30;
+    coins.push({
+      id: i,
+      endX: Math.cos(angle) * distance,
+      endY: Math.sin(angle) * distance - 20,
+      delay: i * 50,
+    });
+  }
+  return coins;
+};
+
+// 领取保底福袋（带动画序列，支持 stage 1/2）
+const handleClaimGuarantee = async (stage: 1 | 2) => {
+  if (!canClaimStage(stage) || fudaiAnimState.value[stage].animating) return;
+
+  const state = fudaiAnimState.value[stage];
+  state.animating = true;
+  state.phase = 'shake';
+
+  // Phase 1: Shake (0.4s)
+  await new Promise(resolve => setTimeout(resolve, 400));
+
+  // Phase 2: Burst + glow (0.5s), generate coins
+  state.phase = 'burst';
+  state.coins = generateFudaiCoins();
+
+  // 同时发起 API 请求（带 stage 参数）
+  const apiPromise = claimDailyGuarantee(stage);
+
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  // Phase 3: Coins fly out (0.8s)
+  state.phase = 'coins';
+
+  const [response] = await Promise.all([
+    apiPromise,
+    new Promise(resolve => setTimeout(resolve, 900)),
+  ]);
+
+  // Phase 4: Show reward
+  state.phase = 'idle';
+  state.coins = [];
+
+  if (response.success) {
+    // 后端返回结构: { success: true, gapGold: 20000, stage: 2, ... } 无 data 包装
+    const data = response as any;
+    const gapGold = data.gapGold || 0;
+    console.log(`🎁 第${stage}段保底福袋领取成功，补发金币:`, gapGold);
+
+    if (gapGold > 0) {
+      await showRewardAnimation(gapGold);
+    }
+
+    // 刷新保底福袋状态和今日数据
+    await loadGuaranteeStatus();
+    await loadTodayGoldStats();
+    await loadGoldRecords();
+  } else {
+    console.warn(`⚠️ 领取第${stage}段保底福袋失败:`, response.message);
+  }
+
+  state.animating = false;
+};
+
 // 加载红包记录
 const loadRedPacketRecords = async () => {
   if (!userId.value) {
@@ -975,8 +1165,8 @@ const deviceRating = computed(() => {
   if (todayRecordCount.value === 0) return '-';
   const avg = averageGoldPerAd.value;
   if (typeof avg === 'number') {
-    if (avg > 100) return '优秀';
-    if (avg >= 50) return '正常';
+    if (avg > 80) return '优秀';
+    if (avg >= 40) return '正常';
     return '较低';
   }
   return '-';
@@ -1002,8 +1192,8 @@ const averageGoldColor = computed(() => {
   const avg = averageGoldPerAd.value;
   if (avg === '-') return 'text-zinc-400';
   if (typeof avg === 'number') {
-    if (avg > 100) return 'text-emerald-400';
-    if (avg >= 50) return 'text-amber-400';
+    if (avg > 80) return 'text-emerald-400';
+    if (avg >= 40) return 'text-amber-400';
     return 'text-red-400';
   }
   return 'text-zinc-400';
@@ -1181,10 +1371,11 @@ const handleWatchAd = async () => {
             }
             
             try {
-              // 重新加载今日金币统计（全局）、收益记录（当前设备）和红包记录
+              // 重新加载今日金币统计（全局）、收益记录（当前设备）、红包记录和保底福袋
               await loadTodayGoldStats();
               await loadGoldRecords();
               await loadRedPacketRecords();
+              await loadGuaranteeStatus();
             } catch (error) {
               console.error('❌ 后台数据同步失败:', error);
             }
@@ -1709,6 +1900,130 @@ const submitWithdraw = async () => {
 
       <!-- Ad Trigger - 大圆形按钮 -->
       <div class="flex flex-col items-center justify-center py-2 relative">
+        <!-- 保底福袋 - 左上方（竖排两个：段1在上，段2在下，中间竖线连接） -->
+        <div class="absolute -left-1 -top-2 z-10 flex flex-col items-center">
+          <!-- 段1 福袋 -->
+          <div class="flex flex-col items-center">
+            <button
+              @click="canClaimStage(1) ? handleClaimGuarantee(1) : null"
+              :disabled="!canClaimStage(1) || fudaiAnimState[1].animating"
+              class="relative w-12 h-12 flex items-center justify-center transition-all active:scale-95"
+            >
+              <!-- 光圈扩散效果（burst 阶段） -->
+              <div
+                v-if="fudaiAnimState[1].phase === 'burst'"
+                class="absolute inset-0 rounded-full fudai-glow"
+                style="background: radial-gradient(circle, rgba(255,215,0,0.6) 0%, rgba(255,165,0,0.3) 40%, transparent 70%);"
+              />
+              <!-- 金币粒子 -->
+              <template v-if="fudaiAnimState[1].phase === 'coins'">
+                <div
+                  v-for="coin in fudaiAnimState[1].coins"
+                  :key="coin.id"
+                  class="absolute w-3 h-3 rounded-full bg-gradient-to-br from-yellow-300 to-amber-500 flex items-center justify-center shadow-md border border-yellow-200 fudai-coin"
+                  :style="{
+                    '--coin-end': `translate(${coin.endX}px, ${coin.endY}px)`,
+                    'animation-delay': `${coin.delay}ms`
+                  }"
+                >
+                  <span class="text-[6px] font-black text-yellow-800">¥</span>
+                </div>
+              </template>
+              <!-- 福袋图片 -->
+              <img
+                src="/fudai.png"
+                alt="第1段保底福袋"
+                class="relative z-10 w-12 h-12 object-contain"
+                :class="[
+                  isStageGray(1) ? 'grayscale opacity-50' : 'drop-shadow-lg drop-shadow-amber-400/30',
+                  fudaiAnimState[1].phase === 'shake' ? 'fudai-shake' : '',
+                  fudaiAnimState[1].phase === 'burst' ? 'fudai-burst' : '',
+                  fudaiAnimState[1].phase === 'idle' && !isStageGray(1) ? 'fudai-bounce' : ''
+                ]"
+              />
+              <!-- 已领取角标 -->
+              <div
+                v-if="getStage(1)?.status === 'CLAIMED'"
+                class="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center border-2 border-zinc-900"
+              >
+                <span class="text-[8px] text-white">✓</span>
+              </div>
+              <!-- 领取中遮罩 -->
+              <div
+                v-if="fudaiAnimState[1].animating"
+                class="absolute inset-0 bg-black/20 rounded-full flex items-center justify-center pointer-events-none"
+              />
+            </button>
+            <!-- 阶段标签（福袋下方） -->
+            <div class="mt-1 text-[9px] font-bold whitespace-nowrap"
+              :class="isStageGray(1) ? 'text-zinc-500' : 'text-amber-300 drop-shadow'">
+              1级福袋
+            </div>
+          </div>
+
+          <!-- 中间竖线连接 -->
+          <div class="w-px h-8 bg-gradient-to-b from-zinc-500/60 via-zinc-400/40 to-zinc-500/60 my-2"></div>
+
+          <!-- 段2 福袋 -->
+          <div class="flex flex-col items-center">
+            <button
+              @click="canClaimStage(2) ? handleClaimGuarantee(2) : null"
+              :disabled="!canClaimStage(2) || fudaiAnimState[2].animating"
+              class="relative w-12 h-12 flex items-center justify-center transition-all active:scale-95"
+            >
+              <!-- 光圈扩散效果（burst 阶段） -->
+              <div
+                v-if="fudaiAnimState[2].phase === 'burst'"
+                class="absolute inset-0 rounded-full fudai-glow"
+                style="background: radial-gradient(circle, rgba(255,215,0,0.6) 0%, rgba(255,165,0,0.3) 40%, transparent 70%);"
+              />
+              <!-- 金币粒子 -->
+              <template v-if="fudaiAnimState[2].phase === 'coins'">
+                <div
+                  v-for="coin in fudaiAnimState[2].coins"
+                  :key="coin.id"
+                  class="absolute w-3 h-3 rounded-full bg-gradient-to-br from-yellow-300 to-amber-500 flex items-center justify-center shadow-md border border-yellow-200 fudai-coin"
+                  :style="{
+                    '--coin-end': `translate(${coin.endX}px, ${coin.endY}px)`,
+                    'animation-delay': `${coin.delay}ms`
+                  }"
+                >
+                  <span class="text-[6px] font-black text-yellow-800">¥</span>
+                </div>
+              </template>
+              <!-- 福袋图片 -->
+              <img
+                src="/fudai.png"
+                alt="第2段保底福袋"
+                class="relative z-10 w-12 h-12 object-contain"
+                :class="[
+                  isStageGray(2) ? 'grayscale opacity-50' : 'drop-shadow-lg drop-shadow-amber-400/30',
+                  fudaiAnimState[2].phase === 'shake' ? 'fudai-shake' : '',
+                  fudaiAnimState[2].phase === 'burst' ? 'fudai-burst' : '',
+                  fudaiAnimState[2].phase === 'idle' && !isStageGray(2) ? 'fudai-bounce' : ''
+                ]"
+              />
+              <!-- 已领取角标 -->
+              <div
+                v-if="getStage(2)?.status === 'CLAIMED'"
+                class="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center border-2 border-zinc-900"
+              >
+                <span class="text-[8px] text-white">✓</span>
+              </div>
+              <!-- 领取中遮罩 -->
+              <div
+                v-if="fudaiAnimState[2].animating"
+                class="absolute inset-0 bg-black/20 rounded-full flex items-center justify-center pointer-events-none"
+              />
+            </button>
+            <!-- 阶段标签（福袋下方） -->
+            <div class="mt-1 text-[9px] font-bold whitespace-nowrap"
+              :class="isStageGray(2) ? 'text-zinc-500' : 'text-amber-300 drop-shadow'">
+              2级福袋
+            </div>
+          </div>
+        </div>
+
         <!-- 今日奖金池（暂时隐藏，下下个版本上线） -->
       <!-- <div class="relative w-full max-w-xs mb-6">
         <div class="absolute inset-0 bg-gradient-to-r from-yellow-500 to-amber-500 blur-xl opacity-20 rounded-2xl animate-pulse"></div>
@@ -2546,6 +2861,84 @@ const submitWithdraw = async () => {
 
 .no-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+/* 保底福袋轻幅跳动 */
+@keyframes fudai-bounce {
+  0%, 100% {
+    transform: translateY(0);
+    animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+  }
+  50% {
+    transform: translateY(-8px);
+    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  }
+}
+
+.fudai-bounce {
+  animation: fudai-bounce 1.5s infinite;
+}
+
+/* 福袋抖动动画 */
+@keyframes fudai-shake {
+  0%, 100% { transform: translateX(0); }
+  10% { transform: translateX(-4px) rotate(-3deg); }
+  20% { transform: translateX(4px) rotate(3deg); }
+  30% { transform: translateX(-4px) rotate(-2deg); }
+  40% { transform: translateX(4px) rotate(2deg); }
+  50% { transform: translateX(-3px) rotate(-1deg); }
+  60% { transform: translateX(3px) rotate(1deg); }
+  70% { transform: translateX(-2px); }
+  80% { transform: translateX(2px); }
+  90% { transform: translateX(-1px); }
+}
+
+.fudai-shake {
+  animation: fudai-shake 0.4s ease-in-out;
+}
+
+/* 福袋爆开缩放 */
+@keyframes fudai-burst {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.25); }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+.fudai-burst {
+  animation: fudai-burst 0.5s ease-out;
+}
+
+/* 光圈扩散 */
+@keyframes fudai-glow {
+  0% {
+    transform: scale(0.5);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+.fudai-glow {
+  animation: fudai-glow 0.6s ease-out forwards;
+}
+
+/* 金币粒子基础动画 */
+@keyframes fudai-coin {
+  0% {
+    transform: translate(0, 0) scale(0.5);
+    opacity: 1;
+  }
+  100% {
+    transform: var(--coin-end) scale(1);
+    opacity: 0;
+  }
+}
+
+.fudai-coin {
+  animation: fudai-coin 0.8s ease-out forwards;
 }
 
 /* 弹窗动画 */
