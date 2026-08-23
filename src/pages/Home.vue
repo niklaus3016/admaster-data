@@ -100,6 +100,7 @@ const GUARANTEE_STATUS = {
   ELIGIBLE_TO_CLAIM: 'ELIGIBLE_TO_CLAIM' as GuaranteeStatus,
   NO_GAP_FOUND: 'NO_GAP_FOUND' as GuaranteeStatus,
   CLAIMED: 'CLAIMED' as GuaranteeStatus,
+  DISABLED: 'DISABLED' as GuaranteeStatus,
 };
 
 // 获取单个 stage 的状态
@@ -127,7 +128,8 @@ const isStageGray = (stage: 1 | 2) => {
   if (!s) return true;
   return s.status === GUARANTEE_STATUS.NOT_QUALIFIED
     || s.status === GUARANTEE_STATUS.CLAIMED
-    || s.status === GUARANTEE_STATUS.NO_GAP_FOUND;
+    || s.status === GUARANTEE_STATUS.NO_GAP_FOUND
+    || s.status === GUARANTEE_STATUS.DISABLED;
 };
 
 // stage 是否可领取

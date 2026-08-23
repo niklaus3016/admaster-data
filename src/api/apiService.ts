@@ -2330,7 +2330,7 @@ export async function getLotteryHistory(page: number = 1, limit: number = 20): P
 
 // ============ 保底福袋接口 ============
 
-export type GuaranteeStatus = 'NOT_QUALIFIED' | 'ELIGIBLE_TO_CLAIM' | 'NO_GAP_FOUND' | 'CLAIMED';
+export type GuaranteeStatus = 'NOT_QUALIFIED' | 'ELIGIBLE_TO_CLAIM' | 'NO_GAP_FOUND' | 'CLAIMED' | 'DISABLED';
 
 export interface StageGuarantee {
   stage: 1 | 2;
