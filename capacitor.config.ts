@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.zhixubiji.app',
-  appName: '知序笔记',
+  appId: 'com.kuaixuewm.app',
+  appName: '快序二维码',
   webDir: 'dist'
 };
 

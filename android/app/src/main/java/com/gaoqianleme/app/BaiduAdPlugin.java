@@ -1,4 +1,4 @@
-package com.zhixubiji.app;
+package com.kuaixuewm.app;
 
 import android.app.Activity;
 import android.util.Log;
