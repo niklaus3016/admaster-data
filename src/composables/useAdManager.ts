@@ -214,7 +214,7 @@ export function useAdManager(config: AdConfig) {
 
   // 竞价广告位底价配置（单位：分，load 前通过 setBidFloor 传给原生SDK）
   const BID_FLOOR_BY_SLOT: { [key: string]: number } = {
-    '20248284': 30,  // 竞价广告位底价 30 分
+    '20248284': 3000,  // 竞价广告位底价 3000 分（测试底价过滤，验证后改回 30）
   };
 
   // 并行请求广告组
