@@ -27,6 +27,9 @@ public class BaiduAdPlugin extends Plugin {
         
         Log.d(TAG, "加载广告ID: " + adId);
         
+        // 竞价底价（单位：分，仅bidding模式广告位生效，0表示不设置）
+        int bidFloor = call.getInt("bidFloor", 0);
+        
         Activity activity = getActivity();
         if (activity == null) {
             call.reject("Activity 为空");
@@ -156,6 +159,16 @@ public class BaiduAdPlugin extends Plugin {
                         Log.d(TAG, "广告跳过，播放比例: " + playScale);
                     }
                 });
+                
+                // 设置竞价底价（仅bidding模式生效，单位：分）
+                if (bidFloor > 0) {
+                    try {
+                        mRewardVideoAd.setBidFloor(bidFloor);
+                        Log.d(TAG, "设置竞价底价: " + bidFloor + " 分");
+                    } catch (Throwable e) {
+                        Log.w(TAG, "setBidFloor 调用失败(当前SDK版本可能不支持): " + e.getMessage());
+                    }
+                }
                 
                 // 加载广告
                 mRewardVideoAd.load();

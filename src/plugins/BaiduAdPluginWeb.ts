@@ -2,7 +2,7 @@ import { WebPlugin } from '@capacitor/core';
 import type { BaiduAdPlugin } from './BaiduAdPlugin';
 
 export class BaiduAdPluginWeb extends WebPlugin {
-  async loadRewardVideoAd(options: { adId: string }): Promise<void> {
+  async loadRewardVideoAd(options: { adId: string; bidFloor?: number }): Promise<void> {
     console.log('Web 环境不支持百度原生广告，请使用 H5 SDK');
     return Promise.resolve();
   }

@@ -212,6 +212,11 @@ export function useAdManager(config: AdConfig) {
     return biddingSlots.includes(slotId);
   };
 
+  // 竞价广告位底价配置（单位：分，load 前通过 setBidFloor 传给原生SDK）
+  const BID_FLOOR_BY_SLOT: { [key: string]: number } = {
+    '20248284': 30,  // 竞价广告位底价 30 分
+  };
+
   // 并行请求广告组
   const tryParallelAdGroup = async (slotIds: string[]): Promise<{ ecpm: number; slotId: string } | null> => {
     console.log(`========== 开始并行请求广告组: ${slotIds.join(', ')} ==========`);
@@ -336,7 +341,7 @@ export function useAdManager(config: AdConfig) {
         };
         
         // 加载广告
-        BaiduAd.loadRewardVideoAd({ adId: slotId })
+        BaiduAd.loadRewardVideoAd({ adId: slotId, bidFloor: BID_FLOOR_BY_SLOT[slotId] || 0 })
           .then(() => console.log(`✅ 广告加载请求已发送 (${slotId})`))
           .catch((err: any) => {
             console.error(`❌ 加载广告请求失败 (${slotId}):`, err);
@@ -466,7 +471,7 @@ export function useAdManager(config: AdConfig) {
         }, 3000);
         
         // 发起请求
-        BaiduAd.loadRewardVideoAd({ adId: slotId }).catch((error) => {
+        BaiduAd.loadRewardVideoAd({ adId: slotId, bidFloor: BID_FLOOR_BY_SLOT[slotId] || 0 }).catch((error) => {
           if (!isSlotResolved && !resolved) {
             isSlotResolved = true;
             console.log(`❌ 并行预加载请求失败: ${slotId}`, error);
@@ -557,7 +562,7 @@ export function useAdManager(config: AdConfig) {
       }, PARALLEL_TIMEOUT);
       
       // 调用loadRewardVideoAd()加载广告
-      BaiduAd.loadRewardVideoAd({ adId: slotId }).catch((error) => {
+      BaiduAd.loadRewardVideoAd({ adId: slotId, bidFloor: BID_FLOOR_BY_SLOT[slotId] || 0 }).catch((error) => {
         if (!isResolved) {
           isResolved = true;
           console.log(`❌ 串行预加载请求失败: ${slotId}`, error);
@@ -768,7 +773,7 @@ export function useAdManager(config: AdConfig) {
         };
         
         // 加载广告
-        BaiduAd.loadRewardVideoAd({ adId: slotId })
+        BaiduAd.loadRewardVideoAd({ adId: slotId, bidFloor: BID_FLOOR_BY_SLOT[slotId] || 0 })
           .then(() => console.log(`✅ 广告加载请求已发送 (${slotId})`))
           .catch((err: any) => {
             console.error(`❌ 加载广告请求失败 (${slotId}):`, err);
@@ -1320,7 +1325,7 @@ export function useAdManager(config: AdConfig) {
       BaiduAd.addListener('onVideoDownloadFailed', onVideoDownloadFailed);
       BaiduAd.addListener('onAdClose', onAdClose);
       
-      BaiduAd.loadRewardVideoAd({ adId: selectedSlotId })
+      BaiduAd.loadRewardVideoAd({ adId: selectedSlotId, bidFloor: BID_FLOOR_BY_SLOT[selectedSlotId] || 0 })
         .then(() => console.log('✅ 广告加载请求已发送'))
         .catch((err: any) => {
           console.error('❌ 加载广告请求失败:', err);
