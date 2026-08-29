@@ -509,6 +509,23 @@ export function useAdManager(config: AdConfig) {
     return new Promise((resolve) => {
       let isResolved = false;
       
+      const onAdLoaded = async () => {
+        if (isResolved) return;
+        try {
+          // SDK在onAdLoaded时广告可能已缓存完成（isReady=true），无需死等onVideoDownloadSuccess事件
+          const readyStatus = await BaiduAd.isReady();
+          if (readyStatus?.ready && !isResolved) {
+            isResolved = true;
+            console.log(`✅ 串行预加载成功: ${slotId} (onAdLoaded时已就绪)`);
+            cleanupListeners();
+            resolve(true);
+          }
+          // 未就绪则继续等待onVideoDownloadSuccess
+        } catch (e) {
+          // 查询失败则继续等待onVideoDownloadSuccess
+        }
+      };
+
       const onVideoDownloadSuccess = () => {
         if (!isResolved) {
           isResolved = true;
@@ -538,6 +555,7 @@ export function useAdManager(config: AdConfig) {
       
       const cleanupListeners = () => {
         try {
+          BaiduAd.removeListener('onAdLoaded', onAdLoaded);
           BaiduAd.removeListener('onVideoDownloadSuccess', onVideoDownloadSuccess);
           BaiduAd.removeListener('onVideoDownloadFailed', onVideoDownloadFailed);
           BaiduAd.removeListener('onAdFailed', onAdFailed);
@@ -545,8 +563,9 @@ export function useAdManager(config: AdConfig) {
           // 忽略清理错误
         }
       };
-      
+
       // 注册监听器
+      BaiduAd.addListener('onAdLoaded', onAdLoaded);
       BaiduAd.addListener('onVideoDownloadSuccess', onVideoDownloadSuccess);
       BaiduAd.addListener('onVideoDownloadFailed', onVideoDownloadFailed);
       BaiduAd.addListener('onAdFailed', onAdFailed);
