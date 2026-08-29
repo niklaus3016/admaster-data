@@ -9,13 +9,20 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.baidu.mobads.sdk.api.RewardVideoAd;
+import com.baidu.mobads.sdk.api.BiddingListener;
+
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 
 @CapacitorPlugin(name = "BaiduAd")
 public class BaiduAdPlugin extends Plugin {
-    
+
     private static final String TAG = "BaiduAdPlugin";
     private RewardVideoAd mRewardVideoAd;
     private PluginCall pendingShowCall;
+    // 竞价结果上报状态（每个广告位只上报一次：赢或输）
+    private boolean biddingReported = false;
+    private int currentBidFloor = 0;
     
     @PluginMethod
     public void loadRewardVideoAd(PluginCall call) {
@@ -29,6 +36,8 @@ public class BaiduAdPlugin extends Plugin {
         
         // 竞价底价（单位：分，仅bidding模式广告位生效，0表示不设置）
         int bidFloor = call.getInt("bidFloor", 0);
+        biddingReported = false;
+        currentBidFloor = bidFloor;
         
         Activity activity = getActivity();
         if (activity == null) {
@@ -41,10 +50,17 @@ public class BaiduAdPlugin extends Plugin {
                 mRewardVideoAd = new RewardVideoAd(activity, adId, new RewardVideoAd.RewardVideoAdListener() {
                     @Override
                     public void onAdLoaded() {
-                        Log.d(TAG, "广告加载成功");
+                        Log.d(TAG, "广告加载成功（竞价获胜）");
                         if (mRewardVideoAd != null) {
-                            Log.d(TAG, "ECPM Level: " + mRewardVideoAd.getECPMLevel());
+                            String ecpm = mRewardVideoAd.getECPMLevel();
+                            Log.d(TAG, "ECPM Level: " + ecpm + " (此时可能为0，真实价格在视频下载后)");
                             Log.d(TAG, "Is Ready: " + mRewardVideoAd.isReady());
+                            // 竞价协议：广告返回=获胜，价格已知则立即上报biddingSuccess；
+                            // 若价格尚未返回(为0)，等onVideoDownloadSuccess后再上报
+                            double price = parseEcpm(ecpm);
+                            if (price > 0) {
+                                reportBiddingSuccess(price);
+                            }
                         }
                         notifyListeners("onAdLoaded", new JSObject());
                     }
@@ -80,12 +96,19 @@ public class BaiduAdPlugin extends Plugin {
                     @Override
                     public void onAdFailed(String error) {
                         Log.e(TAG, "广告加载失败: " + error);
+                        // 竞价协议：未拿到广告=竞价失败，上报biddingFail(reason=203输给其他方)
+                        reportBiddingFail();
                         notifyListeners("onAdFailed", new JSObject().put("error", error));
                     }
-                    
+
                     @Override
                     public void onVideoDownloadSuccess() {
                         Log.d(TAG, "视频下载成功");
+                        // 兜底：onAdLoaded时价格未返回，此时getECPMLevel为真实价格
+                        if (!biddingReported && mRewardVideoAd != null) {
+                            double price = parseEcpm(mRewardVideoAd.getECPMLevel());
+                            reportBiddingSuccess(price > 0 ? price : currentBidFloor);
+                        }
                         notifyListeners("onVideoDownloadSuccess", new JSObject());
                     }
                     
@@ -216,5 +239,66 @@ public class BaiduAdPlugin extends Plugin {
         JSObject result = new JSObject();
         result.put("ready", mRewardVideoAd != null && mRewardVideoAd.isReady());
         call.resolve(result);
+    }
+
+    /**
+     * 解析getECPMLevel返回的价格（分），非法值返回0
+     */
+    private double parseEcpm(String ecpmLevel) {
+        if (ecpmLevel == null || ecpmLevel.isEmpty()) return 0;
+        try {
+            return Double.parseDouble(ecpmLevel);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    /**
+     * 竞价获胜上报（百度协议：广告返回后立即上报，参数枚举见百度文档）
+     * adn=9百度, ad_t=4竖版视频, bid_t=3竞价广告位
+     */
+    private void reportBiddingSuccess(double ecpm) {
+        if (mRewardVideoAd == null || biddingReported) return;
+        try {
+            LinkedHashMap<String, String> biddingMap = new LinkedHashMap<>();
+            biddingMap.put("adn", "9");
+            biddingMap.put("ecpm", String.valueOf((int) ecpm));
+            biddingMap.put("ad_t", "4");
+            biddingMap.put("bid_t", "3");
+            mRewardVideoAd.biddingSuccess(biddingMap, new BiddingListener() {
+                @Override
+                public void onBiddingResult(boolean success, String msg, HashMap<String, Object> data) {
+                    Log.d(TAG, "biddingSuccess 上报回调: success=" + success + ", msg=" + msg);
+                }
+            });
+            biddingReported = true;
+            Log.d(TAG, "✅ 竞价获胜已上报, ecpm=" + (int) ecpm + "分");
+        } catch (Throwable e) {
+            Log.w(TAG, "biddingSuccess 调用失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 竞价失败上报（百度协议：reason=203输给其他方）
+     */
+    private void reportBiddingFail() {
+        if (mRewardVideoAd == null || biddingReported) return;
+        try {
+            LinkedHashMap<String, String> biddingMap = new LinkedHashMap<>();
+            biddingMap.put("adn", "9");
+            biddingMap.put("ad_t", "4");
+            biddingMap.put("bid_t", "3");
+            biddingMap.put("reason", "203");
+            mRewardVideoAd.biddingFail(biddingMap, new BiddingListener() {
+                @Override
+                public void onBiddingResult(boolean success, String msg, HashMap<String, Object> data) {
+                    Log.d(TAG, "biddingFail 上报回调: success=" + success + ", msg=" + msg);
+                }
+            });
+            biddingReported = true;
+            Log.d(TAG, "✅ 竞价失败已上报(reason=203)");
+        } catch (Throwable e) {
+            Log.w(TAG, "biddingFail 调用失败: " + e.getMessage());
+        }
     }
 }

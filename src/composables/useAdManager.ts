@@ -58,7 +58,7 @@ export function useAdManager(config: AdConfig) {
     group2: [
       '20248210', // 保价450
       '20248219', // 保价350
-      // '20261921', // 竞价(setbid:28000) ← 暂时注释测试
+      '20261921', // 竞价(setbid:28000)
     ],
     group3: [
       '20248230', // 保价250
@@ -67,7 +67,7 @@ export function useAdManager(config: AdConfig) {
     ],
     group4: [
       '20248250', // 保价120
-      // '20261914', // 竞价(setbid:10000) ← 暂时注释测试
+      '20261914', // 竞价(setbid:10000)
       '20248256', // 保价80
     ],
     group5: [
@@ -75,7 +75,7 @@ export function useAdManager(config: AdConfig) {
       '20248284', // 竞价(setbid:3000)
       '20248288', // 保价0
     ],
-  }; // 共13个广告位（暂时注释2个竞价测试底价）
+  }; // 共15个广告位（静序念经C版）
   
   // 并行请求超时时间（毫秒）
   const PARALLEL_TIMEOUT = 2000;
@@ -208,14 +208,14 @@ export function useAdManager(config: AdConfig) {
   };
 
   const isBiddingSlot = (slotId: string): boolean => {
-    const biddingSlots = ['20248284']; // , '20261921', '20261914' ← 暂时注释测试
+    const biddingSlots = ['20261921', '20261914', '20248284'];
     return biddingSlots.includes(slotId);
   };
 
   // 竞价广告位底价配置（单位：分，load 前通过 setBidFloor 传给原生SDK）
   const BID_FLOOR_BY_SLOT: { [key: string]: number } = {
-    // '20261921': 28000,  // 暂时注释测试
-    // '20261914': 10000,  // 暂时注释测试
+    '20261921': 28000,  // 竞价广告位底价 28000 分
+    '20261914': 10000,  // 竞价广告位底价 10000 分
     '20248284': 3000,   // 竞价广告位底价 3000 分
   };
 
@@ -1198,32 +1198,35 @@ export function useAdManager(config: AdConfig) {
       const onAdLoaded = async () => {
         if (!checkSession() || currentAdSuccess || isResolved) return;
 
-        console.log('✅ 广告加载成功，准备显示广告');
+        console.log('✅ 广告加载成功（竞价获胜），等待视频就绪');
+        if (slotTimeoutId) {
+          clearTimeout(slotTimeoutId);
+          console.log('✅ 清除单层超时定时器');
+        }
+
+        isAdReady.value = true;
+        isAdLoading.value = false;
+
+        // 视频已缓存就绪则直接显示；否则等 onVideoDownloadSuccess 再显示，
+        // 避免此时 show 失败导致跳过当前广告位继续轮询
         try {
-          if (slotTimeoutId) {
-            clearTimeout(slotTimeoutId);
-            console.log('✅ 清除单层超时定时器');
+          const readyStatus = await BaiduAd.isReady();
+          console.log('📊 广告就绪状态:', readyStatus);
+          if (readyStatus.ready) {
+            console.log('✅ 广告已就绪，直接显示');
+            await BaiduAd.showRewardVideoAd();
+            console.log('✅ 广告显示命令已发送');
+          } else {
+            console.log('⏳ 视频尚未下载完成，等待 onVideoDownloadSuccess 后显示');
+            // 视频下载等待超时保护（防止一直卡在等待状态）
+            if (slotTimeoutId) clearTimeout(slotTimeoutId);
+            slotTimeoutId = setTimeout(() => {
+              if (!checkSession() || currentAdSuccess || isResolved) return;
+              console.warn('⏱️ 等待视频下载超时（5000ms），跳过当前广告位');
+              cleanupListeners();
+              resolveOnce('failed');
+            }, 5000);
           }
-
-          isAdReady.value = true;
-          isAdLoading.value = false;
-
-          // 检查广告是否就绪
-          console.log('🔍 检查广告就绪状态...');
-          try {
-            const readyStatus = await BaiduAd.isReady();
-            console.log('📊 广告就绪状态:', readyStatus);
-
-            if (!readyStatus.ready) {
-              console.warn('⚠️ 广告未就绪，尝试强制显示...');
-            }
-          } catch (error) {
-            console.warn('⚠️ 检查广告就绪状态失败:', error);
-          }
-
-          console.log('✅ 广告位加载成功且已就绪，准备播放');
-          await BaiduAd.showRewardVideoAd();
-          console.log('✅ 广告显示命令已发送');
         } catch (error) {
           console.error('❌ 显示广告失败:', error);
           lastError.value = '显示广告失败: ' + (error?.message || error);
