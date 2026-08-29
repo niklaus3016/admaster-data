@@ -260,7 +260,7 @@ public class BaiduAdPlugin extends Plugin {
     private void reportBiddingSuccess(double ecpm) {
         if (mRewardVideoAd == null || biddingReported) return;
         try {
-            LinkedHashMap<String, String> biddingMap = new LinkedHashMap<>();
+            LinkedHashMap<String, Object> biddingMap = new LinkedHashMap<>();
             biddingMap.put("adn", "9");
             biddingMap.put("ecpm", String.valueOf((int) ecpm));
             biddingMap.put("ad_t", "4");
@@ -284,7 +284,7 @@ public class BaiduAdPlugin extends Plugin {
     private void reportBiddingFail() {
         if (mRewardVideoAd == null || biddingReported) return;
         try {
-            LinkedHashMap<String, String> biddingMap = new LinkedHashMap<>();
+            LinkedHashMap<String, Object> biddingMap = new LinkedHashMap<>();
             biddingMap.put("adn", "9");
             biddingMap.put("ad_t", "4");
             biddingMap.put("bid_t", "3");
