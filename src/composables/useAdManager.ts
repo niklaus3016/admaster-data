@@ -58,7 +58,7 @@ export function useAdManager(config: AdConfig) {
     group2: [
       '20248210', // 保价450
       '20248219', // 保价350
-      '20261921', // 竞价(setbid:28000)
+      // '20261921', // 竞价(setbid:28000) ← 暂时注释测试
     ],
     group3: [
       '20248230', // 保价250
@@ -72,7 +72,7 @@ export function useAdManager(config: AdConfig) {
     ],
     group5: [
       '20248264', // 保价50
-      // '20248284', // 竞价(setbid:3000) ← 暂时注释测试
+      '20248284', // 竞价(setbid:3000)
       '20248288', // 保价0
     ],
   }; // 共13个广告位（暂时注释2个竞价测试底价）
@@ -208,15 +208,15 @@ export function useAdManager(config: AdConfig) {
   };
 
   const isBiddingSlot = (slotId: string): boolean => {
-    const biddingSlots = ['20261921']; // , '20261914', '20248284' ← 暂时注释测试
+    const biddingSlots = ['20248284']; // , '20261921', '20261914' ← 暂时注释测试
     return biddingSlots.includes(slotId);
   };
 
   // 竞价广告位底价配置（单位：分，load 前通过 setBidFloor 传给原生SDK）
   const BID_FLOOR_BY_SLOT: { [key: string]: number } = {
-    '20261921': 28000,  // 竞价广告位底价 28000 分
+    // '20261921': 28000,  // 暂时注释测试
     // '20261914': 10000,  // 暂时注释测试
-    // '20248284': 3000,   // 暂时注释测试
+    '20248284': 3000,   // 竞价广告位底价 3000 分
   };
 
   // 并行请求广告组
