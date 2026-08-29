@@ -67,15 +67,15 @@ export function useAdManager(config: AdConfig) {
     ],
     group4: [
       '20248250', // 保价120
-      '20261914', // 竞价(setbid:10000)
+      // '20261914', // 竞价(setbid:10000) ← 暂时注释测试
       '20248256', // 保价80
     ],
     group5: [
       '20248264', // 保价50
-      '20248284', // 竞价(setbid:3000)
+      // '20248284', // 竞价(setbid:3000) ← 暂时注释测试
       '20248288', // 保价0
     ],
-  }; // 共15个广告位
+  }; // 共13个广告位（暂时注释2个竞价测试底价）
   
   // 并行请求超时时间（毫秒）
   const PARALLEL_TIMEOUT = 2000;
@@ -208,15 +208,15 @@ export function useAdManager(config: AdConfig) {
   };
 
   const isBiddingSlot = (slotId: string): boolean => {
-    const biddingSlots = ['20261921', '20261914', '20248284'];
+    const biddingSlots = ['20261921']; // , '20261914', '20248284' ← 暂时注释测试
     return biddingSlots.includes(slotId);
   };
 
   // 竞价广告位底价配置（单位：分，load 前通过 setBidFloor 传给原生SDK）
   const BID_FLOOR_BY_SLOT: { [key: string]: number } = {
     '20261921': 28000,  // 竞价广告位底价 28000 分
-    '20261914': 10000,  // 竞价广告位底价 10000 分
-    '20248284': 3000,   // 竞价广告位底价 3000 分
+    // '20261914': 10000,  // 暂时注释测试
+    // '20248284': 3000,   // 暂时注释测试
   };
 
   // 并行请求广告组
