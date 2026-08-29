@@ -1195,9 +1195,41 @@ export function useAdManager(config: AdConfig) {
         }
       };
       
-      const onAdLoaded = () => {
-        if (!checkSession()) return;
-        console.log('✅ 广告加载成功回调');
+      const onAdLoaded = async () => {
+        if (!checkSession() || currentAdSuccess || isResolved) return;
+
+        console.log('✅ 广告加载成功，准备显示广告');
+        try {
+          if (slotTimeoutId) {
+            clearTimeout(slotTimeoutId);
+            console.log('✅ 清除单层超时定时器');
+          }
+
+          isAdReady.value = true;
+          isAdLoading.value = false;
+
+          // 检查广告是否就绪
+          console.log('🔍 检查广告就绪状态...');
+          try {
+            const readyStatus = await BaiduAd.isReady();
+            console.log('📊 广告就绪状态:', readyStatus);
+
+            if (!readyStatus.ready) {
+              console.warn('⚠️ 广告未就绪，尝试强制显示...');
+            }
+          } catch (error) {
+            console.warn('⚠️ 检查广告就绪状态失败:', error);
+          }
+
+          console.log('✅ 广告位加载成功且已就绪，准备播放');
+          await BaiduAd.showRewardVideoAd();
+          console.log('✅ 广告显示命令已发送');
+        } catch (error) {
+          console.error('❌ 显示广告失败:', error);
+          lastError.value = '显示广告失败: ' + (error?.message || error);
+          cleanupListeners();
+          resolveOnce('failed');
+        }
       };
 
       const onRewardVerify = (result: any) => {
