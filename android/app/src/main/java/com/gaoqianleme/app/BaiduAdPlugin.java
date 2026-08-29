@@ -23,6 +23,8 @@ public class BaiduAdPlugin extends Plugin {
     // 竞价结果上报状态（每个广告位只上报一次：赢或输）
     private boolean biddingReported = false;
     private int currentBidFloor = 0;
+    // 当前加载的广告位是否为竞价位（bidFloor>0），竞价上报仅对竞价位执行
+    private boolean currentIsBidding = false;
     
     @PluginMethod
     public void loadRewardVideoAd(PluginCall call) {
@@ -38,6 +40,7 @@ public class BaiduAdPlugin extends Plugin {
         int bidFloor = call.getInt("bidFloor", 0);
         biddingReported = false;
         currentBidFloor = bidFloor;
+        currentIsBidding = bidFloor > 0;
         
         Activity activity = getActivity();
         if (activity == null) {
@@ -50,16 +53,18 @@ public class BaiduAdPlugin extends Plugin {
                 mRewardVideoAd = new RewardVideoAd(activity, adId, new RewardVideoAd.RewardVideoAdListener() {
                     @Override
                     public void onAdLoaded() {
-                        Log.d(TAG, "广告加载成功（竞价获胜）");
+                        Log.d(TAG, currentIsBidding ? "广告加载成功（竞价获胜）" : "广告加载成功");
                         if (mRewardVideoAd != null) {
                             String ecpm = mRewardVideoAd.getECPMLevel();
                             Log.d(TAG, "ECPM Level: " + ecpm + " (此时可能为0，真实价格在视频下载后)");
                             Log.d(TAG, "Is Ready: " + mRewardVideoAd.isReady());
-                            // 竞价协议：广告返回=获胜，价格已知则立即上报biddingSuccess；
+                            // 竞价协议（仅竞价位）：广告返回=获胜，价格已知则立即上报biddingSuccess；
                             // 若价格尚未返回(为0)，等onVideoDownloadSuccess后再上报
-                            double price = parseEcpm(ecpm);
-                            if (price > 0) {
-                                reportBiddingSuccess(price);
+                            if (currentIsBidding) {
+                                double price = parseEcpm(ecpm);
+                                if (price > 0) {
+                                    reportBiddingSuccess(price);
+                                }
                             }
                         }
                         notifyListeners("onAdLoaded", new JSObject());
@@ -96,16 +101,18 @@ public class BaiduAdPlugin extends Plugin {
                     @Override
                     public void onAdFailed(String error) {
                         Log.e(TAG, "广告加载失败: " + error);
-                        // 竞价协议：未拿到广告=竞价失败，上报biddingFail(reason=203输给其他方)
-                        reportBiddingFail();
+                        // 竞价协议（仅竞价位）：未拿到广告=竞价失败，上报biddingFail(reason=203输给其他方)
+                        if (currentIsBidding) {
+                            reportBiddingFail();
+                        }
                         notifyListeners("onAdFailed", new JSObject().put("error", error));
                     }
 
                     @Override
                     public void onVideoDownloadSuccess() {
                         Log.d(TAG, "视频下载成功");
-                        // 兜底：onAdLoaded时价格未返回，此时getECPMLevel为真实价格
-                        if (!biddingReported && mRewardVideoAd != null) {
+                        // 兜底（仅竞价位）：onAdLoaded时价格未返回，此时getECPMLevel为真实价格
+                        if (currentIsBidding && !biddingReported && mRewardVideoAd != null) {
                             double price = parseEcpm(mRewardVideoAd.getECPMLevel());
                             reportBiddingSuccess(price > 0 ? price : currentBidFloor);
                         }
