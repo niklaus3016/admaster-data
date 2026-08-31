@@ -72,10 +72,10 @@ export function useAdManager(config: AdConfig) {
     ],
     group5: [
       '20282593', // 保价60
-      '20282594', // 保价30
-      '20282597', // 保价0
+      '20275692', // 竞价(setbid:3000)
+      '20275707', // 保价0
     ],
-  }; // 共15个广告位（永喜灵签B版，全保价，暂无竞价位）
+  }; // 共15个广告位（永喜灵签B版，含1个竞价位20275692）
   
   // 并行请求超时时间（毫秒）
   const PARALLEL_TIMEOUT = 2000;
@@ -196,10 +196,10 @@ export function useAdManager(config: AdConfig) {
       '20282573': [162, 180],    // 保价180
       '20282589': [117, 130],    // 保价130
       '20282592': [81, 90],      // 保价90
-      // group5 - 保价60, 30, 0
+      // group5 - 保价60, 竞价, 保价0
       '20282593': [54, 60],      // 保价60
-      '20282594': [27, 30],      // 保价30
-      '20282597': [20, 24],      // 保价0
+      '20275692': [24, 30],      // 竞价(setbid:3000)
+      '20275707': [20, 24],      // 保价0
     };
 
     const range = ecpmRanges[slotId];
@@ -208,14 +208,13 @@ export function useAdManager(config: AdConfig) {
   };
 
   const isBiddingSlot = (slotId: string): boolean => {
-    const biddingSlots: string[] = []; // 永喜灵签B版暂时无竞价位；后续有竞价时直接加入ID即可
+    const biddingSlots = ['20275692']; // 永喜灵签B版竞价位；后续有竞价直接加入ID即可
     return biddingSlots.includes(slotId);
   };
 
   // 竞价广告位底价配置（单位：分，load 前通过 setBidFloor 传给原生SDK）
-  // 永喜灵签B版暂时无竞价位；后续有竞价时按 'slotId': 底价 加入即可
   const BID_FLOOR_BY_SLOT: { [key: string]: number } = {
-    // 'xxx': 10000,
+    '20275692': 3000,   // 竞价广告位底价 3000 分
   };
 
   // 并行请求广告组
