@@ -1,4 +1,4 @@
-package com.lingxuqiuqian.app;
+package com.mingxuchajing.app;
 
 import android.os.Bundle;
 import android.webkit.WebSettings;

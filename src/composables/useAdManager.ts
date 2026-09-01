@@ -48,41 +48,36 @@ export function useAdManager(config: AdConfig) {
   let isPreloading = false; // 是否正在预加载
   let preloadingPromise: Promise<void> | null = null; // 预加载Promise，用于等待预加载完成
   
-  // 广告位分组配置（灵序求签 0901，含1个竞价位20292559）
+  // 广告位分组配置（茗序茶经 0901，含1个竞价位20292669）
   const AD_GROUPS = {
     group1: [
-      '19617442', // 保价1500
-      '19617450', // 保价1250
-      '19617465', // 保价900
+      '19855821', // 保价1500
+      '19855835', // 保价1000
+      '19855861', // 保价900
     ],
     group2: [
-      '19617468', // 保价700
-      '19617473', // 保价600
-      '19660288', // 保价500
+      '19855876', // 保价700
+      '19855896', // 保价600
+      '19855901', // 保价400
     ],
     group3: [
-      '19617478', // 保价400
-      '19617543', // 保价350
-      '19617591', // 保价250
+      '19855910', // 保价250
+      '19855917', // 保价200
+      '19855929', // 保价150
     ],
     group4: [
-      '19660293', // 保价300
-      '19617629', // 保价200
-      '19660295', // 保价180
+      '19855937', // 保价80
+      '20292669', // 竞价(setbid:5000)
+      '20292670', // 保价0
     ],
-    group5: [
-      '19617663', // 保价130
-      '20292559', // 竞价(setbid:8000)
-      '20292560', // 保价0
-    ],
-  }; // 共15个广告位（灵序求签 0901，含1个竞价位20292559）
+  }; // 共12个广告位（茗序茶经 0901，含1个竞价位20292669）
   
   // 并行请求超时时间（毫秒）
   const PARALLEL_TIMEOUT = 2000;
   // 组间延迟时间（毫秒）
   const GROUP_DELAY = 500;
   // 广告位间隔时间（毫秒）
-  const GROUP5_SLOT_DELAY = 300;
+  const SLOT_DELAY = 300;
   
   const delay = (ms: number): Promise<void> => {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -180,26 +175,22 @@ export function useAdManager(config: AdConfig) {
 
   const generateSimulatedEcpm = (slotId: string): number => {
     const ecpmRanges: { [key: string]: [number, number] } = {
-      // group1 - 保价1500, 1250, 900
-      '19617442': [1425, 1500], // 保价1500
-      '19617450': [1187, 1250], // 保价1250
-      '19617465': [855, 900],   // 保价900
-      // group2 - 保价700, 600, 500
-      '19617468': [665, 700],   // 保价700
-      '19617473': [570, 600],   // 保价600
-      '19660288': [475, 500],   // 保价500
-      // group3 - 保价400, 350, 250
-      '19617478': [380, 400],   // 保价400
-      '19617543': [330, 350],   // 保价350
-      '19617591': [238, 250],   // 保价250
-      // group4 - 保价300, 200, 180
-      '19660293': [285, 300],   // 保价300
-      '19617629': [190, 200],   // 保价200
-      '19660295': [171, 180],   // 保价180
-      // group5 - 保价130, 竞价, 保价0
-      '19617663': [117, 130],   // 保价130
-      '20292559': [40, 50],     // 竞价(setbid:8000)
-      '20292560': [20, 24],     // 保价0
+      // group1 - 保价1500, 1000, 900
+      '19855821': [1425, 1500], // 保价1500
+      '19855835': [950, 1000],  // 保价1000
+      '19855861': [855, 900],   // 保价900
+      // group2 - 保价700, 600, 400
+      '19855876': [665, 700],   // 保价700
+      '19855896': [570, 600],   // 保价600
+      '19855901': [380, 400],   // 保价400
+      // group3 - 保价250, 200, 150
+      '19855910': [225, 250],   // 保价250
+      '19855917': [180, 200],   // 保价200
+      '19855929': [135, 150],   // 保价150
+      // group4 - 保价80, 竞价, 保价0
+      '19855937': [72, 80],     // 保价80
+      '20292669': [40, 50],     // 竞价(setbid:5000)
+      '20292670': [20, 24],     // 保价0
     };
 
     const range = ecpmRanges[slotId];
@@ -208,13 +199,13 @@ export function useAdManager(config: AdConfig) {
   };
 
   const isBiddingSlot = (slotId: string): boolean => {
-    const biddingSlots = ['20292559']; // 灵序求签 0901竞价位；后续有竞价直接加入ID即可
+    const biddingSlots = ['20292669']; // 茗序茶经 0901竞价位；后续有竞价直接加入ID即可
     return biddingSlots.includes(slotId);
   };
 
   // 竞价广告位底价配置（单位：分，load 前通过 setBidFloor 传给原生SDK）
   const BID_FLOOR_BY_SLOT: { [key: string]: number } = {
-    '20292559': 8000,   // 竞价广告位底价 8000 分
+    '20292669': 5000,   // 竞价广告位底价 5000 分
   };
 
   // 并行请求广告组
@@ -1477,7 +1468,7 @@ export function useAdManager(config: AdConfig) {
     // }
     
     // 全部串行请求
-    let result = await trySerialAdGroup(Object.values(AD_GROUPS).flat(), GROUP5_SLOT_DELAY);
+    let result = await trySerialAdGroup(Object.values(AD_GROUPS).flat(), SLOT_DELAY);
     if (result && checkSession()) {
       isAdLoading.value = false;
       isAdReady.value = false;
