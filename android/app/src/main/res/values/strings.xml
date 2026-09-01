@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">知序笔记</string>
-    <string name="title_activity_main">知序笔记</string>
-    <string name="package_name">com.zhixubiji.app</string>
-    <string name="custom_url_scheme">com.zhixubiji.app</string>
+    <string name="app_name">静序念经</string>
+    <string name="title_activity_main">静序念经</string>
+    <string name="package_name">com.jingxunianjing.app</string>
+    <string name="custom_url_scheme">com.jingxunianjing.app</string>
 </resources>
