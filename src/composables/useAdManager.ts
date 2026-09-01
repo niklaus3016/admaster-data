@@ -67,10 +67,10 @@ export function useAdManager(config: AdConfig) {
     ],
     group4: [
       '20285312', // 保价50
-      '20285351', // 保30
+      '20285351', // 竞价(setbid:3000)
       '20285361', // 保价0
     ],
-  }; // 共12个广告位（明序性格测试，全保价无竞价）
+  }; // 共12个广告位（明序性格测试，含1个竞价位20285351）
   
   // 并行请求超时时间（毫秒）
   const PARALLEL_TIMEOUT = 2000;
@@ -187,9 +187,9 @@ export function useAdManager(config: AdConfig) {
       '20285251': [240, 300],    // 保价300
       '20285279': [160, 200],    // 保价200
       '20285302': [80, 100],     // 保价100
-      // group4 - 保价50, 保30, 保价0
+      // group4 - 保价50, 竞价, 保价0
       '20285312': [40, 50],      // 保价50
-      '20285351': [20, 24],      // 保30
+      '20285351': [24, 30],      // 竞价(setbid:3000)
       '20285361': [20, 24],      // 保价0
     };
 
@@ -199,14 +199,13 @@ export function useAdManager(config: AdConfig) {
   };
 
   const isBiddingSlot = (slotId: string): boolean => {
-    const biddingSlots: string[] = []; // 明序性格测试当前批次无竞价位；后续有竞价直接加入ID即可
+    const biddingSlots = ['20285351']; // 明序性格测试竞价位；后续有竞价直接加入ID即可
     return biddingSlots.includes(slotId);
   };
 
   // 竞价广告位底价配置（单位：分，load 前通过 setBidFloor 传给原生SDK）
-  // 当前批次无竞价位，配置留空；后续新增竞价位时按 'slotId': 底价(分) 填入即可
   const BID_FLOOR_BY_SLOT: { [key: string]: number } = {
-    // '示例竞价位ID': 3000,
+    '20285351': 3000,   // 竞价广告位底价 3000 分
   };
 
   // 并行请求广告组
