@@ -41,3 +41,6 @@ test-*.ts
 *.temp
 *.swp
 *.swo
+
+# Baidu SDK reference demo (downloaded for SDK upgrade comparison, not part of project)
+demo_as_output0820/

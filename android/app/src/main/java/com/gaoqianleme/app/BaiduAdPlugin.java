@@ -261,17 +261,28 @@ public class BaiduAdPlugin extends Plugin {
     }
 
     /**
-     * 竞价获胜上报（百度协议：广告返回后立即上报，参数枚举见百度文档）
-     * adn=9百度, ad_t=4竖版视频, bid_t=3竞价广告位
+     * 竞价获胜上报（百度 v9.460 新协议：百青藤竞胜，回传二价方信息）
+     * 字段类型：adn/ad_t/bid_t 为 Integer；ad_n/ad_ti 为 String；ad_time 为 Long（秒级时间戳）
+     * 单 SDK 集成场景无二价方信息，ad_n/ad_ti 传空字符串，adn 用百度固定值 9
      */
     private void reportBiddingSuccess(double ecpm) {
         if (mRewardVideoAd == null || biddingReported) return;
         try {
             LinkedHashMap<String, Object> biddingMap = new LinkedHashMap<>();
-            biddingMap.put("adn", "9");
+            // 二价/百青藤出价（单位：分，String 类型）
             biddingMap.put("ecpm", String.valueOf((int) ecpm));
-            biddingMap.put("ad_t", "4");
-            biddingMap.put("bid_t", "3");
+            // 二价方 DSP id（百度=9，Integer 类型；单 SDK 场景固定 9）
+            biddingMap.put("adn", 9);
+            // 二价方物料类型（4=竖版视频，Integer 类型）
+            biddingMap.put("ad_t", 4);
+            // 二价方广告主名称（单 SDK 集成无法获取，传空字符串）
+            biddingMap.put("ad_n", "");
+            // 竞价时间，秒级时间戳
+            biddingMap.put("ad_time", System.currentTimeMillis() / 1000);
+            // 竞价类型（1：分层保价；2：价格标签；3：bidding；4：其他）
+            biddingMap.put("bid_t", 3);
+            // 二价方广告主标题（单 SDK 集成无法获取，传空字符串）
+            biddingMap.put("ad_ti", "");
             mRewardVideoAd.biddingSuccess(biddingMap, new BiddingListener() {
                 @Override
                 public void onBiddingResult(boolean success, String msg, HashMap<String, Object> data) {
@@ -279,23 +290,41 @@ public class BaiduAdPlugin extends Plugin {
                 }
             });
             biddingReported = true;
-            Log.d(TAG, "✅ 竞价获胜已上报, ecpm=" + (int) ecpm + "分");
+            Log.d(TAG, "✅ 竞价获胜已上报(v9.460新协议), ecpm=" + (int) ecpm + "分");
         } catch (Throwable e) {
             Log.w(TAG, "biddingSuccess 调用失败: " + e.getMessage());
         }
     }
 
     /**
-     * 竞价失败上报（百度协议：reason=203输给其他方）
+     * 竞价失败上报（百度 v9.460 新协议：百青藤竞败，回传竞胜方信息）
+     * 字段类型：adn/ad_t/bid_t/reason/is_s/is_c 为 Integer；ad_n/ad_ti 为 String；ad_time 为 Long
+     * 单 SDK 集成场景无竞胜方信息，用合理默认值
      */
     private void reportBiddingFail() {
         if (mRewardVideoAd == null || biddingReported) return;
         try {
             LinkedHashMap<String, Object> biddingMap = new LinkedHashMap<>();
-            biddingMap.put("adn", "9");
-            biddingMap.put("ad_t", "4");
-            biddingMap.put("bid_t", "3");
-            biddingMap.put("reason", "203");
+            // 竞胜方出价（单位：分，String 类型；单 SDK 场景用底价兜底）
+            biddingMap.put("ecpm", String.valueOf(currentBidFloor));
+            // 竞胜方 DSP id（百度=9，Integer 类型）
+            biddingMap.put("adn", 9);
+            // 竞胜方物料类型（4=竖版视频，Integer 类型）
+            biddingMap.put("ad_t", 4);
+            // 竞胜方广告主名称（单 SDK 集成无法获取，传空字符串）
+            biddingMap.put("ad_n", "");
+            // 竞价时间，秒级时间戳
+            biddingMap.put("ad_time", System.currentTimeMillis() / 1000);
+            // 竞价类型（3=bidding，Integer 类型）
+            biddingMap.put("bid_t", 3);
+            // 失败原因（203=输给其他竞价方，Integer 类型）
+            biddingMap.put("reason", 203);
+            // 是否曝光（Integer 类型，1=已曝光）
+            biddingMap.put("is_s", 1);
+            // 是否点击（Integer 类型，0=未点击）
+            biddingMap.put("is_c", 0);
+            // 竞胜方广告主标题（单 SDK 集成无法获取，传空字符串）
+            biddingMap.put("ad_ti", "");
             mRewardVideoAd.biddingFail(biddingMap, new BiddingListener() {
                 @Override
                 public void onBiddingResult(boolean success, String msg, HashMap<String, Object> data) {
@@ -303,7 +332,7 @@ public class BaiduAdPlugin extends Plugin {
                 }
             });
             biddingReported = true;
-            Log.d(TAG, "✅ 竞价失败已上报(reason=203)");
+            Log.d(TAG, "✅ 竞价失败已上报(v9.460新协议,reason=203)");
         } catch (Throwable e) {
             Log.w(TAG, "biddingFail 调用失败: " + e.getMessage());
         }

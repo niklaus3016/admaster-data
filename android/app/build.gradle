@@ -73,7 +73,7 @@ dependencies {
     implementation project(':capacitor-cordova-android-plugins')
     
     // 百度广告 SDK
-    implementation(name:'Baidu_MobAds_SDK-release_v9.432',ext:'aar')
+    implementation(name:'Baidu_MobAds_SDK-release_v9.460',ext:'aar')
     implementation(name:'Baidu_MobAds_Tools_SDK-release_v3.1',ext:'aar')
     
     // 百度广告 SDK 依赖的 JAR 文件
