@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.mxxgcs.app',
-  appName: '明序性格测试',
+  appId: 'com.jixucesu.app',
+  appName: '极序测速',
   webDir: 'dist'
 };
 
