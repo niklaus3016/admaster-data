@@ -50,13 +50,25 @@ jobs:
       run: |
         echo "$KEYSTORE_BASE64" | base64 --decode > android/app/release.keystore
         echo "Keystore file size: $(ls -l android/app/release.keystore | awk '{print $5}') bytes"
-        
+
+    - name: List keystore aliases (debug)
+      if: github.event_name != 'pull_request'
+      env:
+        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      run: |
+        echo "==== Keystore 中实际存在的别名 ===="
+        keytool -list -keystore android/app/release.keystore -storepass "$KEYSTORE_PASSWORD" 2>&1 | grep -E "别名|alias" || echo "无法列出别名"
+        echo "=================================="
+
     - name: Extract SHA1 from keystore for debug
       if: github.event_name != 'pull_request'
       env:
         KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
       run: |
+        # 去除 KEY_ALIAS 首尾空白，防止 Secret 保存时带入空格/换行
+        KEY_ALIAS="$(echo "$KEY_ALIAS" | tr -d '[:space:]')"
+
         if [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ]; then
           echo "ERROR: KEYSTORE_PASSWORD or KEY_ALIAS secret is not set"
           exit 1
@@ -82,6 +94,8 @@ jobs:
         KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
       run: |
+        # 去除 KEY_ALIAS 首尾空白，防止 Secret 保存时带入空格/换行
+        KEY_ALIAS="$(echo "$KEY_ALIAS" | tr -d '[:space:]')"
         cd android
         ./gradlew assembleDebug -PKEYSTORE_PASSWORD="$KEYSTORE_PASSWORD" -PKEY_ALIAS="$KEY_ALIAS"
         
@@ -145,19 +159,31 @@ jobs:
         # 将 base64 编码的 keystore 还原为文件
         echo "$KEYSTORE_BASE64" | base64 --decode > android/app/release.keystore
         echo "Keystore file size: $(ls -l android/app/release.keystore | awk '{print $5}') bytes"
-        
+
+    - name: List keystore aliases (release)
+      if: github.event_name != 'pull_request'
+      env:
+        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      run: |
+        echo "==== Keystore 中实际存在的别名 ===="
+        keytool -list -keystore android/app/release.keystore -storepass "$KEYSTORE_PASSWORD" 2>&1 | grep -E "别名|alias" || echo "无法列出别名"
+        echo "=================================="
+
     - name: Extract SHA1 from keystore
       if: github.event_name != 'pull_request'
       env:
         KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
       run: |
+        # 去除 KEY_ALIAS 首尾空白，防止 Secret 保存时带入空格/换行
+        KEY_ALIAS="$(echo "$KEY_ALIAS" | tr -d '[:space:]')"
+
         # 检查Secrets是否存在
         if [ -z "$KEYSTORE_PASSWORD" ]; then
           echo "ERROR: KEYSTORE_PASSWORD secret is not set"
           exit 1
         fi
-        
+
         if [ -z "$KEY_ALIAS" ]; then
           echo "ERROR: KEY_ALIAS secret is not set"
           exit 1
@@ -210,6 +236,8 @@ jobs:
         KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
       run: |
+        # 去除 KEY_ALIAS 首尾空白，防止 Secret 保存时带入空格/换行
+        KEY_ALIAS="$(echo "$KEY_ALIAS" | tr -d '[:space:]')"
         cd android
         ./gradlew assembleRelease -PKEYSTORE_PASSWORD="$KEYSTORE_PASSWORD" -PKEY_ALIAS="$KEY_ALIAS"
         
