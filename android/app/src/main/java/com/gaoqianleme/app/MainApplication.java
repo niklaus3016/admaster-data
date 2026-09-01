@@ -18,7 +18,7 @@ import com.baidu.mobads.sdk.api.MobadsPermissionSettings;
 public class MainApplication extends Application {
 
     private static final String TAG = "MainApplication";
-    private static final String APP_ID = "a214339b";
+    private static final String APP_ID = "c6497815";
 
     @Override
     public void onCreate() {
