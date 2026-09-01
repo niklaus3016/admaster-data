@@ -42,7 +42,7 @@ public class MainApplication extends Application {
             Log.d(TAG, "开始初始化百度广告SDK，App ID: " + APP_ID);
             
             BDAdConfig bdAdConfig = new BDAdConfig.Builder()
-                    .setAppName("简序清单")
+                    .setAppName("明序性格测试")
                     .setAppsid(APP_ID)
                     .setBDAdInitListener(new BDAdConfig.BDAdInitListener() {
                         @Override
