@@ -636,7 +636,10 @@ export function useAdManager(config: AdConfig) {
           break;
         }
         
-        // 失败立即询问下一个广告位（不等间隔）
+        // 当前广告位返回失败后，等待200ms再询问下一个，给SDK喘息时间
+        if (i < allSlots.length - 1) {
+          await delay(200);
+        }
       }
       
       isPreloading = false;
@@ -1157,7 +1160,10 @@ export function useAdManager(config: AdConfig) {
               }
           }
           
-          // 失败立即询问下一个广告位（不等间隔）
+          // 当前广告位返回失败后，等待200ms再询问下一个，给SDK喘息时间
+          if (i < allSlots.length - 1) {
+            await delay(200);
+          }
         }
         
         console.log('❌ 所有广告位都加载失败');
