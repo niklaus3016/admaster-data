@@ -1,4 +1,4 @@
-package com.jingxunianjing.app;
+package com.lingxuqiuqian.app;
 
 import android.speech.tts.TextToSpeech;
 import android.util.Log;
