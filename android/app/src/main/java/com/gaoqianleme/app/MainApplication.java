@@ -99,11 +99,10 @@ public class MainApplication extends Application {
             handler.postDelayed(runnable, 1000);
 
             // 合规设置：APP ICON 资源，系统通知使用
-            AdSettings.setNotificationIcon(android.R.mipmap.ic_launcher);
+            AdSettings.setNotificationIcon(R.mipmap.ic_launcher);
 
-            // 权限设置
-            MobadsPermissionSettings.setPermissionReadDeviceID(true);
-            MobadsPermissionSettings.setPermissionAppList(true);
+            // 权限设置（v9.460 仅保留 location/storage/limitPersonalAds，
+            // setPermissionReadDeviceID/setPermissionAppList 已移除）
             MobadsPermissionSettings.setPermissionLocation(true);
             MobadsPermissionSettings.setPermissionStorage(true);
             // 限制 SDK 个性化广告推荐（合规相关，true=限制）
