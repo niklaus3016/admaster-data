@@ -1,4 +1,4 @@
-package com.yuexuxingzuo.app;
+package com.yongxilingqian.app;
 
 import android.app.ActivityManager;
 import android.app.Application;
@@ -18,7 +18,7 @@ import com.baidu.mobads.sdk.api.MobadsPermissionSettings;
 public class MainApplication extends Application {
 
     private static final String TAG = "MainApplication";
-    private static final String APP_ID = "d423b637";
+    private static final String APP_ID = "a27dbf0e";
 
     @Override
     public void onCreate() {
@@ -30,7 +30,7 @@ public class MainApplication extends Application {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             String processName = getProcessName(this);
             // 非主进程（包名）时设置 suffix，主进程保持默认
-            if (!"com.yuexuxingzuo.app".equals(processName)) {
+            if (!"com.yongxilingqian.app".equals(processName)) {
                 WebView.setDataDirectorySuffix(processName);
             }
         }
@@ -42,7 +42,7 @@ public class MainApplication extends Application {
         Log.d(TAG, "========================================");
 
         // 仅主进程初始化 SDK（避免激励视频等子进程重复初始化）
-        if (getProcessName(this).startsWith("com.yuexuxingzuo.app")) {
+        if (getProcessName(this).startsWith("com.yongxilingqian.app")) {
             initBaiduAdSDK();
         }
     }
@@ -61,7 +61,7 @@ public class MainApplication extends Application {
             Log.d(TAG, "开始初始化百度广告SDK，App ID: " + APP_ID);
 
             final BDAdConfig bdAdConfig = new BDAdConfig.Builder()
-                    .setAppName("月序星座")
+                    .setAppName("永喜灵签")
                     .setAppsid(APP_ID)
                     .setBDAdInitListener(new BDAdConfig.BDAdInitListener() {
                         @Override
