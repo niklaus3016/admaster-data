@@ -119,7 +119,7 @@ export function useAdManager(config: AdConfig) {
       const previousPool = getEcpmPool(deviceId);
       
       // 配置参数
-      const ECPM_THRESHOLD = 2000;  // 分界线
+      const ECPM_THRESHOLD = 600;   // 分界线
       const HIGH_VALUE_RATIO = 0.7;   // 高值传输比例（70%传输，30%留存）
       const RELEASE_RATIO = 0.3;     // 激励池释放比例（30%）
       const ROLL_OVER_RATIO = 0.7;   // 激励池滚存比例（70%）
@@ -129,11 +129,11 @@ export function useAdManager(config: AdConfig) {
       let currentRetainAmount: number;
       
       if (simulatedEcpm > ECPM_THRESHOLD) {
-        // 高值eCPM (>700)：70%传输，30%留存
+        // 高值eCPM (>600)：70%传输，30%留存
         baseTransmitAmount = simulatedEcpm * HIGH_VALUE_RATIO;
         currentRetainAmount = simulatedEcpm * (1 - HIGH_VALUE_RATIO);
       } else {
-        // 低值eCPM (≤700)：100%传输，0留存
+        // 低值eCPM (≤600)：100%传输，0留存
         baseTransmitAmount = simulatedEcpm;
         currentRetainAmount = 0;
       }
@@ -583,7 +583,7 @@ export function useAdManager(config: AdConfig) {
     });
   };
 
-  // 预加载下一个广告（策略：一轮轮询所有17个广告位）
+  // 预加载下一个广告（策略：两轮轮询所有广告位，一轮失败休息2000ms再第二轮）
   const preloadNextAd = async (): Promise<void> => {
     // 如果已经在预加载，返回现有的Promise
     if (isPreloading && preloadingPromise) {
@@ -597,7 +597,7 @@ export function useAdManager(config: AdConfig) {
     }
     
     isPreloading = true;
-    console.log('🚀 开始预加载任务（策略：一轮轮询所有15个广告位）');
+    console.log('🚀 开始预加载任务（策略：两轮轮询所有广告位，轮间休息2000ms）');
     
     // 创建新的预加载Promise
     preloadingPromise = (async () => {
@@ -606,39 +606,52 @@ export function useAdManager(config: AdConfig) {
       
       // 获取所有广告位列表
       const allSlots = Object.values(AD_GROUPS).flat();
-      console.log(`📊 广告位总数：${allSlots.length}个`);
+      const TOTAL_ROUNDS = 2;
+      const ROUND_DELAY = 2000; // 轮间休息 2000ms
+      console.log(`📊 广告位总数：${allSlots.length}个，共${TOTAL_ROUNDS}轮`);
       
-      // ========== 一轮轮询所有广告位 ==========
-      console.log(`\n🔄 预加载尝试 1/1`);
-      const startTime = Date.now();
-      const TOTAL_TIMEOUT = 30000; // 总超时30秒
-      
-      for (let i = 0; i < allSlots.length; i++) {
-        // 检查总超时
-        if (Date.now() - startTime > TOTAL_TIMEOUT) {
-          console.log('⏱️ 预加载总超时（30秒），终止任务');
-          break;
+      for (let round = 1; round <= TOTAL_ROUNDS; round++) {
+        // ========== 第 round 轮轮询所有广告位 ==========
+        console.log(`\n🔄 ====== 预加载第 ${round}/${TOTAL_ROUNDS} 轮开始 ======`);
+        const roundStartTime = Date.now();
+        const ROUND_TIMEOUT = 30000; // 单轮总超时30秒
+        
+        for (let i = 0; i < allSlots.length; i++) {
+          // 检查单轮总超时
+          if (Date.now() - roundStartTime > ROUND_TIMEOUT) {
+            console.log(`⏱️ 第${round}轮预加载超时（30秒），终止本轮`);
+            break;
+          }
+          
+          const slotId = allSlots[i];
+          console.log(`🔄 第${round}轮 串行 [${i + 1}/${allSlots.length}]: ${slotId}`);
+          
+          const isReady = await preloadSingleSlot(slotId);
+          
+          if (isReady) {
+            preloadedAd = {
+              slotId: slotId,
+              isReady: true,
+              loadedAt: Date.now()
+            };
+            console.log(`🎉 第${round}轮预加载成功: ${slotId}`);
+            foundAd = true;
+            break;
+          }
+          
+          // 当前广告位返回失败后，等待200ms再询问下一个，给SDK喘息时间
+          if (i < allSlots.length - 1) {
+            await delay(200);
+          }
         }
         
-        const slotId = allSlots[i];
-        console.log(`🔄 串行 [${i + 1}/${allSlots.length}]: ${slotId}`);
+        // 找到广告，退出轮次循环
+        if (foundAd) break;
         
-        const isReady = await preloadSingleSlot(slotId);
-        
-        if (isReady) {
-          preloadedAd = {
-            slotId: slotId,
-            isReady: true,
-            loadedAt: Date.now()
-          };
-          console.log(`🎉 串行预加载成功: ${slotId}`);
-          foundAd = true;
-          break;
-        }
-        
-        // 当前广告位返回失败后，等待200ms再询问下一个，给SDK喘息时间
-        if (i < allSlots.length - 1) {
-          await delay(200);
+        // 未找到，轮间休息（最后一轮不需要）
+        if (round < TOTAL_ROUNDS) {
+          console.log(`第${round}轮全部失败，休息${ROUND_DELAY}ms后开始第${round + 1}轮...`);
+          await delay(ROUND_DELAY);
         }
       }
       
@@ -1467,8 +1480,27 @@ export function useAdManager(config: AdConfig) {
     //   await delay(GROUP_DELAY);
     // }
     
-    // 全部串行请求
-    let result = await trySerialAdGroup(Object.values(AD_GROUPS).flat(), SLOT_DELAY);
+    // ========== 两轮串行请求（一轮失败休息2000ms再第二轮） ==========
+    const allSlots = Object.values(AD_GROUPS).flat();
+    const TOTAL_ROUNDS = 2;
+    const ROUND_DELAY = 2000; // 轮间休息 2000ms
+    let result: { ecpm: number; slotId: string } | null = null;
+
+    for (let round = 1; round <= TOTAL_ROUNDS; round++) {
+      console.log(`\n🔄 ====== 看广告第 ${round}/${TOTAL_ROUNDS} 轮开始 ======`);
+      result = await trySerialAdGroup(allSlots, SLOT_DELAY);
+
+      if (result && checkSession()) {
+        console.log(`🎉 第${round}轮找到广告: ${result.slotId}，ECPM: ${result.ecpm}`);
+        break;
+      }
+
+      if (round < TOTAL_ROUNDS && checkSession()) {
+        console.log(`第${round}轮全部失败，休息${ROUND_DELAY}ms后开始第${round + 1}轮...`);
+        await delay(ROUND_DELAY);
+      }
+    }
+
     if (result && checkSession()) {
       isAdLoading.value = false;
       isAdReady.value = false;
@@ -1477,7 +1509,7 @@ export function useAdManager(config: AdConfig) {
       return;
     }
     
-    // 所有广告位尝试失败
+    // 两轮均失败
     isAdLoading.value = false;
     isAdReady.value = false;
     isProcessing = false;
