@@ -1,4 +1,4 @@
-package com.wenyuetaluo.app;
+package com.meixumingpian.app;
 
 import android.app.Activity;
 import android.util.Log;

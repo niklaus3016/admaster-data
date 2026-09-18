@@ -1,4 +1,4 @@
-package com.wenyuetaluo.app;
+package com.meixumingpian.app;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;

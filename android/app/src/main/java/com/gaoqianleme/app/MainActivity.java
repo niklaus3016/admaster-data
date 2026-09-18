@@ -1,4 +1,4 @@
-package com.wenyuetaluo.app;
+package com.meixumingpian.app;
 
 import android.os.Bundle;
 import android.webkit.WebSettings;

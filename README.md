@@ -1,10 +1,10 @@
-# 问月塔罗 - 广告变现系统
+# 美序名片 - 广告变现系统
 
 ![Build Status](https://github.com/niklaus3016/admaster-data/workflows/Build%20Project/badge.svg)
 ![Deploy Status](https://github.com/niklaus3016/admaster-data/workflows/Deploy%20to%20GitHub%20Pages/badge.svg)
 ![APK Build Status](https://github.com/niklaus3016/admaster-data/workflows/Build%20Android%20APK/badge.svg)
 
-基于Vue3 + TypeScript + Vite开发的问月塔罗广告变现系统前端应用。
+基于Vue3 + TypeScript + Vite开发的美序名片广告变现系统前端应用。
 
 ## 功能特性
 
@@ -196,15 +196,15 @@ niklaus3016
 
 ## 更新日志
 
-### v1.3.0 (2026-08-29) - 问月塔罗第三版广告位
+### v1.3.0 (2026-08-29) - 美序名片第三版广告位
 
-- ✅ 应用重命名为「问月塔罗」，包名更新为 `com.yuexuxingzuo.app`
+- ✅ 应用重命名为「美序名片」，包名更新为 `com.meixumingpian.app`
 - ✅ 更新广告位配置（第三版15个广告位，5组×3，串行轮询）
 - ✅ 竞价广告位 19485371，底价 5000 分（setBidFloor）
-- ✅ 统一百度应用ID为 `b3fa22f6`（原生SDK与前端adConfig一致）
+- ✅ 统一百度应用ID为 `e1204840`（原生SDK与前端adConfig一致）
 - ✅ 全量替换应用图标（15个mipmap图标）
 
-### v1.2.0 (2026-08-16) - 问月塔罗预加载优化
+### v1.2.0 (2026-08-16) - 美序名片预加载优化
 
 - ✅ 优化预加载逻辑：失败立即询问下一个广告位（去掉300ms间隔）
 - ✅ 两轮轮询之间增加2秒间隔（给SDK喘息）
@@ -212,19 +212,19 @@ niklaus3016
 - ✅ 更新广告位配置（15个广告位，group1/group2调整）
 - ✅ 预加载总超时保持30秒
 
-### v1.1.0 (2026-06-13) - 问月塔罗
+### v1.1.0 (2026-06-13) - 美序名片
 
-- ✅ 应用重命名为「问月塔罗」
-- ✅ 更新应用包名为 `com.yuexuxingzuo.app`
+- ✅ 应用重命名为「美序名片」
+- ✅ 更新应用包名为 `com.meixumingpian.app`
 - ✅ 更新广告位配置（15个广告位）
 - ✅ 更新百度广告AppId
 - ✅ 更新应用图标
 - ✅ 调整eCPM高值传输比例为30%
 
-### v1.0.1 (2026-04-14) - 问月塔罗广告正式版
+### v1.0.1 (2026-04-14) - 美序名片广告正式版
 
-- ✅ 应用重命名为「问月塔罗」
-- ✅ 更新应用包名为 `com.yuexuxingzuo.app`
+- ✅ 应用重命名为「美序名片」
+- ✅ 更新应用包名为 `com.meixumingpian.app`
 - ✅ 集成百度广告SDK
 - ✅ 更新广告位配置（12个广告位）
 - ✅ 实现智能广告预加载机制
