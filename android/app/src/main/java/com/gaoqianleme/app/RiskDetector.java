@@ -1,4 +1,4 @@
-package com.meixumingpian.app;
+package com.tongxulishi.app;
 
 import android.content.Context;
 import android.content.pm.ApplicationInfo;

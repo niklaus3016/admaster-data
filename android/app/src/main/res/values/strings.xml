@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">美序名片</string>
-    <string name="title_activity_main">美序名片</string>
-    <string name="package_name">com.meixumingpian.app</string>
-    <string name="custom_url_scheme">com.meixumingpian.app</string>
+    <string name="app_name">通序历史</string>
+    <string name="title_activity_main">通序历史</string>
+    <string name="package_name">com.tongxulishi.app</string>
+    <string name="custom_url_scheme">com.tongxulishi.app</string>
 </resources>

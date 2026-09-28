@@ -1,4 +1,4 @@
-package com.meixumingpian.app;
+package com.tongxulishi.app;
 
 import android.app.ActivityManager;
 import android.app.Application;
@@ -18,7 +18,7 @@ import com.baidu.mobads.sdk.api.MobadsPermissionSettings;
 public class MainApplication extends Application {
 
     private static final String TAG = "MainApplication";
-    private static final String APP_ID = "e1204840";
+    private static final String APP_ID = "ab367bde";
 
     @Override
     public void onCreate() {
@@ -30,7 +30,7 @@ public class MainApplication extends Application {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             String processName = getProcessName(this);
             // 非主进程（包名）时设置 suffix，主进程保持默认
-            if (!"com.meixumingpian.app".equals(processName)) {
+            if (!"com.tongxulishi.app".equals(processName)) {
                 WebView.setDataDirectorySuffix(processName);
             }
         }
@@ -42,7 +42,7 @@ public class MainApplication extends Application {
         Log.d(TAG, "========================================");
 
         // 仅主进程初始化 SDK（避免激励视频等子进程重复初始化）
-        if (getProcessName(this).startsWith("com.meixumingpian.app")) {
+        if (getProcessName(this).startsWith("com.tongxulishi.app")) {
             initBaiduAdSDK();
         }
     }
@@ -61,7 +61,7 @@ public class MainApplication extends Application {
             Log.d(TAG, "开始初始化百度广告SDK，App ID: " + APP_ID);
 
             final BDAdConfig bdAdConfig = new BDAdConfig.Builder()
-                    .setAppName("美序名片")
+                    .setAppName("通序历史")
                     .setAppsid(APP_ID)
                     .setBDAdInitListener(new BDAdConfig.BDAdInitListener() {
                         @Override
